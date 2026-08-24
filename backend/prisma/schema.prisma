@@ -1,0 +1,203 @@
+// Portal Sem Fronteiras — Prisma schema
+//
+// Convention: models and fields in English (camelCase), database columns in
+// snake_case via @map. Keeps raw SQL readable when someone opens psql.
+//
+// Prisma 7: the datasource block has NO url. Connection strings live in
+// prisma.config.ts (for the CLI) and in the driver adapter (for the runtime).
+//
+// Keep the `generator` block that your own `prisma init` produced — the
+// output path decides where you import PrismaClient from.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  admin
+  columnist
+  reader // everyone signs up as this; the admin promotes to columnist
+}
+
+enum AuthorType {
+  writer // byline only, no login — the admin picks it when publishing news
+  columnist // has a login and writes their own columns
+}
+
+enum PostType {
+  news
+  column
+}
+
+enum PostStatus {
+  draft // being written
+  pending // columnist submitted, waiting for the admin
+  published // live
+}
+
+// ---------------------------------------------------------------------------
+// User — anyone who can log in
+// ---------------------------------------------------------------------------
+
+model User {
+  id String @id @default(uuid(7))
+
+  // Account holder's name. Distinct from Author.name, which is the byline —
+  // a columnist may sign under a different name than the one on their account.
+  name String
+
+  email        String @unique
+  passwordHash String @map("password_hash")
+
+  // Self sign-up always lands here. Only an admin can change it.
+  // NEVER read this field from request input — see the register schema.
+  role Role @default(reader)
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Created when the admin promotes a reader to columnist.
+  // Readers and the admin have none.
+  author Author?
+
+  createdPosts   Post[] @relation("PostCreatedBy")
+  publishedPosts Post[] @relation("PostPublishedBy")
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Author — writer (byline only) or columnist (byline + login)
+// ---------------------------------------------------------------------------
+
+model Author {
+  id          String     @id @default(uuid(7))
+  name        String
+  slug        String     @unique
+  photoUrl    String?    @map("photo_url")
+  bio         String?
+  columnTitle String?    @map("column_title") // columnists only
+  type        AuthorType
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  // Null for writers, set for columnists.
+  // SetNull: deleting the login keeps the profile and the published posts —
+  // the author page stays online, they just lose access.
+  userId String? @unique @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  posts Post[]
+
+  @@index([type, active])
+  @@map("authors")
+}
+
+// ---------------------------------------------------------------------------
+// Category — news only
+// ---------------------------------------------------------------------------
+
+model Category {
+  id        String   @id @default(uuid(7))
+  name      String   @unique
+  slug      String   @unique
+  sortOrder Int      @default(0) @map("sort_order") // position in the site menu
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  posts Post[]
+
+  @@map("categories")
+}
+
+// ---------------------------------------------------------------------------
+// Post — news and columns share one table, split by `type`
+// ---------------------------------------------------------------------------
+
+model Post {
+  id     String     @id @default(uuid(7))
+  type   PostType
+  status PostStatus @default(draft)
+
+  title    String
+  subtitle String?
+  slug     String  @unique
+
+  // excerpt, content and cover start empty on purpose: a draft is allowed to
+  // be incomplete. Completeness is enforced by the service on publish, not here.
+  excerpt  String  @default("")
+  content  String  @default("") // HTML, already sanitized server-side
+  coverUrl String? @map("cover_url")
+  coverAlt String? @map("cover_alt")
+
+  // Lead story on the home page. Only one at a time — enforced by a partial
+  // unique index added in the migration (Prisma cannot express it here).
+  featured Boolean @default(false)
+
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // News always has a category. A column never does.
+  // Enforced by the CHECK constraint added in the migration.
+  categoryId String?   @map("category_id")
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // Whose name signs the piece.
+  authorId String @map("author_id")
+  author   Author @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  // Who actually typed it (audit trail — the admin may write on a writer's behalf).
+  createdById String @map("created_by_id")
+  createdBy   User   @relation("PostCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  // Who hit publish. Always an admin.
+  publishedById String? @map("published_by_id")
+  publishedBy   User?   @relation("PostPublishedBy", fields: [publishedById], references: [id], onDelete: Restrict)
+
+  // --- video: uncomment only after the client picks an option ---
+  // videoUrl      String? @map("video_url")
+  // videoProvider String? @map("video_provider") // "youtube" | "r2" | "stream"
+
+  // Home feed and columnists tab.
+  @@index([type, status, publishedAt(sort: Desc)])
+  // Category page.
+  @@index([categoryId, status, publishedAt(sort: Desc)])
+  // Author page and "my columns" in the panel.
+  @@index([authorId, status, publishedAt(sort: Desc)])
+  @@map("posts")
+}
+
+// ---------------------------------------------------------------------------
+// Session — connect-pg-simple's table
+//
+// Declared here only so Prisma knows it exists. You will NEVER call
+// `prisma.session` in application code — express-session owns this table.
+//
+// Left out of the schema, `prisma migrate dev` would report drift and offer to
+// reset the database, taking your development data with it.
+//
+// Configure the store with `createTableIfMissing: false`, since Prisma creates it.
+// The table name must stay exactly "session".
+// ---------------------------------------------------------------------------
+
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+  @@map("session")
+}
