@@ -5,10 +5,16 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "build": "prisma generate && tsc && tsc-alias",
 
+    "start": "node dist/server.js",
+
+    "typecheck": "tsc --noEmit",
+
+    "test": "vitest run",
+    
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"
-    
   },
   "keywords": [],
   "author": "",
@@ -27,6 +33,7 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "argon2": "^0.45.1",
     "connect-pg-simple": "^10.0.0",
