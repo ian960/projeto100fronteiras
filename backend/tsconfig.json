@@ -1,16 +1,35 @@
+//{
+//  "compilerOptions": {
+//    "target": "ES2022",
+//    "module": "commonjs",
+//    "moduleResolution": "node",
+//    "outDir": "dist",
+//    "rootDir": "src",
+//    "strict": true,
+//    "noUncheckedIndexedAccess": true,
+//    "esModuleInterop": true,
+//    "skipLibCheck": true,
+//    "baseUrl": ".",
+//    "paths": { "@/*": ["src/*"] }
+//  },
+//  "include": ["src/**/*", "prisma.config.ts"]
+//}
+
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    "forceConsistentCasingInFileNames": true,
+    //"paths": { "@/*": ["src/*"]}
   },
-  "include": ["src/**/*", "prisma.config.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

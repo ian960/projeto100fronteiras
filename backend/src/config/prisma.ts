@@ -1,7 +1,7 @@
 // src/config/prisma.ts
 import { Pool } from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from '@/generated/prisma/client'
+import { PrismaClient } from '../generated/prisma/client'
 import { env } from './env'
 
 const pool = new Pool({ connectionString: env.DATABASE_URL })
