@@ -7,3 +7,7 @@ dist/
 .agents/
 .claude/
 .windsurf/
+
+.env
+.env.*
+!.env.example
