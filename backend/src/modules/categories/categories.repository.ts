@@ -113,6 +113,15 @@ export class CategoriesRepository implements ICategoryRepository {
     }
   }
 
+  async countPosts(categoryId: string): Promise<number> {
+    try {
+      return await prisma.post.count({where: { categoryId}});
+    } catch(err) {
+      logger.error('Erro ao contar posts da categoria', err);
+      throw err;
+    }
+  }
+
   async delete(id: string): Promise<void> {
     try {
       await prisma.category.delete({ where: { id } });
@@ -122,3 +131,5 @@ export class CategoriesRepository implements ICategoryRepository {
     }
   }
 }
+
+export const categoriesRepository = new CategoriesRepository();
