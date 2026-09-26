@@ -1,9 +1,21 @@
-import express from 'express';
-//import cors from 'cors;' 
+import express from "express";
+import cors from "cors";
 
-const app = express()
+import { buildRouter } from "./routes/routes";
+import { env } from "./config/env";
 
-app.use(express.json())
-//app.use(router)
+export function createApp() {
+    const app = express();
 
-export {app}
+    app.use(express.json());
+
+  //  app.use(cors({
+   //     origin: env.SITE_URL,
+   //     credentials: true
+   // }));
+   app.use(cors())
+
+    app.use("/api", buildRouter());
+
+    return app;
+}

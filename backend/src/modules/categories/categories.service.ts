@@ -2,7 +2,7 @@ import { promises } from "node:dns";
 import { ICategoryPublic, ICategoryWithPostCount } from "./categories.types";
 import { categoriesRepository } from "./categories.repository";
 import { Conflict, NotFound, ValidationError } from "@/shared/errors/AppError";
-import { slugify } from "zod/v4/core/util.cjs";
+import { slugify } from "../../shared/utils/slugfy";
 import { CreateCategoryInput, UpdateCategoryInput } from "./categories.service.types";
 import { sl } from "zod/v4/locales";
 
@@ -87,7 +87,7 @@ async update(id: string, input: UpdateCategoryInput): Promise<ICategoryPublic>{
 
 }
 
-    async removeEventListener(id: string): Promise<void> {
+    async remove(id: string): Promise<void> {
         await this.ensureExists(id);
         
         const postCount = await categoriesRepository.countPosts(id);
