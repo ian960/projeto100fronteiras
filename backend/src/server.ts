@@ -1,15 +1,33 @@
+import { env, usingDevSessionSecret } from './config/env';
 import { createApp } from './app';
-import { env } from './config/env'
+import { disconnectDatabase } from './config/prisma';
+import { isStorageConfigured } from './config/storage';
 import { logger } from './shared/utils/logger';
 
 const app = createApp();
 
 const server = app.listen(env.PORT, () => {
-    logger.info(`API listening on http://localhost:${env.PORT}`)
+  logger.info(`API listening on http://localhost:${env.PORT}`);
+
+  // Say out loud what is running in degraded mode, so nobody spends an hour
+  // wondering why an upload returns 503.
+  if (!isStorageConfigured()) {
+    logger.warn('R2 is not configured: upload endpoints will answer 503. Everything else works.');
+  }
+
+  if (usingDevSessionSecret) {
+    logger.warn('SESSION_SECRET is not set: using the development fallback. Never do this in production.');
+  }
 });
 
-const PORT = env.PORT ?? 3000
+// Finish in-flight requests and close the pool instead of dropping
+// connections mid-query when the container is replaced.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => {
+    logger.info(`${signal} received, shutting down`);
 
-app.listen(PORT, () => {
-    console.log(` Server Runing on port ${PORT}`)
-})
+    server.close(() => {
+      void disconnectDatabase().finally(() => process.exit(0));
+    });
+  });
+}

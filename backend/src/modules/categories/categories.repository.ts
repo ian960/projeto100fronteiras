@@ -115,8 +115,8 @@ export class CategoriesRepository implements ICategoryRepository {
 
   async countPosts(categoryId: string): Promise<number> {
     try {
-      return await prisma.post.count({where: { categoryId}});
-    } catch(err) {
+      return await prisma.post.count({ where: { categoryId } });
+    } catch (err) {
       logger.error('Erro ao contar posts da categoria', err);
       throw err;
     }
