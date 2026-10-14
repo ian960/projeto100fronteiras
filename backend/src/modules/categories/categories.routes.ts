@@ -5,6 +5,7 @@ export function categoriesPublicRouter(): Router {
     const router = Router();
     router.get('/', categoriesController.listPublic);
     router.get('/:slug', categoriesController.getBySlug);
+    router.post('/', categoriesController.create);
 
     return router;
 
