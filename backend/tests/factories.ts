@@ -1,45 +1,116 @@
-import { prisma } from '../src/config/prisma'
-import argon2 from 'argon2'
+import argon2 from 'argon2';
+import { prisma } from '../src/config/prisma';
 
-let seq = 0
-const uniq = () => `${Date.now()}-${seq++}`
+// Shared plaintext so tests can log in without hashing a new value each time.
+export const TEST_PASSWORD = 'senha12345';
 
-export async function makeUser(overrides = {}) {
+let sequence = 0;
+
+// email and slug are unique columns. Without a per-call suffix, the second
+// test that builds a columnist dies on P2002.
+const uniq = () => `${Date.now().toString(36)}-${(sequence += 1)}`;
+
+export async function makeUser(overrides: Record<string, unknown> = {}) {
   return prisma.user.create({
     data: {
-      name: 'Test User',
+      name: 'Test Reader',
       email: `user-${uniq()}@test.local`,
-      passwordHash: await argon2.hash('senha12345'),
+      passwordHash: await argon2.hash(TEST_PASSWORD),
       role: 'reader',
       ...overrides,
     },
-  })
+  });
 }
 
-export async function makeColumnist(overrides = {}) {
-  const user = await makeUser({ role: 'columnist' })
+export async function makeAdmin(overrides: Record<string, unknown> = {}) {
+  return makeUser({ name: 'Test Admin', role: 'admin', ...overrides });
+}
+
+export async function makeWriter(overrides: Record<string, unknown> = {}) {
+  return prisma.author.create({
+    data: {
+      name: 'Test Writer',
+      slug: `writer-${uniq()}`,
+      type: 'writer',
+      ...overrides,
+    },
+  });
+}
+
+// A columnist is one user plus one author row linked to it — the same pair the
+// promote endpoint creates in a transaction.
+export async function makeColumnist(overrides: Record<string, unknown> = {}) {
+  const user = await makeUser({ name: 'Test Columnist', role: 'columnist' });
+
   const author = await prisma.author.create({
     data: {
       userId: user.id,
       name: 'Test Columnist',
       slug: `columnist-${uniq()}`,
       type: 'columnist',
+      columnTitle: 'Test Column',
       ...overrides,
     },
-  })
-  return { user, author }
+  });
+
+  return { user, author };
 }
 
-export async function makeColumn(authorId: string, createdById: string, overrides = {}) {
+export async function makeCategory(overrides: Record<string, unknown> = {}) {
+  const suffix = uniq();
+
+  return prisma.category.create({
+    data: {
+      name: `Category ${suffix}`,
+      slug: `category-${suffix}`,
+      ...overrides,
+    },
+  });
+}
+
+// Complete enough to be published: excerpt, content and cover all filled.
+export async function makeNews(
+  params: { authorId: string; createdById: string; categoryId: string },
+  overrides: Record<string, unknown> = {},
+) {
+  const suffix = uniq();
+
+  return prisma.post.create({
+    data: {
+      type: 'news',
+      status: 'draft',
+      title: `News ${suffix}`,
+      slug: `news-${suffix}`,
+      excerpt: 'A short summary.',
+      content: '<p>Body of the article.</p>',
+      coverUrl: 'https://cdn.test.local/covers/example-1280.webp',
+      coverAlt: 'Example cover',
+      categoryId: params.categoryId,
+      authorId: params.authorId,
+      createdById: params.createdById,
+      ...overrides,
+    },
+  });
+}
+
+export async function makeColumn(
+  params: { authorId: string; createdById: string },
+  overrides: Record<string, unknown> = {},
+) {
+  const suffix = uniq();
+
   return prisma.post.create({
     data: {
       type: 'column',
       status: 'draft',
-      title: 'Test Column',
-      slug: `column-${uniq()}`,
-      authorId,
-      createdById,
+      title: `Column ${suffix}`,
+      slug: `column-${suffix}`,
+      excerpt: 'A short opinion summary.',
+      content: '<p>Body of the column.</p>',
+      // categoryId stays null: the CHECK constraint refuses a column with one.
+      authorId: params.authorId,
+      createdById: params.createdById,
       ...overrides,
     },
-  })
+  });
 }

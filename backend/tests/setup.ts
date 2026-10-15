@@ -1,23 +1,25 @@
-import { beforeAll, afterEach, afterAll } from 'vitest'
-import { execSync } from 'node:child_process'
-import { prisma } from '../src/config/prisma'
+import { afterAll, afterEach, beforeAll } from 'vitest';
+import { prisma, disconnectDatabase } from '../src/config/prisma';
+import { assertTestDatabase, resetTestDatabase } from './helpers/database';
 
-beforeAll(() => {
-  // recria o schema do zero no banco de teste
-  execSync('npx prisma migrate reset --force', {
-    env: { ...process.env },
-    stdio: 'inherit',
-  })
-})
+beforeAll(async () => {
+  const url = assertTestDatabase(process.env.DATABASE_URL);
+
+  // Once per test file. Between individual tests, deleteMany below is enough.
+  await resetTestDatabase(url);
+});
 
 afterEach(async () => {
-  // ordem importa: filho antes de pai, por causa das FKs
-  await prisma.post.deleteMany()
-  await prisma.author.deleteMany()
-  await prisma.category.deleteMany()
-  await prisma.user.deleteMany()
-})
+  // Child rows before parents. Every foreign key in this schema is Restrict,
+  // so deleting users before posts is refused by the database — this order is
+  // literally the shape of the relations.
+  await prisma.post.deleteMany();
+  await prisma.author.deleteMany();
+  await prisma.category.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.$executeRaw`DELETE FROM "session"`;
+});
 
 afterAll(async () => {
-  await prisma.$disconnect()
-})
+  await disconnectDatabase();
+});

@@ -12,6 +12,11 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+
+  // The backend is a CommonJS package ("type": "commonjs"). Left to infer,
+  // Prisma emits `import.meta.url`, which tsx tolerates in development but
+  // crashes `node dist/server.js` after `npm run build`.
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -167,9 +172,13 @@ model Post {
   publishedById String? @map("published_by_id")
   publishedBy   User?   @relation("PostPublishedBy", fields: [publishedById], references: [id], onDelete: Restrict)
 
-  // --- video: uncomment only after the client picks an option ---
-  // videoUrl      String? @map("video_url")
-  // videoProvider String? @map("video_provider") // "youtube" | "r2" | "stream"
+  // Video. Two providers share the same pair of columns:
+  //   youtube -> videoUrl holds the 11-char video id, the iframe is built in
+  //              the template (an <iframe> is never accepted from the editor)
+  //   r2      -> videoUrl holds the public URL of an mp4 uploaded to R2
+  // Adding "stream" later is a third value, not a migration.
+  videoUrl      String? @map("video_url")
+  videoProvider String? @map("video_provider")
 
   // Home feed and columnists tab.
   @@index([type, status, publishedAt(sort: Desc)])

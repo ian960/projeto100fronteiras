@@ -10,4 +10,5 @@ export interface ICategoryRepository {
   create(data: CreateCategoryData): Promise<ICategoryPublic>;
   update(id: string, data: UpdateCategoryData): Promise<ICategoryPublic>;
   delete(id: string): Promise<void>;
+  countPosts(categoryId: string): Promise<number>;
 }

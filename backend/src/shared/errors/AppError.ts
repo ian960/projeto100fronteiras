@@ -37,3 +37,9 @@ export class Conflict extends AppError {
   readonly statusCode = 409;
   readonly code = 'CONFLICT';
 }
+// A feature that exists in the code but is switched off on this server, such
+// as uploads without R2 credentials. 503 tells the panel "not now, not you".
+export class ServiceUnavailable extends AppError {
+  readonly statusCode = 503;
+  readonly code = 'SERVICE_UNAVAILABLE';
+}
