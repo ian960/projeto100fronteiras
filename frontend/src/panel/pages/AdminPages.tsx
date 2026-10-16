@@ -7,7 +7,9 @@ import { countPosts, formatDateTime, roleLabel } from '../../lib/format';
 import { useDocumentTitle, useMe } from '../../lib/hooks';
 import type { AuthorWithCount, CategoryWithCount, Role, User } from '../../lib/types';
 import { useAdminAuthors, useAdminCategories, useAuthorActions, useCategoryActions, useUserActions, useUsers } from '../queries';
-import { ConfirmButton, ImageField, Modal, PanelHeader, useToast } from '../widgets';
+import { ImageField } from '../mediaFields';
+import type { ImageValue } from '../mediaFields';
+import { ConfirmButton, Modal, PanelHeader, useToast } from '../widgets';
 
 function fieldErrors(error: unknown): Record<string, string> {
   return error instanceof ApiError ? error.fields : {};
@@ -264,7 +266,7 @@ function AuthorForm({ author, onDone }: { author: AuthorWithCount | null; onDone
     name: author?.name ?? '',
     slug: author?.slug ?? '',
     bio: author?.bio ?? '',
-    photoUrl: author?.photoUrl ?? '',
+    photo: (author?.photoId && author.photoUrl ? { id: author.photoId, previewUrl: author.photoUrl } : null) as ImageValue,
     columnTitle: author?.columnTitle ?? '',
     active: author?.active ?? true,
   });
@@ -274,7 +276,7 @@ function AuthorForm({ author, onDone }: { author: AuthorWithCount | null; onDone
     const input = {
       name: form.name.trim(),
       bio: form.bio.trim() || null,
-      photoUrl: form.photoUrl.trim() || null,
+      photoId: form.photo?.id ?? null,
       ...(author ? { slug: form.slug.trim(), active: form.active } : {}),
       ...(author?.type === 'columnist' ? { columnTitle: form.columnTitle.trim() || null } : {}),
     };
@@ -291,7 +293,7 @@ function AuthorForm({ author, onDone }: { author: AuthorWithCount | null; onDone
         <TextField label="Nome da coluna" optional value={form.columnTitle} onChange={(e) => setForm({ ...form, columnTitle: e.target.value })} error={errors.columnTitle} />
       )}
       <TextArea label="Mini-bio" optional rows={3} maxLength={600} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} error={errors.bio} />
-      <ImageField label="Foto" folder="authors" value={form.photoUrl} onChange={(photoUrl) => setForm({ ...form, photoUrl })} error={errors.photoUrl} />
+      <ImageField label="Foto" purpose="author" round optional value={form.photo} onChange={(photo) => setForm({ ...form, photo })} error={errors.photoId} />
       {author && (
         <>
           <TextField
@@ -489,7 +491,7 @@ function PromoteForm({ user, onDone }: { user: User; onDone: () => void }) {
   const { promote } = useUserActions();
   const toast = useToast();
   const errors = fieldErrors(promote.error);
-  const [form, setForm] = useState({ name: user.name, columnTitle: '', bio: '', photoUrl: '' });
+  const [form, setForm] = useState({ name: user.name, columnTitle: '', bio: '', photo: null as ImageValue });
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -500,7 +502,7 @@ function PromoteForm({ user, onDone }: { user: User; onDone: () => void }) {
           name: form.name.trim(),
           columnTitle: form.columnTitle.trim() || null,
           bio: form.bio.trim() || null,
-          photoUrl: form.photoUrl.trim() || null,
+          photoId: form.photo?.id ?? null,
         },
       },
       {
@@ -521,7 +523,7 @@ function PromoteForm({ user, onDone }: { user: User; onDone: () => void }) {
       <TextField label="Nome na assinatura" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name} />
       <TextField label="Nome da coluna" optional placeholder="Ex.: Olhar de Fronteira" value={form.columnTitle} onChange={(e) => setForm({ ...form, columnTitle: e.target.value })} error={errors.columnTitle} />
       <TextArea label="Mini-bio" optional rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} error={errors.bio} />
-      <ImageField label="Foto" folder="authors" value={form.photoUrl} onChange={(photoUrl) => setForm({ ...form, photoUrl })} error={errors.photoUrl} />
+      <ImageField label="Foto" purpose="author" round optional value={form.photo} onChange={(photo) => setForm({ ...form, photo })} error={errors.photoId} />
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="secundario" onClick={onDone}>
           Cancelar

@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { del, get, getPage, patch, post, upload } from '../lib/api';
+import { del, get, getPage, patch, post } from '../lib/api';
 import type {
   AuthorWithCount,
   CategoryWithCount,
@@ -9,9 +9,7 @@ import type {
   PostType,
   PostWithAudit,
   Role,
-  UploadedImage,
   User,
-  VideoTicket,
 } from '../lib/types';
 
 // Everything the panel reads lives under the ['panel'] key, so logging out
@@ -64,12 +62,14 @@ export type PostInput = {
   slug?: string;
   excerpt: string;
   content: string;
-  coverUrl: string | null;
+  coverId: string | null;
   coverAlt: string | null;
   categoryId?: string | null;
   authorId?: string;
-  videoUrl: string | null;
-  videoProvider: 'youtube' | 'r2' | null;
+  // One video: a YouTube link or an uploaded file. null = no video.
+  video: { provider: 'youtube'; url: string } | { provider: 'cloudinary'; mediaId: string } | null;
+  // PDFs under the text, in this order. The whole list is sent every time.
+  attachments: { mediaId: string; title: string }[];
 };
 
 function useInvalidateContent() {
@@ -156,7 +156,7 @@ export type AuthorInput = {
   name?: string;
   slug?: string;
   bio?: string | null;
-  photoUrl?: string | null;
+  photoId?: string | null;
   columnTitle?: string | null;
   active?: boolean;
 };
@@ -186,7 +186,7 @@ export function useUsers(filters: UserFilters) {
   });
 }
 
-export type PromoteInput = { name: string; columnTitle?: string | null; bio?: string | null; photoUrl?: string | null };
+export type PromoteInput = { name: string; columnTitle?: string | null; bio?: string | null; photoId?: string | null };
 
 export function useUserActions() {
   // Promoting someone creates a public columnist; deactivating can hide one.
@@ -225,37 +225,4 @@ export function useAccountActions() {
       ]),
     }),
   };
-}
-
-// ── Uploads ──────────────────────────────────────────────────────────────────
-
-export async function uploadImage(file: File, folder: 'covers' | 'authors'): Promise<UploadedImage> {
-  const form = new FormData();
-  form.append('file', file);
-  return (await upload<{ image: UploadedImage }>('/upload/image', form, { folder })).image;
-}
-
-export async function requestVideoTicket(file: File): Promise<VideoTicket> {
-  return (await post<{ ticket: VideoTicket }>('/upload/video-ticket', {
-    filename: file.name,
-    contentType: file.type,
-    sizeBytes: file.size,
-  })).ticket;
-}
-
-// The video goes straight from the browser to R2 with the signed URL; it never
-// passes through the API. XHR instead of fetch only because fetch has no
-// upload progress.
-export function putFileWithProgress(url: string, file: File, onProgress: (fraction: number) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', url);
-    xhr.setRequestHeader('Content-Type', file.type);
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress(event.loaded / event.total);
-    };
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Falha no envio (${xhr.status}).`)));
-    xhr.onerror = () => reject(new Error('Falha de conexão durante o envio do vídeo.'));
-    xhr.send(file);
-  });
 }

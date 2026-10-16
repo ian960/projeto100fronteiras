@@ -7,7 +7,9 @@ import { useDocumentTitle, useMe } from '../../lib/hooks';
 import type { User } from '../../lib/types';
 import { useAuthor } from '../../site/queries';
 import { useAccountActions } from '../queries';
-import { ImageField, PanelHeader, useToast } from '../widgets';
+import { ImageField } from '../mediaFields';
+import type { ImageValue } from '../mediaFields';
+import { PanelHeader, useToast } from '../widgets';
 
 export default function ProfilePage() {
   const { data: me } = useMe();
@@ -57,7 +59,7 @@ function BylineForm({ me, initialBio }: { me: User; initialBio: string }) {
   const [form, setForm] = useState({
     name: author.name,
     columnTitle: author.columnTitle ?? '',
-    photoUrl: author.photoUrl ?? '',
+    photo: (author.photoId && author.photoUrl ? { id: author.photoId, previewUrl: author.photoUrl } : null) as ImageValue,
     bio: initialBio,
   });
 
@@ -67,7 +69,7 @@ function BylineForm({ me, initialBio }: { me: User; initialBio: string }) {
       {
         name: form.name.trim(),
         columnTitle: form.columnTitle.trim() || null,
-        photoUrl: form.photoUrl.trim() || null,
+        photoId: form.photo?.id ?? null,
         bio: form.bio.trim() || null,
       },
       { onSuccess: () => toast('Perfil atualizado') },
@@ -83,7 +85,7 @@ function BylineForm({ me, initialBio }: { me: User; initialBio: string }) {
         <TextField label="Nome na assinatura" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name} />
         <TextField label="Nome da coluna" optional value={form.columnTitle} onChange={(e) => setForm({ ...form, columnTitle: e.target.value })} error={errors.columnTitle} />
         <TextArea label="Mini-bio" optional rows={3} maxLength={600} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} error={errors.bio} />
-        <ImageField label="Foto" folder="authors" value={form.photoUrl} onChange={(photoUrl) => setForm({ ...form, photoUrl })} error={errors.photoUrl} />
+        <ImageField label="Foto" purpose="author" round optional value={form.photo} onChange={(photo) => setForm({ ...form, photo })} error={errors.photoId} />
         <div>
           <Button type="submit" busy={updateProfile.isPending}>
             Salvar perfil

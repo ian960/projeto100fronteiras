@@ -58,7 +58,9 @@ src/
     routes.tsx          each panel page wrapped with the role it needs
     queries.ts          hooks for /admin/* and /columnist/* + mutations
     RichTextEditor.tsx  Quill 2, uncontrolled, HTML out
-    widgets.tsx         modal, toast, confirm button, image and video fields
+    widgets.tsx         modal, toast, confirm button
+    media.ts            sending a file: sign, upload to Cloudinary, register
+    mediaFields.tsx     cover, author photo, video, PDFs, photo in the text
     pages/              dashboard, lists, editor, categories, authors, users, profile
 ```
 
@@ -81,9 +83,27 @@ Colours and fonts are tokens in `src/styles/index.css` (`@theme`). When the
 client's final logo and colours arrive, change them there; components use the
 token names (`anil`, `tinta`, `sol`, `mata`…), not hex values.
 
-## Uploads
+## Images, videos and PDFs
 
-Image and video upload need the R2 variables in the backend. Without them,
-`/api/health` reports `uploads: "disabled"` and the panel asks for an image
-address instead of a file. Sending `.mp4` files straight from the browser to R2
-also needs a CORS rule on the bucket that allows `PUT` from the site's address.
+Files go straight from the browser to Cloudinary, never through the API
+(`src/panel/media.ts`):
+
+1. `POST /api/media/signature {purpose}` — the API answers with Cloudinary's
+   upload URL and signed fields (folder, file id, accepted formats).
+2. The file is sent to Cloudinary with those fields, untouched. XHR, for the
+   progress bar.
+3. `POST /api/media` with Cloudinary's answer — the API checks Cloudinary's
+   signature and records the file.
+
+The fields that take files are in `src/panel/mediaFields.tsx`: cover and author
+photo (upload or import from a link), video (YouTube or upload), PDF
+attachments, and the dialog behind the editor's photo button. The API sends
+every file back with ready-made URLs (`srcset` for images, a poster frame for
+videos, page 1 for PDFs); the site never builds a Cloudinary URL itself.
+
+Without `CLOUDINARY_URL` in the backend, `/api/health` reports
+`uploads: "disabled"` and the file fields say so instead of offering buttons.
+
+The editor drops images pasted from other sites and image files dropped into
+it: they would be removed by the server on save anyway. The photo button is
+the way in.

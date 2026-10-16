@@ -7,10 +7,12 @@ import { formatDateTime, postPath } from '../../lib/format';
 import { useDocumentTitle } from '../../lib/hooks';
 import type { PostDetail, PostType, PostWithAudit } from '../../lib/types';
 import { RichTextEditor } from '../RichTextEditor';
+import type { InsertImage } from '../RichTextEditor';
+import { AttachmentsField, BodyImageDialog, ImageField, VideoField, imageValue } from '../mediaFields';
+import type { AttachmentValue, ImageValue, VideoValue } from '../mediaFields';
 import type { PostInput, Scope } from '../queries';
 import { useAdminAuthors, useAdminCategories, usePanelPost, usePostActions } from '../queries';
-import { ConfirmButton, ImageField, StatusPill, TypePill, VideoField, useToast } from '../widgets';
-import type { VideoValue } from '../widgets';
+import { ConfirmButton, StatusPill, TypePill, useToast } from '../widgets';
 
 type Failure = { message: string; fields: Record<string, string> };
 
@@ -21,20 +23,24 @@ type Form = {
   slug: string;
   excerpt: string;
   content: string;
-  coverUrl: string;
+  cover: ImageValue;
   coverAlt: string;
   categoryId: string;
   authorId: string;
   video: VideoValue;
+  attachments: AttachmentValue[];
 };
 
 const EXCERPT_MAX = 400;
 
-function toForm(post: PostWithAudit | null, type: PostType): Form {
+function toVideo(post: PostWithAudit | null): VideoValue {
   // YouTube posts store only the video id; show a link the editor recognises.
-  const videoUrl =
-    post?.videoProvider === 'youtube' && post.videoUrl ? `https://www.youtube.com/watch?v=${post.videoUrl}` : post?.videoUrl ?? '';
+  if (post?.videoYoutubeId) return { provider: 'youtube', url: `https://www.youtube.com/watch?v=${post.videoYoutubeId}` };
+  if (post?.video) return { provider: 'cloudinary', media: post.video };
+  return { provider: 'none' };
+}
 
+function toForm(post: PostWithAudit | null, type: PostType): Form {
   return {
     type: post?.type ?? type,
     title: post?.title ?? '',
@@ -42,29 +48,35 @@ function toForm(post: PostWithAudit | null, type: PostType): Form {
     slug: post?.slug ?? '',
     excerpt: post?.excerpt ?? '',
     content: post?.content ?? '',
-    coverUrl: post?.coverUrl ?? '',
+    cover: post?.cover ? imageValue(post.cover) : null,
     coverAlt: post?.coverAlt ?? '',
     categoryId: post?.categoryId ?? '',
     authorId: post?.authorId ?? '',
-    video: { provider: (post?.videoProvider as VideoValue['provider']) ?? '', url: videoUrl },
+    video: toVideo(post),
+    attachments: post?.attachments.map((item) => ({ media: item.media, title: item.title })) ?? [],
   };
 }
 
-// What goes over the wire. Empty optional text becomes null, because the API
-// validates URLs strictly and "" is not a URL.
+function toVideoInput(video: VideoValue): PostInput['video'] {
+  if (video.provider === 'youtube') return video.url.trim() ? { provider: 'youtube', url: video.url.trim() } : null;
+  if (video.provider === 'cloudinary') return video.media ? { provider: 'cloudinary', mediaId: video.media.id } : null;
+  return null;
+}
+
+// What goes over the wire. Empty optional text becomes null. Files travel as
+// ids: the API already has them (see panel/media.ts).
 function toInput(form: Form, scope: Scope, isNew: boolean): PostInput {
   const blank = (value: string) => (value.trim() === '' ? null : value.trim());
-  const hasVideo = form.video.provider !== '' && form.video.url.trim() !== '';
 
   const input: PostInput = {
     title: form.title.trim(),
     subtitle: blank(form.subtitle),
     excerpt: form.excerpt.trim(),
     content: form.content,
-    coverUrl: blank(form.coverUrl),
+    coverId: form.cover?.id ?? null,
     coverAlt: blank(form.coverAlt),
-    videoUrl: hasVideo ? form.video.url.trim() : null,
-    videoProvider: hasVideo ? (form.video.provider as 'youtube' | 'r2') : null,
+    video: toVideoInput(form.video),
+    attachments: form.attachments.map((item) => ({ mediaId: item.media.id, title: item.title.trim() || 'Documento' })),
   };
 
   if (form.slug.trim()) input.slug = form.slug.trim();
@@ -161,8 +173,14 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
 
   function update<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((current) => ({ ...current, [key]: value }));
-    if (errors[key as string]) setErrors(({ [key as string]: _drop, ...rest }) => rest);
+    // The API names the cover field coverId; the form keeps the whole image.
+    const errorKey = key === 'cover' ? 'coverId' : (key as string);
+    if (errors[errorKey]) setErrors(({ [errorKey]: _drop, ...rest }) => rest);
   }
+
+  // The editor's photo button opens BodyImageDialog and waits for its answer.
+  const [pendingImage, setPendingImage] = useState<((result: { url: string; alt: string } | null) => void) | null>(null);
+  const insertImage: InsertImage = () => new Promise((resolve) => setPendingImage(() => resolve));
 
   function fail(error: unknown): Failure {
     const failure: Failure =
@@ -427,11 +445,26 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
               label="Texto da matéria"
               initialHtml={form.content}
               onChange={(html) => update('content', html)}
+              onInsertImage={insertImage}
               readOnly={locked}
               invalid={Boolean(errors.content)}
             />
             {errors.content && <p className="text-sm text-alerta">{errors.content}</p>}
+            <BodyImageDialog
+              open={pendingImage !== null}
+              onDone={(result) => {
+                pendingImage?.(result);
+                setPendingImage(null);
+              }}
+            />
           </div>
+
+          <AttachmentsField
+            value={form.attachments}
+            onChange={(attachments) => update('attachments', attachments)}
+            error={errors.attachments}
+            disabled={locked}
+          />
         </div>
 
         {/* ── Settings ── */}
@@ -533,13 +566,13 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
             <div className="flex flex-col gap-4">
               <ImageField
                 label="Imagem de capa"
-                folder="covers"
-                value={form.coverUrl}
-                alt={form.coverAlt}
-                onChange={(url) => update('coverUrl', url)}
-                error={errors.coverUrl}
+                purpose="cover"
+                value={form.cover}
+                onChange={(cover) => update('cover', cover)}
+                error={errors.coverId}
                 optional={form.type !== 'news'}
-                hint={form.type === 'news' ? 'Obrigatória para publicar uma notícia.' : undefined}
+                disabled={locked}
+                hint={`${form.type === 'news' ? 'Obrigatória para publicar uma notícia. ' : ''}JPEG, PNG, WebP ou HEIC, até 10 MB, com pelo menos 800 px de largura.`}
               />
               <TextField
                 label="Descrição da imagem"
@@ -554,7 +587,7 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
           </Box>
 
           <Box>
-            <VideoField value={form.video} onChange={(video) => update('video', video)} errors={errors} disabled={locked} />
+            <VideoField value={form.video} onChange={(video) => update('video', video)} error={errors.video} disabled={locked} />
           </Box>
 
           <Box title="Endereço">

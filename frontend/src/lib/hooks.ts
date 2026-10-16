@@ -48,7 +48,7 @@ export function useLogout() {
   });
 }
 
-// Tells the panel whether uploads are switched on (R2 configured).
+// Tells the panel whether uploads are switched on (Cloudinary configured).
 export function useHealth() {
   return useQuery({
     queryKey: ['health'],

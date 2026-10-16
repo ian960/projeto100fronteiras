@@ -86,6 +86,25 @@
   overflow-wrap: break-word;
 }
 
+/* Same column width as the text, for what follows it (PDF list). */
+.corpo-largura {
+  max-width: 38rem;
+}
+
+/* Photos inside the text. The API adds srcset, sizes and loading="lazy";
+   the grey background holds the place while the image arrives. */
+.corpo-materia img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+}
+
+.corpo-materia img:not(:last-child) {
+  margin-bottom: 1.1em;
+}
+
 .corpo-materia > * + * {
   margin-top: 1.1em;
 }
@@ -159,6 +178,9 @@
 }
 
 .editor-texto .ql-container.ql-snow {
+  /* Quill sets height: 100%. Inside the page's flex column that made the box
+     as tall as its parent, so the text spilled over whatever came below. */
+  height: auto;
   border: 1px solid var(--color-linha);
   border-radius: 0 0 8px 8px;
   font-family: var(--font-serif);
@@ -199,6 +221,13 @@
 }
 .editor-texto .ql-editor a {
   color: var(--color-anil);
+}
+
+.editor-texto .ql-editor img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
 }
 
 .editor-texto .ql-editor.ql-blank::before {

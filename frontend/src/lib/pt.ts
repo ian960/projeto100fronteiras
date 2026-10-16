@@ -66,12 +66,8 @@ const exact: Record<string, string> = {
   'Your account has no author profile.': 'Sua conta ainda não tem perfil de colunista.',
 
   // video
-  'Video URL and provider must be sent together.': 'Informe o vídeo e de onde ele vem.',
-  'Required when a video URL is present.': 'Obrigatório quando há vídeo.',
   'Not a valid YouTube link or id.': 'Este não é um link válido do YouTube.',
   'Paste the video link or its 11-character id.': 'Cole o link do vídeo no YouTube.',
-  'An uploaded video must be an mp4 URL from the upload endpoint.': 'O vídeo precisa ser um arquivo .mp4 enviado pelo painel.',
-  'Upload the file first and send the URL it returns.': 'Envie o arquivo primeiro.',
 
   // authors and users
   'Only columnists can have a column title.': 'Só colunista tem título de coluna.',
@@ -81,27 +77,36 @@ const exact: Record<string, string> = {
   'You cannot deactivate your own account.': 'Você não pode desativar a própria conta.',
   'You cannot remove your own admin role.': 'Você não pode tirar o próprio acesso de administrador.',
 
-  // uploads
-  'File uploads are not configured on this server. Set the R2_* variables to enable them.':
-    'O envio de arquivos ainda não está configurado neste servidor.',
-  'No file received.': 'Nenhum arquivo recebido.',
-  'Send a file in the "file" field.': 'Escolha um arquivo.',
-  'This file is not a valid image.': 'Este arquivo não é uma imagem válida.',
-  'Send a JPEG, PNG, WebP or AVIF image.': 'Envie uma imagem JPEG, PNG, WebP ou AVIF.',
-  'This image is too large.': 'Imagem grande demais.',
-  'Maximum 8 MB.': 'Máximo de 8 MB.',
-  'This image is too small for a cover.': 'Imagem pequena demais para capa.',
+  // files (Cloudinary)
+  'Media uploads are not configured on this server. Set CLOUDINARY_URL to enable them.':
+    'O envio de arquivos ainda não está configurado neste servidor (falta o Cloudinary).',
+  'This upload could not be verified.': 'Não foi possível confirmar este envio.',
+  'Send the file again.': 'Envie o arquivo de novo.',
+  'This file does not fit here.': 'Este arquivo não serve aqui.',
+  'Could not import an image from this link.': 'Não foi possível importar uma imagem deste link.',
+  'Use a link that opens the image itself (JPEG, PNG or WebP).':
+    'Use um link que abra a própria imagem (JPEG, PNG ou WebP), não a página onde ela aparece.',
+  'File not found.': 'Arquivo não encontrado.',
+  'Upload the file again.': 'Envie o arquivo de novo.',
+  'This file cannot be used here.': 'Este arquivo não pode ser usado aqui.',
+  'You can only use files you uploaded.': 'Você só pode usar arquivos que você mesmo enviou.',
+  'Only an admin can delete files.': 'Só o administrador pode apagar arquivos.',
+  'Cloudinary did not delete the file. Try again in a moment.': 'O Cloudinary não apagou o arquivo. Tente de novo em instantes.',
+  'The same file is attached twice.': 'O mesmo arquivo foi anexado duas vezes.',
 };
+
+const KIND_PT: Record<string, string> = { image: 'imagem', video: 'vídeo', document: 'PDF' };
 
 const patterns: [RegExp, (...groups: string[]) => string][] = [
   [/^A category with the slug "(.+)" already exists\.$/, (slug) => `Já existe uma categoria com o endereço “${slug}”.`],
   [/^An author with the slug "(.+)" already exists\.$/, (slug) => `Já existe um autor com o endereço “${slug}”.`],
   [/^This category has (\d+) post\(s\) and cannot be deleted\. Deactivate it instead\.$/, (n) => `Esta categoria tem ${countPosts(Number(n))} e não pode ser excluída. Desmarque “Visível no site” em vez disso.`],
   [/^This author signs (\d+) post\(s\) and cannot be deleted\. Deactivate them instead\.$/, (n) => `Este autor assina ${countPosts(Number(n))} e não pode ser excluído. Desative-o em vez disso.`],
-  [/^Videos must be smaller than (\d+) MB\.$/, (n) => `O vídeo precisa ter menos de ${n} MB.`],
-  [/^This file is too large\. Limit is (\d+) MB\.$/, (n) => `Arquivo grande demais. O limite é ${n} MB.`],
-  [/^Use an image at least (\d+)px wide\.$/, (n) => `Use uma imagem com pelo menos ${n}px de largura.`],
-  [/^Unsupported image type: (.+)$/, (type) => `Tipo de imagem não aceito: ${type}.`],
+  [/^Accepted formats: (.+)\.$/, (list) => `Formatos aceitos: ${list}.`],
+  [/^Maximum (\d+) MB\.$/, (n) => `Máximo de ${n} MB.`],
+  [/^Use an image at least (\d+)px wide\.$/, (n) => `Use uma imagem com pelo menos ${n} px de largura.`],
+  [/^Choose a file of type: (\w+)\.$/, (kind) => `Escolha um arquivo do tipo ${KIND_PT[kind] ?? kind}.`],
+  [/^This file is still in use \((\d+)\)\. Remove it from the posts first\.$/, () => 'Este arquivo ainda está em uso. Tire-o das matérias antes de apagar.'],
   [/^Route .+ does not exist\.$/, () => 'Endereço da API não encontrado.'],
 
   // Zod's own messages, from field validation.

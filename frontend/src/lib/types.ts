@@ -5,7 +5,8 @@ export type Role = 'admin' | 'columnist' | 'reader';
 export type AuthorType = 'writer' | 'columnist';
 export type PostType = 'news' | 'column';
 export type PostStatus = 'draft' | 'pending' | 'published';
-export type VideoProvider = 'youtube' | 'r2';
+export type MediaKind = 'image' | 'video' | 'document';
+export type MediaPurpose = 'cover' | 'body' | 'author' | 'video' | 'document';
 
 export type Paginated<T> = {
   items: T[];
@@ -26,11 +27,29 @@ export type Category = CategorySummary & {
 
 export type CategoryWithCount = Category & { _count?: { posts: number } };
 
+// A file in Cloudinary, with URLs built by the API (backend media.urls.ts).
+export type Media = {
+  id: string;
+  kind: MediaKind;
+  originalName: string;
+  format: string;
+  bytes: number;
+  width: number | null;
+  height: number | null;
+  durationSec: number | null;
+  pages: number | null;
+  url: string; // image: largest web size · video: mp4 · document: the PDF
+  thumbnailUrl: string; // small image, video frame or PDF page 1
+  srcset: string | null; // images
+  posterUrl: string | null; // videos
+};
+
 export type AuthorSummary = {
   id: string;
   name: string;
   slug: string;
-  photoUrl: string | null;
+  photoId: string | null;
+  photoUrl: string | null; // square avatar, centred on the face
   columnTitle: string | null;
 };
 
@@ -64,11 +83,12 @@ export type PostListItem = {
   subtitle: string | null;
   slug: string;
   excerpt: string;
-  coverUrl: string | null;
+  coverId: string | null;
   coverAlt: string | null;
+  cover: Media | null;
   featured: boolean;
-  videoUrl: string | null;
-  videoProvider: string | null;
+  videoYoutubeId: string | null;
+  videoId: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -76,8 +96,12 @@ export type PostListItem = {
   author?: AuthorSummary;
 };
 
+export type Attachment = { title: string; media: Media };
+
 export type PostDetail = PostListItem & {
   content: string;
+  video: Media | null;
+  attachments: Attachment[];
   categoryId: string | null;
   authorId: string;
   createdById: string;
@@ -98,20 +122,14 @@ export type HomePayload = {
 export type Health = {
   ok: boolean;
   environment: string;
-  uploads: 'r2' | 'disabled';
+  uploads: 'cloudinary' | 'disabled';
 };
 
-export type UploadedImage = {
-  url: string;
-  width: number;
-  height: number;
-  bytes: number;
-  variants: { width: number; url: string }[];
-};
-
-export type VideoTicket = {
+// What POST /api/media/signature returns: where to send the file and the
+// signed fields to send with it, untouched.
+export type SignedUpload = {
   uploadUrl: string;
-  publicUrl: string;
-  expiresInSeconds: number;
+  fields: Record<string, string>;
   maxBytes: number;
+  accept: string;
 };

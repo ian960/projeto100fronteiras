@@ -10,12 +10,12 @@ import { cx } from '../components/ui';
 // No alignment, indent, colour or size on purpose. Quill exports those as CSS
 // classes (ql-align-center...), which look right here and arrive unstyled on
 // the public site.
-const FORMATS = ['header', 'bold', 'italic', 'underline', 'strike', 'blockquote', 'link', 'list'];
+const FORMATS = ['header', 'bold', 'italic', 'underline', 'strike', 'blockquote', 'link', 'list', 'image'];
 
 const TOOLBAR = [
   [{ header: [2, 3, false] }],
   ['bold', 'italic', 'underline', 'strike'],
-  ['blockquote', 'link'],
+  ['blockquote', 'link', 'image'],
   [{ list: 'ordered' }, { list: 'bullet' }],
   ['clean'],
 ];
@@ -29,6 +29,7 @@ const BUTTON_LABELS: Record<string, string> = {
   'ql-strike': 'Tachado',
   'ql-blockquote': 'Citação',
   'ql-link': 'Link',
+  'ql-image': 'Foto',
   'ql-list[value="ordered"]': 'Lista numerada',
   'ql-list[value="bullet"]': 'Lista com marcadores',
   'ql-clean': 'Limpar formatação',
@@ -41,10 +42,15 @@ function serialize(quill: Quill): string {
   return quill.getSemanticHTML().replace(/&nbsp;/g, ' ');
 }
 
+export type InsertImage = () => Promise<{ url: string; alt: string } | null>;
+
 type Props = {
   id?: string;
   initialHtml: string;
   onChange: (html: string) => void;
+  // Called by the toolbar's photo button: uploads a photo and resolves with
+  // what to insert (see BodyImageDialog), or null if the writer cancelled.
+  onInsertImage?: InsertImage;
   readOnly?: boolean;
   invalid?: boolean;
   label: string;
@@ -53,11 +59,13 @@ type Props = {
 // Uncontrolled on purpose: Quill owns the document while the user types and
 // reports changes out. Feeding the value back in on every keystroke would
 // reset the cursor. To load a different post, remount with a new `key`.
-export function RichTextEditor({ id, initialHtml, onChange, readOnly, invalid, label }: Props) {
+export function RichTextEditor({ id, initialHtml, onChange, onInsertImage, readOnly, invalid, label }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const quillRef = useRef<Quill | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onInsertImageRef = useRef(onInsertImage);
+  onInsertImageRef.current = onInsertImage;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -69,17 +77,57 @@ export function RichTextEditor({ id, initialHtml, onChange, readOnly, invalid, l
     const container = document.createElement('div');
     host.appendChild(container);
 
-    const quill = new Quill(container, {
+    const quill: Quill = new Quill(container, {
       theme: 'snow',
       formats: FORMATS,
-      modules: { toolbar: TOOLBAR },
+      modules: {
+        toolbar: {
+          container: TOOLBAR,
+          handlers: {
+            // Photos go through the upload dialog, never as a pasted link.
+            image: async () => {
+              if (!quill.isEnabled()) return; // a locked post
+              const range = quill.getSelection(true);
+              const image = await onInsertImageRef.current?.();
+              if (!image) return;
+
+              // The photo gets a paragraph of its own: text typed before or
+              // after it would otherwise sit glued to the picture.
+              let index = range.index;
+              const [, offset] = quill.getLine(index);
+              if (offset > 0) {
+                quill.insertText(index, '\n', 'user');
+                index += 1;
+              }
+              quill.insertEmbed(index, 'image', image.url, 'user');
+              quill.formatText(index, 1, 'alt', image.alt, 'user');
+              // Close the photo's line, and make sure a line follows it, so
+              // the cursor lands on a fresh paragraph under the picture.
+              const closesLine = quill.getText(index + 1, 1) === '\n';
+              const isLastLine = index + 2 >= quill.getLength();
+              if (!closesLine || isLastLine) quill.insertText(index + 1, '\n', 'user');
+              quill.setSelection(index + 2, 0, 'user');
+            },
+          },
+        },
+        // Dropping or pasting an image file would put the whole picture in
+        // the text as base64, which the server strips on save. Ignored here;
+        // the photo button is the way in.
+        uploader: { handler: () => {} },
+      },
       placeholder: 'Escreva o texto aqui…',
     });
 
     if (initialHtml) {
-      // Parses <ul>/<ol> back into Quill's own list format.
+      // Parses <ul>/<ol> back into Quill's own list format, and keeps the
+      // photos already in the text.
       quill.clipboard.dangerouslyPasteHTML(initialHtml, 'silent');
     }
+
+    // Registered after the initial load: from now on, images pasted from
+    // other sites are dropped right away instead of vanishing on save.
+    const Delta = Quill.import('delta') as typeof import('quill').Delta;
+    quill.clipboard.addMatcher('IMG', () => new Delta());
 
     quill.root.setAttribute('role', 'textbox');
     quill.root.setAttribute('aria-multiline', 'true');

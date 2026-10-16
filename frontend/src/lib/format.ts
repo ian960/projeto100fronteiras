@@ -60,3 +60,10 @@ export function countPosts(n: number): string {
   if (n === 0) return 'nenhuma matéria';
   return n === 1 ? '1 matéria' : `${n} matérias`;
 }
+
+/** "2,4 MB", "830 KB" */
+export function formatBytes(bytes: number): string {
+  const MB = 1024 * 1024;
+  if (bytes >= MB) return `${(bytes / MB).toFixed(1).replace('.', ',')} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}

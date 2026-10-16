@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router';
 import { Alert, Avatar, Loading, cx } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
 import { useDocumentTitle } from '../../lib/hooks';
-import { BookmarkButton, Byline, Cover, Kicker, SectionHeading, ShareActions, StoryList, VideoEmbed } from '../parts';
+import { Attachments, BookmarkButton, Byline, Cover, Kicker, SectionHeading, ShareActions, StoryList, VideoEmbed } from '../parts';
 import { useAuthor, usePost, usePublishedPosts } from '../queries';
 import NotFoundPage from './NotFoundPage';
 
@@ -38,25 +38,30 @@ export default function PostPage() {
         </div>
       </header>
 
-      {post.coverUrl && (
+      {post.cover && (
         // Full-bleed on a phone: the photo is the second thing a reader sees.
         <div className="-mx-4 mt-8 sm:mx-0">
           <Cover post={post} eager className="sm:rounded-lg" sizes="(min-width: 768px) 768px, 100vw" />
         </div>
       )}
 
-      {post.videoUrl && (
+      {(post.videoYoutubeId || post.video) && (
         <div className="mt-8">
           <VideoEmbed post={post} />
         </div>
       )}
 
       {/* Sanitized by the API before it was stored: only p, h2, h3, strong,
-          em, u, s, a, lists and blockquote can reach this point. */}
+          em, u, s, a, lists, blockquote and our own Cloudinary photos (with
+          srcset and lazy loading) can reach this point. */}
       <div
         className={cx('corpo-materia mx-auto mt-10', isOpinion && 'corpo-materia--opiniao')}
         dangerouslySetInnerHTML={{ __html: post.content }}
       />
+
+      <div className="corpo-largura mx-auto">
+        <Attachments items={post.attachments} />
+      </div>
 
       {post.author && <AuthorBox slug={post.author.slug} opinion={isOpinion} />}
 

@@ -277,7 +277,7 @@ export function DashboardPage() {
 
       {health?.uploads === 'disabled' && (
         <div className="mb-6">
-          <Alert tone="info">O envio de imagens pelo painel ainda não está ligado neste servidor. Por enquanto, use o endereço de uma imagem já publicada na internet.</Alert>
+          <Alert tone="info">O envio de imagens, vídeos e PDFs ainda não está ligado neste servidor: falta configurar o Cloudinary no backend. Até lá, colunas e rascunhos funcionam, mas notícias não podem ser publicadas sem capa.</Alert>
         </div>
       )}
 

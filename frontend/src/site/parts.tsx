@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { Avatar, cx } from '../components/ui';
 import { useBookmarks } from '../lib/bookmarks';
-import { formatDate, formatRelative, postPath } from '../lib/format';
+import { formatBytes, formatDate, formatRelative, postPath } from '../lib/format';
 import type { AuthorSummary, PostDetail, PostListItem } from '../lib/types';
 
 // ── The border line ──────────────────────────────────────────────────────────
@@ -79,16 +79,23 @@ export function Byline({ author, date, compact }: { author?: AuthorSummary; date
   );
 }
 
+// srcset + sizes: the browser downloads the smallest version that fills the
+// slot (480px on a phone card, 1600px for the desktop lead). The URLs come
+// ready from the API.
 export function Cover({ post, sizes, eager, className }: {
-  post: Pick<PostListItem, 'coverUrl' | 'coverAlt'>;
+  post: Pick<PostListItem, 'cover' | 'coverAlt'>;
   sizes?: string;
   eager?: boolean;
   className?: string;
 }) {
-  if (!post.coverUrl) return null;
+  if (!post.cover) return null;
   return (
     <img
-      src={post.coverUrl}
+      src={post.cover.url}
+      srcSet={post.cover.srcset ?? undefined}
+      // Reserves the space before the image arrives: no jump while reading.
+      width={post.cover.width ?? undefined}
+      height={post.cover.height ?? undefined}
       alt={post.coverAlt ?? ''}
       sizes={sizes}
       loading={eager ? 'eager' : 'lazy'}
@@ -104,14 +111,12 @@ export function Cover({ post, sizes, eager, className }: {
 // YouTube posts store only the 11-character id; the player is built here,
 // from a fixed origin. An <iframe> is never accepted from the editor.
 
-export function VideoEmbed({ post }: { post: Pick<PostDetail, 'videoUrl' | 'videoProvider' | 'title'> }) {
-  if (!post.videoUrl || !post.videoProvider) return null;
-
-  if (post.videoProvider === 'youtube') {
+export function VideoEmbed({ post }: { post: Pick<PostDetail, 'videoYoutubeId' | 'video' | 'title'> }) {
+  if (post.videoYoutubeId) {
     return (
       <div className="aspect-video w-full overflow-hidden rounded-lg bg-tinta">
         <iframe
-          src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(post.videoUrl)}`}
+          src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(post.videoYoutubeId)}`}
           title={`Vídeo: ${post.title}`}
           loading="lazy"
           allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -123,11 +128,65 @@ export function VideoEmbed({ post }: { post: Pick<PostDetail, 'videoUrl' | 'vide
     );
   }
 
+  if (!post.video) return null;
+
+  // An uploaded file, delivered by Cloudinary as mp4 whatever the phone
+  // recorded. preload="none" + poster: nothing is downloaded until play.
   return (
-    <video controls preload="metadata" playsInline className="aspect-video w-full rounded-lg bg-tinta">
-      <source src={post.videoUrl} type="video/mp4" />
-      Seu navegador não reproduz este vídeo. <a href={post.videoUrl}>Baixar o vídeo</a>.
+    <video
+      controls
+      preload="none"
+      playsInline
+      poster={post.video.posterUrl ?? undefined}
+      aria-label={`Vídeo: ${post.title}`}
+      className="aspect-video w-full rounded-lg bg-tinta"
+    >
+      <source src={post.video.url} type="video/mp4" />
+      Seu navegador não reproduz este vídeo. <a href={post.video.url}>Baixar o vídeo</a>.
     </video>
+  );
+}
+
+// ── PDF attachments ──────────────────────────────────────────────────────────
+// Under the text, in the order the newsroom chose. Opens in a new tab: a
+// reader on a phone gets the system's PDF viewer instead of losing the page.
+
+export function Attachments({ items }: { items: PostDetail['attachments'] }) {
+  if (items.length === 0) return null;
+  return (
+    <section aria-labelledby="documentos" className="mt-10 border-t border-linha pt-6">
+      <h2 id="documentos" className="titulo text-xl text-tinta">
+        Documentos desta matéria
+      </h2>
+      <ul className="mt-4 flex flex-col divide-y divide-linha">
+        {items.map((item) => (
+          <li key={item.media.id}>
+            <a
+              href={item.media.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-4 py-3"
+            >
+              <img
+                src={item.media.thumbnailUrl}
+                alt=""
+                loading="lazy"
+                className="h-16 w-12 shrink-0 rounded-sm border border-linha bg-superficie object-cover object-top"
+              />
+              <span className="min-w-0">
+                <span className="block font-serif text-lg leading-snug text-tinta group-hover:text-anil group-hover:underline underline-offset-4">
+                  {item.title}
+                </span>
+                <span className="block text-sm text-tinta-suave">
+                  PDF
+                  {item.media.pages ? `, ${item.media.pages} ${item.media.pages === 1 ? 'página' : 'páginas'}` : ''}, {formatBytes(item.media.bytes)}
+                </span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -230,7 +289,7 @@ export function StoryRow({ post, showImage = true }: { post: PostListItem; showI
         {post.excerpt && <p className="mt-1.5 line-clamp-2 text-[0.9375rem] text-tinta-suave">{post.excerpt}</p>}
         <p className="mt-2 text-sm text-tinta-suave">{formatRelative(post.publishedAt)}</p>
       </div>
-      {showImage && post.coverUrl && (
+      {showImage && post.cover && (
         <Link to={postPath(post)} tabIndex={-1} aria-hidden="true" className="w-24 shrink-0 sm:w-36">
           <Cover post={post} className="aspect-square rounded-md sm:aspect-[4/3]" sizes="144px" />
         </Link>
