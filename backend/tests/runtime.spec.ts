@@ -1,79 +1,61 @@
 import { describe, expect, it } from 'vitest';
-import { isStorageConfigured } from '../src/config/storage';
+import { isMediaConfigured } from '../src/config/cloudinary';
 import { agent, loginAs } from './helpers/agent';
-import { makeAdmin } from './factories';
+import { makeAdmin, makeCategory, makeColumnist, makeWriter } from './factories';
 
-// How the API behaves with optional features switched off.
+// How the API behaves with Cloudinary switched off.
 //
-// The test environment leaves R2 unset on purpose (see vitest.config.mts), so
-// these tests prove the API is fully usable before anyone has Cloudflare keys.
-const r2Off = !isStorageConfigured();
+// This file runs in its own group ("without-cloudinary", see
+// vitest.config.mts) with CLOUDINARY_URL empty, so it proves the API is usable
+// before anyone has Cloudinary keys.
 
-describe('health', () => {
-  it('reports which optional features are on', async () => {
+describe('without Cloudinary', () => {
+  it('runs in the right group', () => {
+    expect(isMediaConfigured()).toBe(false);
+  });
+
+  it('reports uploads as disabled', async () => {
     const response = await agent().get('/api/health').expect(200);
 
     expect(response.body.data.ok).toBe(true);
-    expect(response.body.data.uploads).toBe(r2Off ? 'disabled' : 'r2');
+    expect(response.body.data.uploads).toBe('disabled');
   });
-});
 
-describe.skipIf(!r2Off)('uploads without R2', () => {
-  it('answers 503 instead of crashing', async () => {
+  it('answers 503 on every media endpoint instead of crashing', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
-    const response = await client
-      .post('/api/upload/image')
-      .attach('file', Buffer.from('not really an image'), 'cover.jpg')
+    const signature = await client
+      .post('/api/media/signature')
+      .send({ purpose: 'cover' })
       .expect(503);
-
-    expect(response.body.error.code).toBe('SERVICE_UNAVAILABLE');
-  });
-
-  it('refuses the video ticket the same way', async () => {
-    const admin = await makeAdmin();
-    const { client } = await loginAs(admin.email);
+    expect(signature.body.error.code).toBe('SERVICE_UNAVAILABLE');
 
     await client
-      .post('/api/upload/video-ticket')
-      .send({ filename: 'clip.mp4', contentType: 'video/mp4', sizeBytes: 1024 })
+      .post('/api/media/import')
+      .send({ purpose: 'cover', url: 'https://example.com/photo.jpg' })
       .expect(503);
   });
 
   it('still checks authentication first', async () => {
     // 401, not 503: an anonymous visitor learns nothing about the server's
     // configuration.
-    await agent().post('/api/upload/image').expect(401);
+    await agent().post('/api/media/signature').send({ purpose: 'cover' }).expect(401);
   });
-});
 
-describe('everything else without R2', () => {
-  it('creates and publishes a post using a cover URL from anywhere', async () => {
+  it('publishes a column, which needs no cover', async () => {
     const admin = await makeAdmin();
+    const { author } = await makeColumnist();
     const { client } = await loginAs(admin.email);
-
-    const category = await client
-      .post('/api/admin/categories')
-      .send({ name: 'Cidade' })
-      .expect(201);
-
-    const writer = await client
-      .post('/api/admin/authors')
-      .send({ name: 'Redação Teste' })
-      .expect(201);
 
     const post = await client
       .post('/api/admin/posts')
       .send({
-        type: 'news',
-        title: 'Sem R2 também funciona',
-        excerpt: 'Resumo da matéria.',
-        content: '<p>Corpo da matéria.</p>',
-        // Any public image URL works while uploads are off.
-        coverUrl: 'https://picsum.photos/1280/720',
-        categoryId: category.body.data.category.id,
-        authorId: writer.body.data.author.id,
+        type: 'column',
+        title: 'Sem Cloudinary também funciona',
+        excerpt: 'Resumo da coluna.',
+        content: '<p>Corpo da coluna.</p>',
+        authorId: author.id,
       })
       .expect(201);
 
@@ -82,5 +64,30 @@ describe('everything else without R2', () => {
       .expect(200);
 
     expect(published.body.data.post.status).toBe('published');
+  });
+
+  it('explains why news cannot be published yet', async () => {
+    const admin = await makeAdmin();
+    const writer = await makeWriter();
+    const category = await makeCategory();
+    const { client } = await loginAs(admin.email);
+
+    const post = await client
+      .post('/api/admin/posts')
+      .send({
+        type: 'news',
+        title: 'Notícia sem capa',
+        excerpt: 'Resumo.',
+        content: '<p>Corpo.</p>',
+        categoryId: category.id,
+        authorId: writer.id,
+      })
+      .expect(201);
+
+    const refused = await client
+      .post(`/api/admin/posts/${post.body.data.post.id}/publish`)
+      .expect(422);
+
+    expect(refused.body.error.fields).toHaveProperty('coverId');
   });
 });

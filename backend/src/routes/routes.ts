@@ -15,7 +15,7 @@ import {
   postsColumnistRouter,
   postsPublicRouter,
 } from '../modules/posts/posts.routes';
-import { uploadRouter } from '../modules/upload/upload.routes';
+import { mediaRouter } from '../modules/media/media.routes';
 import { postsController } from '../modules/posts/posts.controller';
 
 export function buildRouter(): Router {
@@ -42,7 +42,7 @@ export function buildRouter(): Router {
   router.use('/columnist/profile', authorsColumnistRouter());
 
   // ── shared ──────────────────────────────────────────────────────────────
-  router.use('/upload', uploadRouter());
+  router.use('/media', mediaRouter());
 
   return router;
 }

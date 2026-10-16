@@ -28,6 +28,7 @@ export interface IPostsRepository {
   // Plain row, used by the policy checks.
   findById(id: string): Promise<IPost | null>;
   findBySlug(slug: string): Promise<IPost | null>;
+  findAttachmentMediaIds(postId: string): Promise<string[]>;
 
   create(data: CreatePostData): Promise<IPostDetail>;
   update(id: string, data: UpdatePostData): Promise<IPostDetail>;

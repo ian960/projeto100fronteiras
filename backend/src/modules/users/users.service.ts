@@ -1,10 +1,12 @@
 import argon2 from 'argon2';
 import { Conflict, Forbidden, NotFound, ValidationError } from '../../shared/errors/AppError';
-import { AuthorType, Role } from '../../shared/types/enums';
+import { AuthorType, MediaKind, Role } from '../../shared/types/enums';
 import { slugify } from '../../shared/utils/slugify';
 import type { Paginated } from '../../shared/types/pagination';
 import { authRepository } from '../auth/auth.repository';
+import type { SessionUser } from '../auth/auth.types';
 import { authorsRepository } from '../authors/authors.repository';
+import { mediaService } from '../media/media.service';
 import { usersRepository } from './users.repository';
 import type { IUserPublic, IUserWithAuthor } from './users.types';
 import type { ListUsersInput, PromoteUserInput, UpdateUserInput } from './users.service.types';
@@ -37,7 +39,11 @@ export class UsersService {
 
   // Turning a reader into a columnist. Creates the byline and flips the role
   // in a single transaction — see the repository for why that matters.
-  async promoteToColumnist(id: string, input: PromoteUserInput): Promise<IUserWithAuthor> {
+  async promoteToColumnist(
+    actor: SessionUser,
+    id: string,
+    input: PromoteUserInput,
+  ): Promise<IUserWithAuthor> {
     const user = await usersRepository.findByIdWithAuthor(id);
 
     if (!user) throw new NotFound('User not found.');
@@ -64,12 +70,16 @@ export class UsersService {
       throw new Conflict(`An author with the slug "${slug}" already exists.`);
     }
 
+    if (input.photoId) {
+      await mediaService.requireUsable(actor, input.photoId, MediaKind.IMAGE, 'photoId');
+    }
+
     return usersRepository.promoteToColumnist({
       userId: id,
       name: input.name,
       slug,
       bio: input.bio ?? null,
-      photoUrl: input.photoUrl ?? null,
+      photoId: input.photoId ?? null,
       columnTitle: input.columnTitle ?? null,
       type: AuthorType.COLUMNIST,
     });

@@ -1,24 +1,23 @@
 import { defineConfig } from 'vitest/config';
 import { config } from 'dotenv';
+import { FAKE_CLOUDINARY_ENV } from './tests/helpers/cloudinaryTestEnv';
 
 // Loaded before anything else, so src/config/env.ts sees the test database.
 // If .env.test is missing, tests/setup.ts refuses to run instead of falling
 // back to the development database.
 config({ path: '.env.test', quiet: true });
 
-// Keep the suite deterministic: R2 is only on if .env.test turns it on.
-// Pre-setting the keys to "" stops dotenv (inside src/config/env.ts) from
-// pulling real Cloudflare credentials out of backend/.env.
-for (const key of [
-  'R2_ACCOUNT_ID',
-  'R2_ACCESS_KEY_ID',
-  'R2_SECRET_ACCESS_KEY',
-  'R2_BUCKET',
-  'R2_PUBLIC_URL',
-]) {
+// Keep the suite deterministic: the real Cloudinary is never used here.
+// Pre-setting the keys stops dotenv (inside src/config/env.ts) from pulling
+// real credentials out of backend/.env; each group below sets its own.
+for (const key of Object.keys(FAKE_CLOUDINARY_ENV)) {
   process.env[key] ??= '';
 }
 
+// Two groups, run one after the other (groupOrder) because they share the
+// test database:
+//   api                 everything, against a fake Cloudinary on localhost
+//   without-cloudinary  proves the API still works with no Cloudinary keys
 export default defineConfig({
   test: {
     globals: true,
@@ -29,5 +28,27 @@ export default defineConfig({
     fileParallelism: false,
     hookTimeout: 60_000,
     testTimeout: 20_000,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'api',
+          include: ['tests/**/*.spec.ts'],
+          exclude: ['tests/runtime.spec.ts'],
+          env: FAKE_CLOUDINARY_ENV,
+          globalSetup: ['./tests/helpers/fakeCloudinary.global.ts'],
+          sequence: { groupOrder: 0 },
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'without-cloudinary',
+          include: ['tests/runtime.spec.ts'],
+          env: { CLOUDINARY_URL: '' },
+          sequence: { groupOrder: 1 },
+        },
+      },
+    ],
   },
 });

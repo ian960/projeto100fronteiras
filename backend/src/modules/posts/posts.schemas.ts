@@ -1,13 +1,28 @@
 import { z } from 'zod';
 import { PostStatus, PostType } from '../../shared/types/enums';
 
+// One video per post: a YouTube link, a file uploaded through /api/media, or
+// none (null). The shape itself makes "both at once" impossible to send.
 const videoSchema = z
-  .object({
-    // Either a full YouTube URL or the bare id; normalized in the service.
-    videoUrl: z.string().trim().min(1).max(500).nullish(),
-    videoProvider: z.enum(['youtube', 'r2']).nullish(),
-  })
-  .partial();
+  .discriminatedUnion('provider', [
+    // A full YouTube URL or the bare id; normalized to the id in the service.
+    z.object({ provider: z.literal('youtube'), url: z.string().trim().min(1).max(500) }),
+    z.object({ provider: z.literal('cloudinary'), mediaId: z.uuid() }),
+  ])
+  .nullable();
+
+// PDFs under the text, in display order. The whole list is sent every time.
+const attachmentsSchema = z
+  .array(
+    z.object({
+      mediaId: z.uuid(),
+      title: z.string().trim().min(1).max(200),
+    }),
+  )
+  .max(20)
+  .refine((list) => new Set(list.map((item) => item.mediaId)).size === list.length, {
+    message: 'The same file is attached twice.',
+  });
 
 const baseBody = {
   title: z.string().trim().min(3).max(200),
@@ -15,8 +30,10 @@ const baseBody = {
   slug: z.string().trim().max(220).optional(),
   excerpt: z.string().trim().max(400).optional(),
   content: z.string().max(200_000).optional(),
-  coverUrl: z.url().nullish(),
+  coverId: z.uuid().nullish(), // an image uploaded through /api/media
   coverAlt: z.string().trim().max(200).nullish(),
+  video: videoSchema.optional(),
+  attachments: attachmentsSchema.optional(),
 };
 
 // Admin creating news or a column. `status` is absent: everything is born a
@@ -28,14 +45,13 @@ export const createPostSchema = z.object({
       type: z.enum([PostType.NEWS, PostType.COLUMN]),
       categoryId: z.uuid().nullish(),
       authorId: z.uuid(),
-    })
-    .extend(videoSchema.shape),
+    }),
 });
 
 // A columnist creating their own column. No type, no authorId, no categoryId:
 // all three are decided by the server.
 export const createMyColumnSchema = z.object({
-  body: z.object(baseBody).extend(videoSchema.shape),
+  body: z.object(baseBody),
 });
 
 export const updatePostSchema = z.object({
@@ -47,7 +63,6 @@ export const updatePostSchema = z.object({
       categoryId: z.uuid().nullish(),
       authorId: z.uuid().optional(),
     })
-    .extend(videoSchema.shape)
     .refine((data) => Object.keys(data).length > 0, {
       message: 'Provide at least one field to update.',
     }),

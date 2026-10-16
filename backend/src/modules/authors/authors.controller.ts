@@ -39,14 +39,16 @@ export class AuthorsController {
   };
 
   create = async (req: Request, res: Response) => {
+    const actor = requireUser(req);
     const parsed = createAuthorSchema.parse({ body: req.body });
-    const author = await authorsService.create(parsed.body);
+    const author = await authorsService.create(actor, parsed.body);
     return created(res, { author });
   };
 
   update = async (req: Request, res: Response) => {
+    const actor = requireUser(req);
     const parsed = updateAuthorSchema.parse({ params: req.params, body: req.body });
-    const author = await authorsService.update(parsed.params.id, parsed.body);
+    const author = await authorsService.update(actor, parsed.params.id, parsed.body);
     return ok(res, { author });
   };
 
@@ -59,7 +61,7 @@ export class AuthorsController {
   updateMyProfile = async (req: Request, res: Response) => {
     const actor = requireUser(req);
     const parsed = updateMyProfileSchema.parse({ body: req.body });
-    const author = await authorsService.updateMyProfile(actor.authorId, parsed.body);
+    const author = await authorsService.updateMyProfile(actor, parsed.body);
     return ok(res, { author });
   };
 }

@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma';
 import { logger } from '../../shared/utils/logger';
 import { buildPaginated, toSkipTake } from '../../shared/utils/pagination';
 import type { Paginated, PaginationParams } from '../../shared/types/pagination';
+import { authorSummarySelect, toAuthorSummary } from '../authors/authors.select';
 import type { IUsersRepository, PromoteToColumnistData } from './users.repository.interfaces';
 import type { CreateUserData, FindUsersFilters, UpdateUserData } from './users.repository.types';
 import type { IUserCredentials, IUserPublic, IUserWithAuthor } from './users.types';
@@ -20,13 +21,14 @@ export class UsersRepository implements IUsersRepository {
     updatedAt: true,
   } as const;
 
-  private readonly authorSummarySelect = {
-    id: true,
-    name: true,
-    slug: true,
-    photoUrl: true,
-    columnTitle: true,
-  } as const;
+  private readonly withAuthor = { ...this.publicSelect, author: { select: authorSummarySelect } };
+
+  // The byline comes with its photo as a media row and leaves with photoUrl.
+  private toWithAuthor<T extends { author: Parameters<typeof toAuthorSummary>[0] | null }>(
+    row: T,
+  ): Omit<T, 'author'> & Pick<IUserWithAuthor, 'author'> {
+    return { ...row, author: row.author ? toAuthorSummary(row.author) : null };
+  }
 
   async findMany(
     filters: FindUsersFilters,
@@ -46,17 +48,17 @@ export class UsersRepository implements IUsersRepository {
           : {}),
       };
 
-      const [items, total] = await Promise.all([
+      const [rows, total] = await Promise.all([
         prisma.user.findMany({
           where,
-          select: { ...this.publicSelect, author: { select: this.authorSummarySelect } },
+          select: this.withAuthor,
           orderBy: { createdAt: 'desc' },
           ...toSkipTake(pagination),
         }),
         prisma.user.count({ where }),
       ]);
 
-      return buildPaginated(items, total, pagination);
+      return buildPaginated(rows.map((row) => this.toWithAuthor(row)), total, pagination);
     } catch (err) {
       logger.error('Failed to list users', err);
       throw err;
@@ -74,10 +76,8 @@ export class UsersRepository implements IUsersRepository {
 
   async findByIdWithAuthor(id: string): Promise<IUserWithAuthor | null> {
     try {
-      return await prisma.user.findUnique({
-        where: { id },
-        select: { ...this.publicSelect, author: { select: this.authorSummarySelect } },
-      });
+      const row = await prisma.user.findUnique({ where: { id }, select: this.withAuthor });
+      return row ? this.toWithAuthor(row) : null;
     } catch (err) {
       logger.error('Failed to find user with author', err);
       throw err;
@@ -151,16 +151,18 @@ export class UsersRepository implements IUsersRepository {
             name: data.name,
             slug: data.slug,
             bio: data.bio ?? null,
-            photoUrl: data.photoUrl ?? null,
+            photoId: data.photoId ?? null,
             columnTitle: data.columnTitle ?? null,
             type: data.type,
           },
         });
 
-        return tx.user.findUniqueOrThrow({
+        const row = await tx.user.findUniqueOrThrow({
           where: { id: data.userId },
-          select: { ...this.publicSelect, author: { select: this.authorSummarySelect } },
+          select: this.withAuthor,
         });
+
+        return this.toWithAuthor(row);
       });
     } catch (err) {
       logger.error('Failed to promote user to columnist', err);

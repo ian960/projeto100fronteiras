@@ -1,7 +1,7 @@
 import { env, usingDevSessionSecret } from './config/env';
 import { createApp } from './app';
 import { disconnectDatabase } from './config/prisma';
-import { isStorageConfigured } from './config/storage';
+import { isMediaConfigured } from './config/cloudinary';
 import { logger } from './shared/utils/logger';
 
 const app = createApp();
@@ -11,8 +11,10 @@ const server = app.listen(env.PORT, () => {
 
   // Say out loud what is running in degraded mode, so nobody spends an hour
   // wondering why an upload returns 503.
-  if (!isStorageConfigured()) {
-    logger.warn('R2 is not configured: upload endpoints will answer 503. Everything else works.');
+  if (!isMediaConfigured()) {
+    logger.warn(
+      'Cloudinary is not configured: uploads answer 503 and news cannot be published without a cover. Everything else works.',
+    );
   }
 
   if (usingDevSessionSecret) {

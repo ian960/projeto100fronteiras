@@ -1,5 +1,7 @@
 import type { PostStatus, PostType } from '../../shared/types/enums';
 
+export type AttachmentData = { mediaId: string; title: string };
+
 export type CreatePostData = {
   type: PostType;
   status: PostStatus;
@@ -8,10 +10,12 @@ export type CreatePostData = {
   subtitle?: string | null;
   excerpt?: string;
   content?: string;
-  coverUrl?: string | null;
+  coverId?: string | null;
   coverAlt?: string | null;
-  videoUrl?: string | null;
-  videoProvider?: string | null;
+  videoYoutubeId?: string | null;
+  videoId?: string | null;
+  // Replaces the whole list, in this order.
+  attachments?: AttachmentData[];
   categoryId?: string | null;
   authorId: string;
   createdById: string;
@@ -23,10 +27,12 @@ export type UpdatePostData = {
   subtitle?: string | null;
   excerpt?: string;
   content?: string;
-  coverUrl?: string | null;
+  coverId?: string | null;
   coverAlt?: string | null;
-  videoUrl?: string | null;
-  videoProvider?: string | null;
+  videoYoutubeId?: string | null;
+  videoId?: string | null;
+  // Replaces the whole list, in this order.
+  attachments?: AttachmentData[];
   categoryId?: string | null;
   authorId?: string;
   status?: PostStatus;

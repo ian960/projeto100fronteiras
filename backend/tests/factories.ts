@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import argon2 from 'argon2';
 import { prisma } from '../src/config/prisma';
 
@@ -68,12 +69,42 @@ export async function makeCategory(overrides: Record<string, unknown> = {}) {
   });
 }
 
+// A file as if it had been uploaded to Cloudinary, straight into the table.
+// For tests about posts and authors, where how the file got there does not
+// matter. Tests about the upload itself go through the fake Cloudinary.
+export async function makeMedia(
+  uploadedById: string,
+  kind: 'image' | 'video' | 'document' = 'image',
+  overrides: Record<string, unknown> = {},
+) {
+  const folder = { image: 'covers', video: 'videos', document: 'documents' }[kind];
+  const format = { image: 'jpg', video: 'mp4', document: 'pdf' }[kind];
+
+  return prisma.media.create({
+    data: {
+      kind,
+      publicId: `portal-test/${folder}/${randomUUID()}`,
+      version: '1760000000',
+      format,
+      bytes: 123_456,
+      width: kind === 'document' ? null : 1600,
+      height: kind === 'document' ? null : 900,
+      durationSec: kind === 'video' ? 12.5 : null,
+      pages: kind === 'document' ? 3 : null,
+      originalName: `example.${format}`,
+      uploadedById,
+      ...overrides,
+    },
+  });
+}
+
 // Complete enough to be published: excerpt, content and cover all filled.
 export async function makeNews(
   params: { authorId: string; createdById: string; categoryId: string },
   overrides: Record<string, unknown> = {},
 ) {
   const suffix = uniq();
+  const cover = await makeMedia(params.createdById);
 
   return prisma.post.create({
     data: {
@@ -83,7 +114,7 @@ export async function makeNews(
       slug: `news-${suffix}`,
       excerpt: 'A short summary.',
       content: '<p>Body of the article.</p>',
-      coverUrl: 'https://cdn.test.local/covers/example-1280.webp',
+      coverId: cover.id,
       coverAlt: 'Example cover',
       categoryId: params.categoryId,
       authorId: params.authorId,

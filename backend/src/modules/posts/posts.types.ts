@@ -2,8 +2,7 @@ import type { PostStatus, PostType } from '../../shared/types/enums';
 import type { ICategorySummary } from '../categories/categories.types';
 import type { IAuthorSummary } from '../authors/authors.types';
 import type { IUserPublic } from '../users/users.types';
-
-export type VideoProvider = 'youtube' | 'r2';
+import type { IMediaView } from '../media/media.types';
 
 // One row of the posts table. The four *Id fields are the real columns; the
 // relations are not here on purpose — see the note at the bottom of this file.
@@ -17,13 +16,14 @@ export interface IPost {
   slug: string;
   excerpt: string;
   content: string; // sanitized HTML
-  coverUrl: string | null;
+  coverId: string | null;
   coverAlt: string | null;
 
   featured: boolean;
 
-  videoUrl: string | null;
-  videoProvider: string | null;
+  // At most one of the two (CHECK posts_single_video).
+  videoYoutubeId: string | null;
+  videoId: string | null;
 
   categoryId: string | null; // always null when type === 'column'
   authorId: string;
@@ -37,12 +37,15 @@ export interface IPost {
 
 // Listings never ship `content`: twelve cards would mean twelve full HTML
 // bodies over the wire for text nobody reads on that screen.
+// The cover comes as a media view (URLs ready for <img srcset>).
 export type IPostSummary = Pick<
   IPost,
   | 'id' | 'type' | 'status' | 'title' | 'subtitle' | 'slug' | 'excerpt'
-  | 'coverUrl' | 'coverAlt' | 'featured' | 'videoUrl' | 'videoProvider'
+  | 'coverId' | 'coverAlt' | 'featured' | 'videoYoutubeId' | 'videoId'
   | 'publishedAt' | 'createdAt' | 'updatedAt'
->;
+> & {
+  cover: IMediaView | null;
+};
 
 // Home feed, category page, author page, columnists tab.
 export type IPostListItem = IPostSummary & {
@@ -50,10 +53,20 @@ export type IPostListItem = IPostSummary & {
   author?: IAuthorSummary;
 };
 
-// Article page: full body plus byline and category.
+// A PDF under the text, in the order the writer chose.
+export type IPostAttachment = {
+  title: string;
+  media: IMediaView;
+};
+
+// Article page: full body plus byline, category and every file. Every detail
+// query loads cover, video and attachments, so here they are not optional.
 export type IPostDetail = IPost & {
   category?: ICategorySummary | null;
   author?: IAuthorSummary;
+  cover: IMediaView | null;
+  video: IMediaView | null;
+  attachments: IPostAttachment[];
 };
 
 // Admin panel only: who typed it and who approved it.

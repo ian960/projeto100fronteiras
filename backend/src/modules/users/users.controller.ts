@@ -29,8 +29,9 @@ export class UsersController {
   };
 
   promote = async (req: Request, res: Response) => {
+    const actor = requireUser(req);
     const parsed = promoteUserSchema.parse({ params: req.params, body: req.body });
-    const user = await usersService.promoteToColumnist(parsed.params.id, parsed.body);
+    const user = await usersService.promoteToColumnist(actor, parsed.params.id, parsed.body);
     return ok(res, { user });
   };
 

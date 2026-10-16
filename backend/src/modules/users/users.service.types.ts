@@ -11,7 +11,7 @@ export type PromoteUserInput = {
   name: string;
   slug?: string;
   bio?: string | null;
-  photoUrl?: string | null;
+  photoId?: string | null;
   columnTitle?: string | null;
 };
 

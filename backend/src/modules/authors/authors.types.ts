@@ -4,7 +4,7 @@ export interface IAuthor {
   id: string;
   name: string;
   slug: string;
-  photoUrl: string | null;
+  photoId: string | null;
   bio: string | null;
   columnTitle: string | null;
 
@@ -18,15 +18,18 @@ export interface IAuthor {
   updatedAt: Date;
 }
 
-export type IAuthorPublic = IAuthor;
+// What leaves the API: the row plus the photo as a ready-made avatar URL
+// (cropped square around the face, see media.urls.ts). photoId stays, so the
+// panel knows which file is currently set.
+export type IAuthorPublic = IAuthor & { photoUrl: string | null };
 
 // Embedded in a post response: just the byline.
 export type IAuthorSummary = Pick<
-  IAuthor,
-  'id' | 'name' | 'slug' | 'photoUrl' | 'columnTitle'
+  IAuthorPublic,
+  'id' | 'name' | 'slug' | 'photoId' | 'photoUrl' | 'columnTitle'
 >;
 
 // Admin list: "Fulano — 12 posts".
-export type IAuthorWithPostCount = IAuthor & {
+export type IAuthorWithPostCount = IAuthorPublic & {
   _count?: { posts: number };
 };

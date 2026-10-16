@@ -1,5 +1,5 @@
 import { Conflict, Forbidden, NotFound, ValidationError } from '../../shared/errors/AppError';
-import { PostStatus, PostType } from '../../shared/types/enums';
+import { MediaKind, PostStatus, PostType } from '../../shared/types/enums';
 import { slugify } from '../../shared/utils/slugify';
 import { isHtmlEmpty, sanitizePostContent } from '../../shared/utils/sanitizeHtml';
 import { extractYoutubeId } from '../../shared/utils/youtube';
@@ -7,6 +7,7 @@ import type { Paginated } from '../../shared/types/pagination';
 import type { SessionUser } from '../auth/auth.types';
 import { authorsRepository } from '../authors/authors.repository';
 import { categoriesRepository } from '../categories/categories.repository';
+import { mediaService } from '../media/media.service';
 import * as policy from './posts.policy';
 import { postsRepository } from './posts.repository';
 import type { UpdatePostData } from './posts.repository.types';
@@ -22,8 +23,8 @@ import type {
   CreatePostInput,
   ListPanelInput,
   ListPublishedInput,
+  PostMediaInput,
   UpdatePostInput,
-  VideoInput,
 } from './posts.service.types';
 
 const HOME_NEWS_LIMIT = 8;
@@ -63,46 +64,76 @@ export class PostsService {
     throw new Conflict('Could not generate a unique slug for this title.');
   }
 
-  // Normalizes the video pair. A YouTube URL becomes the bare 11-char id, so
-  // the template controls the iframe and the editor never supplies one.
-  private normalizeVideo(input: VideoInput): { videoUrl: string | null; videoProvider: string | null } {
-    const hasUrl = input.videoUrl !== undefined && input.videoUrl !== null && input.videoUrl !== '';
-    const hasProvider = input.videoProvider !== undefined && input.videoProvider !== null;
+  // Turns the media part of a request into columns, checking every file that
+  // changes: it must exist, be the right kind (an image as cover, a PDF as
+  // attachment…) and be usable by this person.
+  //
+  // `current` is the post being edited, null when creating. A file the post
+  // already has is accepted as is, so a columnist can save a column whose
+  // cover the admin picked.
+  private async resolveMedia(
+    actor: SessionUser,
+    input: PostMediaInput,
+    current: { post: IPost; attachmentIds: string[] } | null,
+  ): Promise<
+    Pick<UpdatePostData, 'coverId' | 'coverAlt' | 'videoYoutubeId' | 'videoId' | 'attachments'>
+  > {
+    const data: Pick<
+      UpdatePostData,
+      'coverId' | 'coverAlt' | 'videoYoutubeId' | 'videoId' | 'attachments'
+    > = {};
 
-    if (!hasUrl && !hasProvider) {
-      return { videoUrl: null, videoProvider: null };
-    }
-
-    if (hasUrl !== hasProvider) {
-      throw new ValidationError('Video URL and provider must be sent together.', {
-        videoProvider: 'Required when a video URL is present.',
-      });
-    }
-
-    if (input.videoProvider === 'youtube') {
-      const id = extractYoutubeId(String(input.videoUrl));
-
-      if (!id) {
-        throw new ValidationError('Not a valid YouTube link or id.', {
-          videoUrl: 'Paste the video link or its 11-character id.',
-        });
+    if (input.coverId !== undefined) {
+      if (input.coverId && input.coverId !== current?.post.coverId) {
+        await mediaService.requireUsable(actor, input.coverId, MediaKind.IMAGE, 'coverId');
       }
-
-      return { videoUrl: id, videoProvider: 'youtube' };
+      data.coverId = input.coverId;
     }
 
-    // provider === 'r2': the URL must be one we produced, which means the
-    // file went through the upload endpoint and its type and size were checked
-    // there. Accepting any URL would let a 2 GB .mov be attached by hand.
-    const url = String(input.videoUrl);
+    if (input.coverAlt !== undefined) data.coverAlt = input.coverAlt;
 
-    if (!/^https?:\/\//i.test(url) || !url.toLowerCase().endsWith('.mp4')) {
-      throw new ValidationError('An uploaded video must be an mp4 URL from the upload endpoint.', {
-        videoUrl: 'Upload the file first and send the URL it returns.',
-      });
+    // The two video columns are always written together, so switching from
+    // YouTube to an uploaded file (or back) clears the other one.
+    if (input.video !== undefined) {
+      if (input.video === null) {
+        data.videoYoutubeId = null;
+        data.videoId = null;
+      } else if (input.video.provider === 'youtube') {
+        // The bare 11-char id is stored; the template builds the player, so
+        // the editor never supplies an <iframe>.
+        const youtubeId = extractYoutubeId(input.video.url);
+
+        if (!youtubeId) {
+          throw new ValidationError('Not a valid YouTube link or id.', {
+            video: 'Paste the video link or its 11-character id.',
+          });
+        }
+
+        data.videoYoutubeId = youtubeId;
+        data.videoId = null;
+      } else {
+        if (input.video.mediaId !== current?.post.videoId) {
+          await mediaService.requireUsable(actor, input.video.mediaId, MediaKind.VIDEO, 'video');
+        }
+        data.videoId = input.video.mediaId;
+        data.videoYoutubeId = null;
+      }
     }
 
-    return { videoUrl: url, videoProvider: 'r2' };
+    if (input.attachments !== undefined) {
+      const added = input.attachments
+        .map((item) => item.mediaId)
+        .filter((id) => !current?.attachmentIds.includes(id));
+
+      await mediaService.requireAllUsable(actor, added, MediaKind.DOCUMENT, 'attachments');
+
+      data.attachments = input.attachments.map((item) => ({
+        mediaId: item.mediaId,
+        title: item.title,
+      }));
+    }
+
+    return data;
   }
 
   private async assertCategoryForType(
@@ -230,7 +261,7 @@ export class PostsService {
     await this.assertAuthorExists(input.authorId);
 
     const categoryId = await this.assertCategoryForType(input.type, input.categoryId);
-    const video = this.normalizeVideo(input);
+    const media = await this.resolveMedia(actor, input, null);
     const slug = await this.buildUniqueSlug(input.slug ?? input.title);
 
     return postsRepository.create({
@@ -242,10 +273,7 @@ export class PostsService {
       subtitle: input.subtitle ?? null,
       excerpt: input.excerpt ?? '',
       content: input.content ? sanitizePostContent(input.content) : '',
-      coverUrl: input.coverUrl ?? null,
-      coverAlt: input.coverAlt ?? null,
-      videoUrl: video.videoUrl,
-      videoProvider: video.videoProvider,
+      ...media,
       categoryId,
       authorId: input.authorId,
       createdById: actor.id,
@@ -260,7 +288,7 @@ export class PostsService {
       throw new Forbidden('Your account has no author profile.');
     }
 
-    const video = this.normalizeVideo(input);
+    const media = await this.resolveMedia(actor, input, null);
     const slug = await this.buildUniqueSlug(input.slug ?? input.title);
 
     return postsRepository.create({
@@ -271,10 +299,7 @@ export class PostsService {
       subtitle: input.subtitle ?? null,
       excerpt: input.excerpt ?? '',
       content: input.content ? sanitizePostContent(input.content) : '',
-      coverUrl: input.coverUrl ?? null,
-      coverAlt: input.coverAlt ?? null,
-      videoUrl: video.videoUrl,
-      videoProvider: video.videoProvider,
+      ...media,
       categoryId: null,
       authorId: actor.authorId,
       createdById: actor.id,
@@ -293,24 +318,21 @@ export class PostsService {
       );
     }
 
-    const data: UpdatePostData = {};
+    const attachmentIds =
+      input.attachments !== undefined ? await postsRepository.findAttachmentMediaIds(id) : [];
+
+    const data: UpdatePostData = {
+      ...(await this.resolveMedia(actor, input, { post, attachmentIds })),
+    };
 
     if (input.title !== undefined) data.title = input.title;
     if (input.subtitle !== undefined) data.subtitle = input.subtitle;
     if (input.excerpt !== undefined) data.excerpt = input.excerpt;
-    if (input.coverUrl !== undefined) data.coverUrl = input.coverUrl;
-    if (input.coverAlt !== undefined) data.coverAlt = input.coverAlt;
 
     if (input.content !== undefined) {
       // Sanitized on the way in, every time. The editor's whitelist is a
       // convenience; this is the boundary that actually holds.
       data.content = sanitizePostContent(input.content);
-    }
-
-    if (input.videoUrl !== undefined || input.videoProvider !== undefined) {
-      const video = this.normalizeVideo(input);
-      data.videoUrl = video.videoUrl;
-      data.videoProvider = video.videoProvider;
     }
 
     if (input.slug !== undefined) {
@@ -357,8 +379,8 @@ export class PostsService {
 
     // News is what shows up as a card on the home page and as a preview in a
     // WhatsApp group, so it needs an image. A column is carried by its byline.
-    if (post.type === PostType.NEWS && !post.coverUrl) {
-      fields.coverUrl = 'News needs a cover image.';
+    if (post.type === PostType.NEWS && !post.coverId) {
+      fields.coverId = 'News needs a cover image.';
     }
 
     if (Object.keys(fields).length > 0) {

@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { env } from './config/env';
-import { isStorageConfigured } from './config/storage';
+import { isMediaConfigured } from './config/cloudinary';
 import { sessionMiddleware } from './config/session';
 import { buildRouter } from './routes/routes';
 import { notFound } from './shared/middlewares/notFound';
@@ -37,7 +37,7 @@ export function createApp() {
       data: {
         ok: true,
         environment: env.NODE_ENV,
-        uploads: isStorageConfigured() ? 'r2' : 'disabled',
+        uploads: isMediaConfigured() ? 'cloudinary' : 'disabled',
       },
     });
   });

@@ -30,8 +30,10 @@ only backend cost is `GET /api/posts/by-ids`.
 
 ## Running locally
 
-Only `DATABASE_URL` is required. R2, `SESSION_SECRET` and the seed variables
-all have development defaults, so the API runs before anyone has Cloudflare keys.
+Only `DATABASE_URL` is required. Cloudinary, `SESSION_SECRET` and the seed
+variables all have development defaults, so the API runs before anyone has
+Cloudinary keys. To upload images, videos and PDFs, set `CLOUDINARY_URL` (see
+[Media](#media-cloudinary)).
 
 ```bash
 docker compose up -d            # from the repository root
@@ -52,12 +54,13 @@ The seed prints the login. Development default: `admin@portal.local` / `admin123
 { "data": { "ok": true, "environment": "development", "uploads": "disabled" } }
 ```
 
-### Without R2
+With Cloudinary on, `uploads` is `"cloudinary"`.
 
-Everything works except `/api/upload/*`, which answers
-`503 SERVICE_UNAVAILABLE`. While uploads are off, any public image URL works as
-a post cover. Fill in all five `R2_*` variables to turn uploads on; filling in
-only some of them is rejected at boot.
+### Without Cloudinary
+
+Everything works except `/api/media/*`, which answers
+`503 SERVICE_UNAVAILABLE`, and publishing **news**, which needs a cover image.
+Columns, categories, users and drafts all work.
 
 ### Manual testing
 
@@ -75,6 +78,15 @@ The suite rebuilds the test database on every run by replaying the files in
 `prisma/migrations`, so the hand-written SQL (CHECK constraints, the partial
 unique index) is tested too. It refuses to run unless the database name ends in
 `_test`.
+
+It never talks to the real Cloudinary. Two groups run one after the other:
+
+- **api** — everything, against a fake Cloudinary on `127.0.0.1:4599`
+  (`tests/fake-cloudinary/server.ts`). It checks signatures the same way
+  Cloudinary does, enforces `allowed_formats` and `overwrite`, and serves files
+  back under the same URL layout.
+- **without-cloudinary** — `tests/runtime.spec.ts`, with `CLOUDINARY_URL`
+  empty, proving the API runs without keys.
 
 `npm run typecheck` checks `src/`, `tests/` and `scripts/` — vitest does not
 type-check, so this is the only place test types are verified.
@@ -95,7 +107,7 @@ crashes `node dist/server.js`.
 
 ```
 src/
-  config/      env (validated at boot), prisma, session, storage
+  config/      env (validated at boot), prisma, session, cloudinary
   shared/      errors, middlewares, http helpers, utils, types
   modules/<name>/
     *.types.ts                 entity shapes, one composed type per query
@@ -113,6 +125,10 @@ a route added later is protected by construction.
 
 `posts.policy.ts` holds every permission rule for posts as pure functions. The
 policy decides, the service orchestrates, the repository executes.
+
+Repositories also turn database rows into what the API returns: a media row
+becomes a view with ready-made URLs (`media.urls.ts`), an author's photo
+becomes `photoUrl`. Services work with ids; no URL is ever stored.
 
 ## Endpoints
 
@@ -133,7 +149,8 @@ POST   /api/auth/logout
 ```
 GET    /api/auth/me
 POST   /api/auth/change-password
-POST   /api/upload/image               POST /api/upload/video-ticket
+POST   /api/media/signature            POST /api/media
+POST   /api/media/import               DELETE /api/media/:id   (admin)
 ```
 
 ### Admin
@@ -157,23 +174,86 @@ DELETE /api/columnist/posts/:id        POST   /api/columnist/posts/:id/submit
 PATCH  /api/columnist/profile
 ```
 
-## Video
+## Media (Cloudinary)
 
-Two providers share one pair of columns:
+Covers, photos inside the text, author photos, videos and PDF attachments are
+stored in Cloudinary. The `media` table is the index: who uploaded what, and
+what uses it.
 
-- `youtube` — `videoUrl` holds the 11-char id, extracted from whatever link was
-  pasted. The template builds the iframe; an `<iframe>` is never accepted from
-  the editor.
-- `r2` — mp4 only, 100 MB ceiling, uploaded straight from the browser with a
-  pre-signed URL so a large file never passes through Express.
+### Setting it up
 
-The pair is enforced by a CHECK constraint. Note the explicit
-`video_provider IS NOT NULL` in it: without that, `NULL IN (...)` evaluates to
-NULL, and Postgres lets a CHECK that is NULL pass.
+1. Create a Cloudinary account. In the console, **Settings → API Keys**, copy
+   the *API environment variable*: `cloudinary://<key>:<secret>@<cloud_name>`.
+2. Put it in `backend/.env` as `CLOUDINARY_URL`.
+3. **Settings → Security → "Allow delivery of PDF and ZIP files"**: turn it on.
+   Without it, Cloudinary answers 401 for every PDF link.
 
-mp4-only is not arbitrary: a phone recording in `.mov`/HEVC will not play in a
-large share of browsers, and without transcoding that means publishing a black
-rectangle.
+### How a file gets in
+
+```
+panel ── POST /api/media/signature {purpose} ──▶ API
+panel ◀── uploadUrl + signed fields ──────────── API   (folder, id, formats, overwrite=0)
+panel ── the file ──────────────────────────────▶ Cloudinary   (never through Express)
+panel ◀── public_id, version, signature ───────── Cloudinary
+panel ── POST /api/media {…Cloudinary's answer} ▶ API   (checks Cloudinary's signature)
+```
+
+The API secret never leaves the server. Everything the browser sends to
+Cloudinary is covered by the signature, so it cannot choose another folder,
+another format or overwrite a published file. Cloudinary signs its answer
+(`public_id` + `version`) with the same secret, which is how the API knows an
+upload really happened without calling Cloudinary.
+
+A pasted image link is copied into Cloudinary (`POST /api/media/import`), so a
+post never depends on someone else's site keeping the picture online.
+
+### Purposes
+
+| purpose | kind | formats | max | min width |
+|---|---|---|---|---|
+| `cover` | image | jpg png webp avif heic | 10 MB | 800 px |
+| `body` (photo in the text) | image | same | 10 MB | 400 px |
+| `author` | image | same | 10 MB | 200 px |
+| `video` | video | mp4 mov webm m4v | 100 MB | — |
+| `document` | PDF | pdf | 10 MB | — |
+
+Limits match Cloudinary's free plan. `.mov` from a phone is fine: delivery
+URLs ask for mp4 (`q_auto/….mp4`), and Cloudinary converts it.
+
+### URLs
+
+Never stored. `media.urls.ts` builds them from `publicId` + `version` +
+`format`, so changing a size is a code change, not a migration:
+
+- images: `f_auto,q_auto,c_limit,w_<480|800|1200|1600>` in a `srcset`
+- author photo: `c_thumb,g_face,w_256,h_256` (square, centred on the face)
+- video: mp4 plus a poster frame (`so_0`)
+- PDF: the file, plus page 1 as a thumbnail (`pg_1`)
+
+Photos inside the text are `<img>` tags in the HTML. The sanitizer keeps an
+`<img>` only if it points at our Cloudinary account and folder, and rewrites it
+with a `srcset` and `loading="lazy"`. Images from anywhere else are dropped.
+
+### Video
+
+One per post: a YouTube link **or** an uploaded file. The API takes
+`video: { provider: 'youtube', url } | { provider: 'cloudinary', mediaId } | null`
+and the CHECK constraint `posts_single_video` refuses both at once. For
+YouTube only the 11-char id is stored; the template builds the player and an
+`<iframe>` is never accepted from the editor.
+
+### Credits
+
+The free plan has 25 credits a month, shared: 1 credit = 1 GB stored, or 1 GB
+delivered, or 1,000 transformations, or about 4 minutes of HD video
+conversion. Video is what spends them fastest. The usage page in the console
+shows where they go.
+
+### Deleting
+
+`DELETE /api/media/:id` (admin) removes the file from Cloudinary and from the
+table, and refuses while a post or a profile uses it — photos inside the text
+included.
 
 ## Still open
 

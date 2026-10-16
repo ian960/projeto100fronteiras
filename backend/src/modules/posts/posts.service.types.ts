@@ -1,41 +1,46 @@
 import type { PostStatus, PostType } from '../../shared/types/enums';
 
-export type VideoInput = {
-  videoUrl?: string | null;
-  videoProvider?: 'youtube' | 'r2' | null;
+// null removes the video.
+export type VideoInput =
+  | { provider: 'youtube'; url: string }
+  | { provider: 'cloudinary'; mediaId: string }
+  | null;
+
+export type AttachmentInput = { mediaId: string; title: string };
+
+// Media fields shared by every write.
+export type PostMediaInput = {
+  coverId?: string | null;
+  coverAlt?: string | null;
+  video?: VideoInput;
+  attachments?: AttachmentInput[];
 };
 
-export type CreatePostInput = VideoInput & {
+export type CreatePostInput = PostMediaInput & {
   type: PostType;
   title: string;
   subtitle?: string | null;
   slug?: string;
   excerpt?: string;
   content?: string;
-  coverUrl?: string | null;
-  coverAlt?: string | null;
   categoryId?: string | null;
   authorId: string;
 };
 
-export type CreateMyColumnInput = VideoInput & {
+export type CreateMyColumnInput = PostMediaInput & {
   title: string;
   subtitle?: string | null;
   slug?: string;
   excerpt?: string;
   content?: string;
-  coverUrl?: string | null;
-  coverAlt?: string | null;
 };
 
-export type UpdatePostInput = VideoInput & {
+export type UpdatePostInput = PostMediaInput & {
   title?: string;
   subtitle?: string | null;
   slug?: string;
   excerpt?: string;
   content?: string;
-  coverUrl?: string | null;
-  coverAlt?: string | null;
   categoryId?: string | null;
   authorId?: string;
 };

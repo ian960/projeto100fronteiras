@@ -6,7 +6,7 @@ export const createAuthorSchema = z.object({
     name: z.string().trim().min(2).max(120),
     slug: z.string().trim().max(140).optional(),
     bio: z.string().trim().max(600).nullish(),
-    photoUrl: z.url().nullish(),
+    photoId: z.uuid().nullish(), // an image uploaded through /api/media
     // A writer cannot own a column, so columnTitle is rejected for them in the
     // service. Kept optional here so the same schema serves both cases.
     columnTitle: z.string().trim().max(120).nullish(),
@@ -21,7 +21,7 @@ export const updateAuthorSchema = z.object({
       name: z.string().trim().min(2).max(120).optional(),
       slug: z.string().trim().max(140).optional(),
       bio: z.string().trim().max(600).nullish(),
-      photoUrl: z.url().nullish(),
+      photoId: z.uuid().nullish(), // an image uploaded through /api/media
       columnTitle: z.string().trim().max(120).nullish(),
       active: z.boolean().optional(),
     })
@@ -43,7 +43,7 @@ export const updateMyProfileSchema = z.object({
     .object({
       name: z.string().trim().min(2).max(120).optional(),
       bio: z.string().trim().max(600).nullish(),
-      photoUrl: z.url().nullish(),
+      photoId: z.uuid().nullish(), // an image uploaded through /api/media
       columnTitle: z.string().trim().max(120).nullish(),
     })
     .refine((data) => Object.keys(data).length > 0, {

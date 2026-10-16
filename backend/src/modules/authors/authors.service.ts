@@ -1,6 +1,8 @@
 import { Conflict, Forbidden, NotFound, ValidationError } from '../../shared/errors/AppError';
-import { AuthorType } from '../../shared/types/enums';
+import { AuthorType, MediaKind } from '../../shared/types/enums';
 import { slugify } from '../../shared/utils/slugify';
+import type { SessionUser } from '../auth/auth.types';
+import { mediaService } from '../media/media.service';
 import { authorsRepository } from './authors.repository';
 import type { IAuthorPublic, IAuthorWithPostCount } from './authors.types';
 import type { CreateAuthorInput, UpdateAuthorInput, UpdateMyProfileInput } from './authors.service.types';
@@ -32,6 +34,17 @@ export class AuthorsService {
     }
   }
 
+  // A new photo must be an image this person may use. Checked only when it
+  // changes, so saving a profile never fails over the photo already set.
+  private async assertPhoto(
+    actor: SessionUser,
+    photoId: string | null | undefined,
+    current: string | null = null,
+  ): Promise<void> {
+    if (!photoId || photoId === current) return;
+    await mediaService.requireUsable(actor, photoId, MediaKind.IMAGE, 'photoId');
+  }
+
   // Public: the columnists tab.
   listColumnists(): Promise<IAuthorPublic[]> {
     return authorsRepository.findMany({ type: AuthorType.COLUMNIST, active: true });
@@ -59,7 +72,7 @@ export class AuthorsService {
   // Creates a byline with no login. A columnist is never created this way —
   // they register themselves and the admin promotes them, which is what keeps
   // passwords out of the admin's hands.
-  async create(input: CreateAuthorInput): Promise<IAuthorPublic> {
+  async create(actor: SessionUser, input: CreateAuthorInput): Promise<IAuthorPublic> {
     if (input.type === AuthorType.WRITER && input.columnTitle) {
       throw new ValidationError('Only columnists can have a column title.', {
         columnTitle: 'Not applicable to a writer.',
@@ -68,19 +81,21 @@ export class AuthorsService {
 
     const slug = this.buildSlug(input.slug ?? input.name);
     await this.ensureSlugIsFree(slug);
+    await this.assertPhoto(actor, input.photoId);
 
     return authorsRepository.create({
       name: input.name,
       slug,
       type: input.type,
       bio: input.bio ?? null,
-      photoUrl: input.photoUrl ?? null,
+      photoId: input.photoId ?? null,
       columnTitle: input.columnTitle ?? null,
     });
   }
 
-  async update(id: string, input: UpdateAuthorInput): Promise<IAuthorPublic> {
+  async update(actor: SessionUser, id: string, input: UpdateAuthorInput): Promise<IAuthorPublic> {
     const author = await this.ensureExists(id);
+    await this.assertPhoto(actor, input.photoId, author.photoId);
 
     if (author.type === AuthorType.WRITER && input.columnTitle) {
       throw new ValidationError('Only columnists can have a column title.', {
@@ -101,22 +116,25 @@ export class AuthorsService {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(slug !== undefined ? { slug } : {}),
       ...(input.bio !== undefined ? { bio: input.bio } : {}),
-      ...(input.photoUrl !== undefined ? { photoUrl: input.photoUrl } : {}),
+      ...(input.photoId !== undefined ? { photoId: input.photoId } : {}),
       ...(input.columnTitle !== undefined ? { columnTitle: input.columnTitle } : {}),
       ...(input.active !== undefined ? { active: input.active } : {}),
     });
   }
 
   // A columnist editing their own byline, bio, photo and column title.
-  async updateMyProfile(authorId: string | null, input: UpdateMyProfileInput): Promise<IAuthorPublic> {
-    if (!authorId) {
+  async updateMyProfile(actor: SessionUser, input: UpdateMyProfileInput): Promise<IAuthorPublic> {
+    if (!actor.authorId) {
       throw new Forbidden('Your account has no author profile.');
     }
 
-    return authorsRepository.update(authorId, {
+    const author = await this.ensureExists(actor.authorId);
+    await this.assertPhoto(actor, input.photoId, author.photoId);
+
+    return authorsRepository.update(actor.authorId, {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.bio !== undefined ? { bio: input.bio } : {}),
-      ...(input.photoUrl !== undefined ? { photoUrl: input.photoUrl } : {}),
+      ...(input.photoId !== undefined ? { photoId: input.photoId } : {}),
       ...(input.columnTitle !== undefined ? { columnTitle: input.columnTitle } : {}),
     });
   }

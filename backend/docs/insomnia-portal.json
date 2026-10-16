@@ -64,7 +64,7 @@
       "created": 0,
       "url": "{{ _.base_url }}/api/health",
       "name": "GET health",
-      "description": "Primeira requisicao. Mostra uploads: disabled quando o R2 nao esta configurado. Se falhar, o servidor nao subiu ou a porta esta errada (veja a linha 'API listening on' no terminal).",
+      "description": "Primeira requisicao. Mostra uploads: \"disabled\" sem Cloudinary, \"cloudinary\" com ele. Se falhar, o servidor nao subiu ou a porta esta errada (veja a linha 'API listening on' no terminal).",
       "method": "GET",
       "body": {},
       "parameters": [],
@@ -730,11 +730,11 @@
       "created": 0,
       "url": "{{ _.base_url }}/api/admin/posts",
       "name": "POST criar notícia (rascunho)",
-      "description": "Nasce como draft. Repare no content da resposta: o <script> foi removido. Copie id e slug para post_id e post_slug. Sem R2, qualquer URL publica de imagem serve como capa.",
+      "description": "Nasce como draft. Repare no content da resposta: o <script> foi removido. Copie id e slug para post_id e post_slug. A capa entra como coverId: o id de uma imagem enviada pelo painel ou importada com 'POST importar capa de um link'. Sem capa, a notícia salva como rascunho mas não publica.",
       "method": "POST",
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"type\": \"news\",\n  \"title\": \"Prefeitura anuncia nova ciclovia\",\n  \"excerpt\": \"Obra começa em novembro.\",\n  \"content\": \"<p>A prefeitura anunciou <strong>hoje</strong> a nova ciclovia.</p><script>alert(1)</script>\",\n  \"coverUrl\": \"https://picsum.photos/1280/720\",\n  \"coverAlt\": \"Ciclovia\",\n  \"categoryId\": \"{{ _.category_id }}\",\n  \"authorId\": \"{{ _.author_id }}\"\n}"
+        "text": "{\n  \"type\": \"news\",\n  \"title\": \"Prefeitura anuncia nova ciclovia\",\n  \"excerpt\": \"Obra começa em novembro.\",\n  \"content\": \"<p>A prefeitura anunciou <strong>hoje</strong> a nova ciclovia.</p><script>alert(1)</script>\",\n  \"coverAlt\": \"Ciclovia\",\n  \"categoryId\": \"{{ _.category_id }}\",\n  \"authorId\": \"{{ _.author_id }}\"\n}"
       },
       "parameters": [],
       "headers": [
@@ -865,7 +865,7 @@
       "method": "POST",
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"type\": \"news\",\n  \"title\": \"Matéria com vídeo\",\n  \"categoryId\": \"{{ _.category_id }}\",\n  \"authorId\": \"{{ _.author_id }}\",\n  \"videoUrl\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\n  \"videoProvider\": \"youtube\"\n}"
+        "text": "{\n  \"type\": \"news\",\n  \"title\": \"Matéria com vídeo\",\n  \"categoryId\": \"{{ _.category_id }}\",\n  \"authorId\": \"{{ _.author_id }}\",\n  \"video\": {\n    \"provider\": \"youtube\",\n    \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"\n  }\n}"
       },
       "parameters": [],
       "headers": [
@@ -1017,7 +1017,7 @@
       "parentId": "wrk_portal_complete",
       "modified": 0,
       "created": 0,
-      "name": "6 · Upload (sem R2 = 503)",
+      "name": "6 · Mídia (Cloudinary; sem ele = 503)",
       "description": "",
       "environment": {},
       "environmentPropertyOrder": null,
@@ -1029,13 +1029,13 @@
       "parentId": "fld_6",
       "modified": 0,
       "created": 0,
-      "url": "{{ _.base_url }}/api/upload/video-ticket",
-      "name": "POST ticket de vídeo → 503 sem R2",
-      "description": "503 SERVICE_UNAVAILABLE enquanto o R2 nao estiver configurado. E o comportamento esperado, nao um bug.",
+      "url": "{{ _.base_url }}/api/media/signature",
+      "name": "POST assinatura de upload (503 sem Cloudinary)",
+      "description": "Com Cloudinary: devolve uploadUrl e os campos assinados que o painel manda direto para o Cloudinary. Sem Cloudinary: 503 SERVICE_UNAVAILABLE, que é o comportamento esperado. Purposes: cover, body, author, video, document.",
       "method": "POST",
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"filename\": \"clip.mp4\",\n  \"contentType\": \"video/mp4\",\n  \"sizeBytes\": 1048576\n}"
+        "text": "{\n  \"purpose\": \"cover\"\n}"
       },
       "parameters": [],
       "headers": [
@@ -1046,6 +1046,37 @@
       ],
       "authentication": {},
       "metaSortKey": -100,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_media_import",
+      "parentId": "fld_6",
+      "modified": 0,
+      "created": 0,
+      "url": "{{ _.base_url }}/api/media/import",
+      "name": "POST importar capa de um link",
+      "description": "Precisa do Cloudinary. O Cloudinary baixa a imagem e guarda na sua conta. Copie o data.media.id da resposta para o coverId de uma notícia.",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"purpose\": \"cover\",\n  \"url\": \"https://picsum.photos/id/1011/1600/900.jpg\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -99.5,
       "isPrivate": false,
       "settingStoreCookies": true,
       "settingSendCookies": true,

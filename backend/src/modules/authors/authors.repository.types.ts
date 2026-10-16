@@ -5,7 +5,7 @@ export type CreateAuthorData = {
   slug: string;
   type: AuthorType;
   bio?: string | null;
-  photoUrl?: string | null;
+  photoId?: string | null;
   columnTitle?: string | null;
 };
 
@@ -13,7 +13,7 @@ export type UpdateAuthorData = {
   name?: string;
   slug?: string;
   bio?: string | null;
-  photoUrl?: string | null;
+  photoId?: string | null;
   columnTitle?: string | null;
   active?: boolean;
 };

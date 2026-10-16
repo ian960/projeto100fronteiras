@@ -49,6 +49,12 @@ enum PostStatus {
   published // live
 }
 
+enum MediaKind {
+  image // covers, photos inside the text, author photos
+  video
+  document // PDF only
+}
+
 // ---------------------------------------------------------------------------
 // User — anyone who can log in
 // ---------------------------------------------------------------------------
@@ -75,8 +81,9 @@ model User {
   // Readers and the admin have none.
   author Author?
 
-  createdPosts   Post[] @relation("PostCreatedBy")
-  publishedPosts Post[] @relation("PostPublishedBy")
+  createdPosts   Post[]  @relation("PostCreatedBy")
+  publishedPosts Post[]  @relation("PostPublishedBy")
+  uploadedMedia  Media[] @relation("MediaUploadedBy")
 
   @@map("users")
 }
@@ -89,7 +96,6 @@ model Author {
   id          String     @id @default(uuid(7))
   name        String
   slug        String     @unique
-  photoUrl    String?    @map("photo_url")
   bio         String?
   columnTitle String?    @map("column_title") // columnists only
   type        AuthorType
@@ -102,6 +108,10 @@ model Author {
   // the author page stays online, they just lose access.
   userId String? @unique @map("user_id")
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Shown next to the byline and on the author page.
+  photoId String? @map("photo_id")
+  photo   Media?  @relation("AuthorPhoto", fields: [photoId], references: [id], onDelete: Restrict)
 
   posts Post[]
 
@@ -142,9 +152,14 @@ model Post {
 
   // excerpt, content and cover start empty on purpose: a draft is allowed to
   // be incomplete. Completeness is enforced by the service on publish, not here.
-  excerpt  String  @default("")
-  content  String  @default("") // HTML, already sanitized server-side
-  coverUrl String? @map("cover_url")
+  excerpt String @default("")
+  content String @default("") // HTML, already sanitized server-side
+
+  // Required to publish news (checked by the service, not here: a draft may
+  // be saved without one). The alt text belongs to the post, not to the file:
+  // the same photo can illustrate two stories and deserve two descriptions.
+  coverId  String? @map("cover_id")
+  cover    Media?  @relation("PostCover", fields: [coverId], references: [id], onDelete: Restrict)
   coverAlt String? @map("cover_alt")
 
   // Lead story on the home page. Only one at a time — enforced by a partial
@@ -172,13 +187,14 @@ model Post {
   publishedById String? @map("published_by_id")
   publishedBy   User?   @relation("PostPublishedBy", fields: [publishedById], references: [id], onDelete: Restrict)
 
-  // Video. Two providers share the same pair of columns:
-  //   youtube -> videoUrl holds the 11-char video id, the iframe is built in
-  //              the template (an <iframe> is never accepted from the editor)
-  //   r2      -> videoUrl holds the public URL of an mp4 uploaded to R2
-  // Adding "stream" later is a third value, not a migration.
-  videoUrl      String? @map("video_url")
-  videoProvider String? @map("video_provider")
+  // Video: a YouTube link or a file uploaded to Cloudinary, never both.
+  // Enforced by the CHECK constraint "posts_single_video" in the migration.
+  videoYoutubeId String? @map("video_youtube_id") // the 11-char id, not the URL
+  videoId        String? @map("video_id")
+  video          Media?  @relation("PostVideo", fields: [videoId], references: [id], onDelete: Restrict)
+
+  // PDFs listed under the text ("Documentos desta matéria").
+  attachments PostAttachment[]
 
   // Home feed and columnists tab.
   @@index([type, status, publishedAt(sort: Desc)])
@@ -187,6 +203,71 @@ model Post {
   // Author page and "my columns" in the panel.
   @@index([authorId, status, publishedAt(sort: Desc)])
   @@map("posts")
+}
+
+// ---------------------------------------------------------------------------
+// Media — every file uploaded to Cloudinary
+//
+// The bytes live in Cloudinary; this table is the index. Knowing who uploaded
+// what, and what uses it, is what makes it possible to delete safely and to
+// find files nobody uses anymore.
+//
+// Delivery URLs are never stored: they are built from publicId + version +
+// format (see media.urls.ts), so changing a size or a format later is a code
+// change, not a data migration.
+// ---------------------------------------------------------------------------
+
+model Media {
+  id   String    @id @default(uuid(7))
+  kind MediaKind
+
+  // Cloudinary public_id with its folder, e.g. "portal/covers/<uuid>".
+  // Chosen by the server when it signs the upload; the browser cannot pick it.
+  publicId String @unique @map("public_id")
+
+  // Cloudinary version (an upload timestamp). Part of every delivery URL.
+  // Text, not Int: the number stops fitting a 32-bit column in 2038.
+  version String
+
+  format       String // jpg, png, webp, heic, mp4, mov, pdf…
+  bytes        Int
+  width        Int?
+  height       Int?
+  durationSec  Float? @map("duration_sec") // video
+  pages        Int? // PDF
+  originalName String @map("original_name")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  uploadedById String @map("uploaded_by_id")
+  uploadedBy   User   @relation("MediaUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  coverOf    Post[]           @relation("PostCover")
+  videoOf    Post[]           @relation("PostVideo")
+  photoOf    Author[]         @relation("AuthorPhoto")
+  attachedTo PostAttachment[]
+
+  // "My uploads", newest first.
+  @@index([uploadedById, createdAt(sort: Desc)])
+  @@map("media")
+}
+
+// A PDF attached to a post. Deleting the post deletes these rows (Cascade):
+// they are part of the post. The file itself is kept (Restrict on media) and
+// can be removed separately once nothing uses it.
+model PostAttachment {
+  postId String @map("post_id")
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  mediaId String @map("media_id")
+  media   Media  @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+
+  title    String // what the reader sees: "Edital completo", not "scan_0034.pdf"
+  position Int
+
+  @@id([postId, mediaId])
+  @@index([mediaId])
+  @@map("post_attachments")
 }
 
 // ---------------------------------------------------------------------------

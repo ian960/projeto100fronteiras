@@ -13,8 +13,11 @@ afterEach(async () => {
   // Child rows before parents. Every foreign key in this schema is Restrict,
   // so deleting users before posts is refused by the database — this order is
   // literally the shape of the relations.
+  // Attachments go with their post (Cascade). Media after everything that
+  // points at it, users last because media points at its uploader.
   await prisma.post.deleteMany();
   await prisma.author.deleteMany();
+  await prisma.media.deleteMany();
   await prisma.category.deleteMany();
   await prisma.user.deleteMany();
   await prisma.$executeRaw`DELETE FROM "session"`;

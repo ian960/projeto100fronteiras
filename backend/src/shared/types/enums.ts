@@ -23,3 +23,10 @@ export const PostStatus = {
   PUBLISHED: 'published',
 } as const;
 export type PostStatus = (typeof PostStatus)[keyof typeof PostStatus];
+
+export const MediaKind = {
+  IMAGE: 'image',
+  VIDEO: 'video',
+  DOCUMENT: 'document',
+} as const;
+export type MediaKind = (typeof MediaKind)[keyof typeof MediaKind];

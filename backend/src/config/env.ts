@@ -4,16 +4,19 @@ import { z } from 'zod';
 // Only DATABASE_URL is mandatory to boot in development.
 //
 // Everything else has a safe development default, so the API can be started
-// and tested (categories, auth, posts) before anyone has Cloudflare keys.
+// and tested (categories, auth, posts) before anyone has Cloudinary keys.
 // Production is stricter: see the refinements at the bottom.
 
-// `R2_BUCKET=` in a .env file arrives as an empty string, not as "missing".
+// `CLOUDINARY_URL=` in a .env file arrives as an empty string, not as "missing".
 // Treat both the same way, or an empty line would fail validation.
 const emptyToUndefined = (value: unknown) =>
   typeof value === 'string' && value.trim() === '' ? undefined : value;
 
 const optionalString = z.preprocess(emptyToUndefined, z.string().min(1).optional());
-const optionalUrl = z.preprocess(emptyToUndefined, z.url().optional());
+
+// The exact format the Cloudinary console shows under "API Keys":
+//   cloudinary://<api_key>:<api_secret>@<cloud_name>
+const CLOUDINARY_URL_PATTERN = /^cloudinary:\/\/([^:\s]+):([^@\s]+)@([A-Za-z0-9_-]+)$/;
 
 const DEV_SESSION_SECRET = 'development-only-session-secret-never-use-in-production';
 
@@ -30,13 +33,35 @@ const schema = z
     ),
     SITE_URL: z.preprocess(emptyToUndefined, z.url().default('http://localhost:5173')),
 
-    // Cloudflare R2. Optional: without it the API runs normally and only the
-    // upload endpoints answer 503.
-    R2_ACCOUNT_ID: optionalString,
-    R2_ACCESS_KEY_ID: optionalString,
-    R2_SECRET_ACCESS_KEY: optionalString,
-    R2_BUCKET: optionalString,
-    R2_PUBLIC_URL: optionalUrl,
+    // Cloudinary. Optional in development: without it the API runs normally,
+    // the media endpoints answer 503, and news cannot be published (a cover
+    // image is required). Mandatory in production.
+    CLOUDINARY_URL: z.preprocess(
+      emptyToUndefined,
+      z
+        .string()
+        .regex(
+          CLOUDINARY_URL_PATTERN,
+          'CLOUDINARY_URL must look like cloudinary://<api_key>:<api_secret>@<cloud_name>',
+        )
+        .optional(),
+    ),
+    // Top folder for every file this API uploads. Use a different one per
+    // environment ("portal-dev", "portal") if they share one Cloudinary account.
+    CLOUDINARY_FOLDER: z.preprocess(
+      emptyToUndefined,
+      z
+        .string()
+        .regex(/^[a-z0-9][a-z0-9_-]*$/i, 'Letters, numbers, - and _ only.')
+        .default('portal'),
+    ),
+    // Leave both empty. Only the automated tests point them at a fake
+    // Cloudinary running on localhost.
+    CLOUDINARY_API_BASE: z.preprocess(emptyToUndefined, z.url().default('https://api.cloudinary.com')),
+    CLOUDINARY_DELIVERY_BASE: z.preprocess(
+      emptyToUndefined,
+      z.url().default('https://res.cloudinary.com'),
+    ),
 
     // First admin, created by `npm run db:seed`.
     SEED_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().default('Admin')),
@@ -52,23 +77,12 @@ const schema = z
       });
     }
 
-    // R2 is all or nothing. Four of five keys is a typo, not a choice, and
-    // would otherwise surface as a confusing error on the first upload.
-    const r2 = [
-      value.R2_ACCOUNT_ID,
-      value.R2_ACCESS_KEY_ID,
-      value.R2_SECRET_ACCESS_KEY,
-      value.R2_BUCKET,
-      value.R2_PUBLIC_URL,
-    ];
-    const filled = r2.filter((item) => item !== undefined).length;
-
-    if (filled > 0 && filled < r2.length) {
+    // A news portal that cannot store a cover image cannot publish news.
+    if (value.NODE_ENV === 'production' && !value.CLOUDINARY_URL) {
       ctx.addIssue({
         code: 'custom',
-        path: ['R2_ACCOUNT_ID'],
-        message:
-          'R2 is partially configured. Fill in all five R2_* variables, or leave all of them empty.',
+        path: ['CLOUDINARY_URL'],
+        message: 'CLOUDINARY_URL is required in production.',
       });
     }
   });
@@ -93,17 +107,17 @@ export const isTest = env.NODE_ENV === 'test';
 
 export const usingDevSessionSecret = data.SESSION_SECRET === undefined;
 
-export const r2Config =
-  data.R2_ACCOUNT_ID &&
-  data.R2_ACCESS_KEY_ID &&
-  data.R2_SECRET_ACCESS_KEY &&
-  data.R2_BUCKET &&
-  data.R2_PUBLIC_URL
-    ? {
-        accountId: data.R2_ACCOUNT_ID,
-        accessKeyId: data.R2_ACCESS_KEY_ID,
-        secretAccessKey: data.R2_SECRET_ACCESS_KEY,
-        bucket: data.R2_BUCKET,
-        publicUrl: data.R2_PUBLIC_URL.replace(/\/+$/, ''),
-      }
-    : null;
+const cloudinaryMatch = data.CLOUDINARY_URL?.match(CLOUDINARY_URL_PATTERN);
+
+export const cloudinaryConfig = cloudinaryMatch
+  ? {
+      apiKey: cloudinaryMatch[1]!,
+      apiSecret: cloudinaryMatch[2]!,
+      cloudName: cloudinaryMatch[3]!,
+      folder: data.CLOUDINARY_FOLDER,
+      apiBase: data.CLOUDINARY_API_BASE.replace(/\/+$/, ''),
+      deliveryBase: data.CLOUDINARY_DELIVERY_BASE.replace(/\/+$/, ''),
+    }
+  : null;
+
+export type CloudinaryConfig = NonNullable<typeof cloudinaryConfig>;

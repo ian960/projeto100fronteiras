@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { prisma } from '../src/config/prisma';
 import { agent, loginAs } from './helpers/agent';
-import { makeAdmin, makeCategory, makeColumn, makeColumnist, makeNews, makeWriter } from './factories';
+import {
+  makeAdmin,
+  makeCategory,
+  makeColumn,
+  makeColumnist,
+  makeMedia,
+  makeNews,
+  makeWriter,
+} from './factories';
+import { FAKE_CLOUDINARY } from './helpers/cloudinaryTestEnv';
 
 async function adminContext() {
   const admin = await makeAdmin();
@@ -66,14 +75,14 @@ describe('publishing', () => {
 
     const draft = await makeNews(
       { authorId: writer.id, createdById: admin.id, categoryId: category.id },
-      { excerpt: '', content: '', coverUrl: null },
+      { excerpt: '', content: '', coverId: null },
     );
 
     const response = await client.post(`/api/admin/posts/${draft.id}/publish`).expect(422);
 
     expect(response.body.error.fields).toHaveProperty('excerpt');
     expect(response.body.error.fields).toHaveProperty('content');
-    expect(response.body.error.fields).toHaveProperty('coverUrl');
+    expect(response.body.error.fields).toHaveProperty('coverId');
   });
 
   it('treats an empty Quill body as empty', async () => {
@@ -259,49 +268,286 @@ describe('video', () => {
         title: 'With a video',
         authorId: writer.id,
         categoryId: category.id,
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s',
-        videoProvider: 'youtube',
+        video: { provider: 'youtube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s' },
       })
       .expect(201);
 
     // The template builds the iframe from this id — an <iframe> is never
     // accepted from the editor.
-    expect(response.body.data.post.videoUrl).toBe('dQw4w9WgXcQ');
+    expect(response.body.data.post.videoYoutubeId).toBe('dQw4w9WgXcQ');
+    expect(response.body.data.post.video).toBeNull();
   });
 
-  it('rejects a url without a provider', async () => {
-    const { writer, category, client } = await adminContext();
-
-    await client
-      .post('/api/admin/posts')
-      .send({
-        type: 'news',
-        title: 'Half a video',
-        authorId: writer.id,
-        categoryId: category.id,
-        videoUrl: 'https://youtu.be/dQw4w9WgXcQ',
-      })
-      .expect(422);
-  });
-
-  it('rejects a non-mp4 uploaded video', async () => {
+  it('rejects a link that is not YouTube', async () => {
     const { writer, category, client } = await adminContext();
 
     const response = await client
       .post('/api/admin/posts')
       .send({
         type: 'news',
-        title: 'iPhone recording',
+        title: 'Wrong site',
         authorId: writer.id,
         categoryId: category.id,
-        // .mov/HEVC is what a phone produces and what most browsers cannot
-        // play. Accepting it would publish a black rectangle.
-        videoUrl: 'https://cdn.test.local/videos/clip.mov',
-        videoProvider: 'r2',
+        video: { provider: 'youtube', url: 'https://vimeo.com/123' },
       })
       .expect(422);
 
-    expect(response.body.error.fields).toHaveProperty('videoUrl');
+    expect(response.body.error.fields).toHaveProperty('video');
+  });
+
+  it('switches from an uploaded video to YouTube, clearing the file', async () => {
+    const { admin, writer, category, client } = await adminContext();
+    const clip = await makeMedia(admin.id, 'video');
+
+    const created = await client
+      .post('/api/admin/posts')
+      .send({
+        type: 'news',
+        title: 'Uploaded video',
+        authorId: writer.id,
+        categoryId: category.id,
+        video: { provider: 'cloudinary', mediaId: clip.id },
+      })
+      .expect(201);
+
+    // .mov or .webm, Cloudinary delivers an mp4 every browser plays.
+    expect(created.body.data.post.video.url).toMatch(/\/video\/upload\/q_auto\/v\d+\/.+\.mp4$/);
+    expect(created.body.data.post.video.posterUrl).toMatch(/so_0.*\.jpg$/);
+
+    const switched = await client
+      .patch(`/api/admin/posts/${created.body.data.post.id}`)
+      .send({ video: { provider: 'youtube', url: 'dQw4w9WgXcQ' } })
+      .expect(200);
+
+    expect(switched.body.data.post.videoYoutubeId).toBe('dQw4w9WgXcQ');
+    expect(switched.body.data.post.videoId).toBeNull();
+  });
+
+  it('refuses a file that is not a video', async () => {
+    const { admin, writer, category, client } = await adminContext();
+    const pdf = await makeMedia(admin.id, 'document');
+
+    const response = await client
+      .post('/api/admin/posts')
+      .send({
+        type: 'news',
+        title: 'A PDF as video',
+        authorId: writer.id,
+        categoryId: category.id,
+        video: { provider: 'cloudinary', mediaId: pdf.id },
+      })
+      .expect(422);
+
+    expect(response.body.error.fields).toHaveProperty('video');
+  });
+
+  it('never keeps both kinds at once, even past the service', async () => {
+    const { admin, writer, category } = await adminContext();
+    const clip = await makeMedia(admin.id, 'video');
+    const post = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+
+    // Straight into Postgres: the CHECK constraint "posts_single_video".
+    await expect(
+      prisma.post.update({
+        where: { id: post.id },
+        data: { videoYoutubeId: 'dQw4w9WgXcQ', videoId: clip.id },
+      }),
+    ).rejects.toThrow();
+  });
+});
+
+describe('media in posts', () => {
+  it('only takes an image as cover', async () => {
+    const { admin, writer, category, client } = await adminContext();
+    const pdf = await makeMedia(admin.id, 'document');
+
+    const response = await client
+      .post('/api/admin/posts')
+      .send({
+        type: 'news',
+        title: 'PDF as cover',
+        authorId: writer.id,
+        categoryId: category.id,
+        coverId: pdf.id,
+      })
+      .expect(422);
+
+    expect(response.body.error.fields).toHaveProperty('coverId');
+  });
+
+  it('returns the cover with ready-made responsive URLs', async () => {
+    const { admin, writer, category, client } = await adminContext();
+    const post = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+    await client.post(`/api/admin/posts/${post.id}/publish`).expect(200);
+
+    const detail = await agent().get(`/api/posts/${post.slug}`).expect(200);
+    const cover = detail.body.data.post.cover;
+
+    const delivery = `${process.env.CLOUDINARY_DELIVERY_BASE}/${FAKE_CLOUDINARY.cloudName}/image/upload`;
+    expect(cover.url.startsWith(delivery)).toBe(true);
+    // 1600px original: every width up to 1600, in a srcset the browser picks from.
+    expect(cover.srcset).toContain('w_480');
+    expect(cover.srcset).toContain('1600w');
+    expect(cover.url).toContain('f_auto,q_auto');
+
+    // Listings carry the cover too, for the cards.
+    const list = await agent().get('/api/posts').expect(200);
+    expect(list.body.data.items[0].cover.thumbnailUrl).toContain('w_480');
+  });
+
+  it('lets a columnist use only files they uploaded', async () => {
+    const admin = await makeAdmin();
+    const { user, author } = await makeColumnist();
+    const adminsPhoto = await makeMedia(admin.id);
+    const ownPhoto = await makeMedia(user.id);
+    const { client } = await loginAs(user.email);
+
+    await client
+      .post('/api/columnist/posts')
+      .send({ title: 'Borrowed cover', coverId: adminsPhoto.id })
+      .expect(403);
+
+    const created = await client
+      .post('/api/columnist/posts')
+      .send({ title: 'Own cover', coverId: ownPhoto.id })
+      .expect(201);
+
+    expect(created.body.data.post.authorId).toBe(author.id);
+    expect(created.body.data.post.cover.id).toBe(ownPhoto.id);
+  });
+
+  it('lets a columnist keep a cover the admin picked', async () => {
+    const admin = await makeAdmin();
+    const { user, author } = await makeColumnist();
+    const adminsPhoto = await makeMedia(admin.id);
+    const column = await makeColumn(
+      { authorId: author.id, createdById: user.id },
+      { coverId: adminsPhoto.id },
+    );
+    const { client } = await loginAs(user.email);
+
+    // The panel sends every field on save, the unchanged cover included.
+    await client
+      .patch(`/api/columnist/posts/${column.id}`)
+      .send({ title: 'New headline', coverId: adminsPhoto.id })
+      .expect(200);
+  });
+
+  it('keeps PDF attachments in the order and with the titles given', async () => {
+    const { admin, writer, category, client } = await adminContext();
+    const notice = await makeMedia(admin.id, 'document');
+    const results = await makeMedia(admin.id, 'document', { pages: 12 });
+
+    const created = await client
+      .post('/api/admin/posts')
+      .send({
+        type: 'news',
+        title: 'Concurso público',
+        authorId: writer.id,
+        categoryId: category.id,
+        attachments: [
+          { mediaId: results.id, title: 'Resultado final' },
+          { mediaId: notice.id, title: 'Edital completo' },
+        ],
+      })
+      .expect(201);
+
+    const attachments = created.body.data.post.attachments;
+    expect(attachments.map((item: { title: string }) => item.title)).toEqual([
+      'Resultado final',
+      'Edital completo',
+    ]);
+    expect(attachments[0].media.pages).toBe(12);
+    expect(attachments[0].media.url).toMatch(/\.pdf$/);
+    expect(attachments[0].media.thumbnailUrl).toContain('pg_1');
+
+    // The list is replaced as a whole.
+    const updated = await client
+      .patch(`/api/admin/posts/${created.body.data.post.id}`)
+      .send({ attachments: [{ mediaId: notice.id, title: 'Edital (retificado)' }] })
+      .expect(200);
+
+    expect(updated.body.data.post.attachments).toHaveLength(1);
+    expect(updated.body.data.post.attachments[0].title).toBe('Edital (retificado)');
+  });
+
+  it('attaches PDFs only', async () => {
+    const { admin, writer, category, client } = await adminContext();
+    const photo = await makeMedia(admin.id, 'image');
+
+    const response = await client
+      .post('/api/admin/posts')
+      .send({
+        type: 'news',
+        title: 'Photo as attachment',
+        authorId: writer.id,
+        categoryId: category.id,
+        attachments: [{ mediaId: photo.id, title: 'Foto' }],
+      })
+      .expect(422);
+
+    expect(response.body.error.fields).toHaveProperty('attachments');
+  });
+
+  it('keeps the files when a post is deleted', async () => {
+    const { admin, writer, category, client } = await adminContext();
+    const pdf = await makeMedia(admin.id, 'document');
+
+    const created = await client
+      .post('/api/admin/posts')
+      .send({
+        type: 'news',
+        title: 'To be deleted',
+        authorId: writer.id,
+        categoryId: category.id,
+        attachments: [{ mediaId: pdf.id, title: 'Anexo' }],
+      })
+      .expect(201);
+
+    await client.delete(`/api/admin/posts/${created.body.data.post.id}`).expect(204);
+
+    // The attachment rows went with the post; the file is still there.
+    expect(await prisma.postAttachment.count()).toBe(0);
+    expect(await prisma.media.findUnique({ where: { id: pdf.id } })).not.toBeNull();
+  });
+
+  it('keeps our photos inside the text and drops everyone else\'s', async () => {
+    const { writer, category, client } = await adminContext();
+    const ours = `${process.env.CLOUDINARY_DELIVERY_BASE}/${FAKE_CLOUDINARY.cloudName}/image/upload/v1760000000/${FAKE_CLOUDINARY.folder}/body/0b3e1c0e-0000-4000-8000-000000000001.jpg`;
+
+    const response = await client
+      .post('/api/admin/posts')
+      .send({
+        type: 'news',
+        title: 'Photos in the text',
+        authorId: writer.id,
+        categoryId: category.id,
+        content:
+          `<p><img src="${ours}" alt="Praça cheia" onerror="alert(1)"></p>` +
+          '<p><img src="https://elsewhere.example/photo.jpg"></p>',
+      })
+      .expect(201);
+
+    const content: string = response.body.data.post.content;
+    expect(content).toContain('alt="Praça cheia"');
+    expect(content).toContain('srcset=');
+    expect(content).toContain('loading="lazy"');
+    expect(content).not.toContain('onerror');
+    expect(content).not.toContain('elsewhere.example');
+  });
+});
+
+describe('author photo', () => {
+  it('turns the photo into a face-centred avatar', async () => {
+    const { user, author } = await makeColumnist();
+    const photo = await makeMedia(user.id);
+    const { client } = await loginAs(user.email);
+
+    await client.patch('/api/columnist/profile').send({ photoId: photo.id }).expect(200);
+
+    const page = await agent().get(`/api/columnists/${author.slug}`).expect(200);
+    expect(page.body.data.author.photoId).toBe(photo.id);
+    expect(page.body.data.author.photoUrl).toContain('c_thumb,g_face');
   });
 });
 
