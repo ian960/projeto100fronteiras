@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Alert, Button, Loading, TextArea, TextField } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
-import { roleLabel } from '../../lib/format';
+import { isSlugOf, roleLabel, slugify } from '../../lib/format';
 import { useDocumentTitle, useMe } from '../../lib/hooks';
 import type { User } from '../../lib/types';
 import { useAuthor } from '../../site/queries';
@@ -63,6 +63,13 @@ function BylineForm({ me, initialBio }: { me: User; initialBio: string }) {
     bio: initialBio,
   });
 
+  // The page address follows the name when it was made from it (server rule).
+  const nextSlug = isSlugOf(author.slug, author.name) ? slugify(form.name) : author.slug;
+  const pageHint =
+    nextSlug && nextSlug !== author.slug
+      ? `Sua página vai mudar de /autor/${author.slug} para /autor/${nextSlug}. Links antigos param de funcionar.`
+      : `Sua página: /autor/${author.slug}`;
+
   function submit(event: FormEvent) {
     event.preventDefault();
     updateProfile.mutate(
@@ -82,7 +89,7 @@ function BylineForm({ me, initialBio }: { me: User; initialBio: string }) {
       <p className="mb-4 mt-1 text-sm text-tinta-suave">Nome, coluna, foto e mini-bio aparecem no fim de cada coluna e na sua página.</p>
       <form onSubmit={submit} className="flex flex-col gap-4">
         {updateProfile.error && Object.keys(errors).length === 0 && <Alert>{errorMessage(updateProfile.error)}</Alert>}
-        <TextField label="Nome na assinatura" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name} />
+        <TextField label="Nome na assinatura" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name} hint={pageHint} />
         <TextField label="Nome da coluna" optional value={form.columnTitle} onChange={(e) => setForm({ ...form, columnTitle: e.target.value })} error={errors.columnTitle} />
         <TextArea label="Mini-bio" optional rows={3} maxLength={600} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} error={errors.bio} />
         <ImageField label="Foto" purpose="author" round optional value={form.photo} onChange={(photo) => setForm({ ...form, photo })} error={errors.photoId} />

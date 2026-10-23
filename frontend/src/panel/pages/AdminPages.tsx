@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Link } from 'react-router';
 import { Alert, Avatar, Button, Checkbox, EmptyState, Loading, Pagination, TextArea, TextField, cx } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
-import { countPosts, formatDateTime, roleLabel } from '../../lib/format';
+import { countPosts, formatDateTime, isSlugOf, roleLabel, slugify } from '../../lib/format';
 import { useDocumentTitle, useMe } from '../../lib/hooks';
 import type { AuthorWithCount, CategoryWithCount, Role, User } from '../../lib/types';
 import { useAdminAuthors, useAdminCategories, useAuthorActions, useCategoryActions, useUserActions, useUsers } from '../queries';
@@ -132,16 +132,26 @@ function CategoryModal({ category, onClose }: { category: CategoryWithCount | nu
   );
 }
 
+// "/categoria/politica", or a warning when saving will move the page.
+function addressHint(prefix: string, current: string, next: string): string {
+  if (!next || next === current) return `${prefix}${current}`;
+  return `Vai mudar de ${prefix}${current} para ${prefix}${next}. Links antigos param de funcionar.`;
+}
+
 function CategoryForm({ category, onDone }: { category: CategoryWithCount; onDone: () => void }) {
   const { update } = useCategoryActions();
   const toast = useToast();
-  const [form, setForm] = useState({ name: category.name, slug: category.slug, sortOrder: String(category.sortOrder) });
+  const [form, setForm] = useState({ name: category.name, slug: category.slug, slugTouched: false, sortOrder: String(category.sortOrder) });
   const errors = fieldErrors(update.error);
+  // An address made from the name follows the name (the server does the
+  // same); one typed by hand stays.
+  const shownSlug = !form.slugTouched && isSlugOf(category.slug, category.name) ? slugify(form.name) : form.slug;
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    const slug = form.slugTouched ? { slug: form.slug.trim() || form.name.trim() } : {};
     update.mutate(
-      { id: category.id, input: { name: form.name.trim(), slug: form.slug.trim(), sortOrder: Number(form.sortOrder) || 0 } },
+      { id: category.id, input: { name: form.name.trim(), ...slug, sortOrder: Number(form.sortOrder) || 0 } },
       {
         onSuccess: () => {
           toast('Categoria atualizada');
@@ -157,10 +167,10 @@ function CategoryForm({ category, onDone }: { category: CategoryWithCount; onDon
       <TextField label="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name} />
       <TextField
         label="Endereço"
-        value={form.slug}
-        onChange={(e) => setForm({ ...form, slug: e.target.value })}
+        value={shownSlug}
+        onChange={(e) => setForm({ ...form, slug: e.target.value, slugTouched: true })}
         error={errors.slug}
-        hint="Mudar o endereço quebra os links já compartilhados desta categoria."
+        hint={addressHint('/categoria/', category.slug, shownSlug)}
       />
       <TextField
         label="Posição no menu"
@@ -269,7 +279,9 @@ function AuthorForm({ author, onDone }: { author: AuthorWithCount | null; onDone
     photo: (author?.photoId && author.photoUrl ? { id: author.photoId, previewUrl: author.photoUrl } : null) as ImageValue,
     columnTitle: author?.columnTitle ?? '',
     active: author?.active ?? true,
+    slugTouched: false,
   });
+  const shownSlug = author && !form.slugTouched && isSlugOf(author.slug, author.name) ? slugify(form.name) : form.slug;
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -277,7 +289,8 @@ function AuthorForm({ author, onDone }: { author: AuthorWithCount | null; onDone
       name: form.name.trim(),
       bio: form.bio.trim() || null,
       photoId: form.photo?.id ?? null,
-      ...(author ? { slug: form.slug.trim(), active: form.active } : {}),
+      ...(author ? { active: form.active } : {}),
+      ...(author && form.slugTouched ? { slug: form.slug.trim() || form.name.trim() } : {}),
       ...(author?.type === 'columnist' ? { columnTitle: form.columnTitle.trim() || null } : {}),
     };
     const done = { onSuccess: () => { toast(author ? 'Autor atualizado' : 'Redator criado'); onDone(); } };
@@ -298,10 +311,10 @@ function AuthorForm({ author, onDone }: { author: AuthorWithCount | null; onDone
         <>
           <TextField
             label="Endereço da página"
-            value={form.slug}
-            onChange={(e) => setForm({ ...form, slug: e.target.value })}
+            value={shownSlug}
+            onChange={(e) => setForm({ ...form, slug: e.target.value, slugTouched: true })}
             error={errors.slug}
-            hint={`/autor/${form.slug}`}
+            hint={addressHint('/autor/', author.slug, shownSlug)}
           />
           <Checkbox
             label="Ativo"

@@ -1,6 +1,6 @@
 import { Conflict, Forbidden, NotFound, ValidationError } from '../../shared/errors/AppError';
 import { MediaKind, PostStatus, PostType } from '../../shared/types/enums';
-import { slugify } from '../../shared/utils/slugify';
+import { isSlugOf, slugify } from '../../shared/utils/slugify';
 import { isHtmlEmpty, sanitizePostContent } from '../../shared/utils/sanitizeHtml';
 import { extractYoutubeId } from '../../shared/utils/youtube';
 import type { Paginated } from '../../shared/types/pagination';
@@ -337,6 +337,13 @@ export class PostsService {
 
     if (input.slug !== undefined) {
       data.slug = await this.buildUniqueSlug(input.slug, id);
+    } else if (input.title !== undefined && post.publishedAt === null && isSlugOf(post.slug, post.title)) {
+      // Until the first publication nobody has the link, so the address
+      // follows the headline: a draft saved as "teste" does not go live as
+      // /noticia/teste. From then on it stays put, because it is already in
+      // WhatsApp groups. Taking a post offline keeps publishedAt, so it does
+      // not start following again.
+      data.slug = await this.buildUniqueSlug(input.title, id);
     }
 
     // Only an admin may move a post between categories or change the byline.

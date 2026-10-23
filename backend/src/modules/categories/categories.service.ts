@@ -1,5 +1,5 @@
 import { Conflict, NotFound, ValidationError } from '../../shared/errors/AppError';
-import { slugify } from '../../shared/utils/slugify';
+import { isSlugOf, slugify } from '../../shared/utils/slugify';
 import { categoriesRepository } from './categories.repository';
 import type { ICategoryPublic, ICategoryWithPostCount } from './categories.types';
 import type { CreateCategoryInput, UpdateCategoryInput } from './categories.service.types';
@@ -64,10 +64,8 @@ export class CategoriesService {
   }
 
   async update(id: string, input: UpdateCategoryInput): Promise<ICategoryPublic> {
-    await this.ensureExists(id);
+    const category = await this.ensureExists(id);
 
-    // Renaming does not move the slug. If it did, /category/politica would
-    // 404 and every shared link would die.
     let slug: string | undefined;
 
     if (input.slug !== undefined) {
@@ -77,6 +75,16 @@ export class CategoriesService {
 
       if (existing && existing.id !== id) {
         throw new Conflict(`A category with the slug "${slug}" already exists.`);
+      }
+    } else if (input.name !== undefined && isSlugOf(category.slug, category.name)) {
+      // Nobody typed this address: it was made from the name, so it follows
+      // the name. Links to the old address stop working, which the panel
+      // says before saving. If the new address is taken, the rename still
+      // goes through and the old address stays.
+      const candidate = slugify(input.name);
+
+      if (candidate && candidate !== category.slug && !(await categoriesRepository.findBySlug(candidate))) {
+        slug = candidate;
       }
     }
 

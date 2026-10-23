@@ -39,13 +39,19 @@ describe('categories service: create', () => {
 });
 
 describe('categories service: update', () => {
-  it('keeps the slug when only the name changes', async () => {
+  it('moves a slug made from the name along with the name', async () => {
     const created = await categoriesService.create({ name: 'Politica' });
     const updated = await categoriesService.update(created.id, { name: 'Política e Poder' });
 
-    // Moving the slug on a rename would 404 every shared link.
-    expect(updated.slug).toBe('politica');
+    expect(updated.slug).toBe('politica-e-poder');
     expect(updated.name).toBe('Política e Poder');
+  });
+
+  it('keeps a slug typed by hand when only the name changes', async () => {
+    const created = await categoriesService.create({ name: 'Politica', slug: 'poder' });
+    const updated = await categoriesService.update(created.id, { name: 'Política e Poder' });
+
+    expect(updated.slug).toBe('poder');
   });
 
   it('moves the slug when asked explicitly', async () => {

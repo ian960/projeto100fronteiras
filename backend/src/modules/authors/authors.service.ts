@@ -1,6 +1,6 @@
 import { Conflict, Forbidden, NotFound, ValidationError } from '../../shared/errors/AppError';
 import { AuthorType, MediaKind } from '../../shared/types/enums';
-import { slugify } from '../../shared/utils/slugify';
+import { isSlugOf, slugify } from '../../shared/utils/slugify';
 import type { SessionUser } from '../auth/auth.types';
 import { mediaService } from '../media/media.service';
 import { authorsRepository } from './authors.repository';
@@ -24,6 +24,19 @@ export class AuthorsService {
     }
 
     return slug;
+  }
+
+  // A renamed author whose address was made from the old name gets one made
+  // from the new name, unless someone else already has it. Returns undefined
+  // when the address stays as it is.
+  private async followName(author: IAuthorPublic, newName: string | undefined): Promise<string | undefined> {
+    if (newName === undefined || !isSlugOf(author.slug, author.name)) return undefined;
+
+    const candidate = slugify(newName);
+    if (!candidate || candidate === author.slug) return undefined;
+
+    const taken = await authorsRepository.findBySlug(candidate);
+    return taken ? undefined : candidate;
   }
 
   private async ensureSlugIsFree(slug: string, exceptId?: string): Promise<void> {
@@ -103,13 +116,15 @@ export class AuthorsService {
       });
     }
 
-    // The slug only moves when explicitly asked for. Renaming an author must
-    // not silently 404 every link to their page.
+    // A typed address wins. Otherwise an address made from the name follows
+    // the name (see followName).
     let slug: string | undefined;
 
     if (input.slug !== undefined) {
       slug = this.buildSlug(input.slug);
       await this.ensureSlugIsFree(slug, id);
+    } else {
+      slug = await this.followName(author, input.name);
     }
 
     return authorsRepository.update(id, {
@@ -130,9 +145,11 @@ export class AuthorsService {
 
     const author = await this.ensureExists(actor.authorId);
     await this.assertPhoto(actor, input.photoId, author.photoId);
+    const slug = await this.followName(author, input.name);
 
     return authorsRepository.update(actor.authorId, {
       ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(slug !== undefined ? { slug } : {}),
       ...(input.bio !== undefined ? { bio: input.bio } : {}),
       ...(input.photoId !== undefined ? { photoId: input.photoId } : {}),
       ...(input.columnTitle !== undefined ? { columnTitle: input.columnTitle } : {}),

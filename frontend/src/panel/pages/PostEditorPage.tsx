@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router';
 import { Alert, Button, Loading, SelectField, TextArea, TextField, cx } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
-import { formatDateTime, postPath } from '../../lib/format';
+import { formatDateTime, isSlugOf, postPath, slugify } from '../../lib/format';
 import { useDocumentTitle } from '../../lib/hooks';
 import type { PostDetail, PostType, PostWithAudit } from '../../lib/types';
 import { RichTextEditor } from '../RichTextEditor';
@@ -21,6 +21,9 @@ type Form = {
   title: string;
   subtitle: string;
   slug: string;
+  // True once the writer types in the address field. Until then the address
+  // is the server's to decide (it follows the headline before publication).
+  slugTouched: boolean;
   excerpt: string;
   content: string;
   cover: ImageValue;
@@ -46,6 +49,7 @@ function toForm(post: PostWithAudit | null, type: PostType): Form {
     title: post?.title ?? '',
     subtitle: post?.subtitle ?? '',
     slug: post?.slug ?? '',
+    slugTouched: false,
     excerpt: post?.excerpt ?? '',
     content: post?.content ?? '',
     cover: post?.cover ? imageValue(post.cover) : null,
@@ -79,7 +83,9 @@ function toInput(form: Form, scope: Scope, isNew: boolean): PostInput {
     attachments: form.attachments.map((item) => ({ mediaId: item.media.id, title: item.title.trim() || 'Documento' })),
   };
 
-  if (form.slug.trim()) input.slug = form.slug.trim();
+  // Sent only when typed. Emptying the field goes back to an address made
+  // from the headline.
+  if (form.slugTouched) input.slug = form.slug.trim() || form.title.trim();
 
   // The columnist's endpoint decides type, byline and category on the server;
   // sending them would be refused.
@@ -146,6 +152,22 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
   useDocumentTitle(isNew ? `Nova ${noun}` : form.title || `Editar ${noun}`);
 
   const input = useMemo(() => toInput(form, scope, isNew), [form, scope, isNew]);
+
+  // The address follows the headline until the first publication (the server
+  // does the same; this shows it before saving). After that it is frozen:
+  // the link is already in WhatsApp groups.
+  const wasPublished = Boolean(post?.publishedAt);
+  const followsTitle = !form.slugTouched && (isNew || (!wasPublished && isSlugOf(post.slug, post.title)));
+  // Not typed: whatever the server has now (it may have moved it on save).
+  const shownSlug = followsTitle ? slugify(form.title) : form.slugTouched ? form.slug : (post?.slug ?? form.slug);
+  const slugPath = `/${form.type === 'column' ? 'coluna' : 'noticia'}/${shownSlug}`;
+  const slugHint = !shownSlug
+    ? 'Deixe em branco para gerar do título.'
+    : followsTitle
+      ? `${slugPath}. Acompanha o título até a primeira publicação.`
+      : wasPublished
+        ? `${slugPath}. Já foi publicada: mudar o endereço quebra os links já compartilhados.`
+        : slugPath;
   const dirty = JSON.stringify(input) !== savedSnapshot;
 
   // Pick a byline for a new piece so the admin is not forced to: the
@@ -594,11 +616,11 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
             <TextField
               label="Endereço da página"
               optional
-              value={form.slug}
+              value={shownSlug}
               disabled={locked}
-              onChange={(event) => update('slug', event.target.value)}
+              onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value, slugTouched: true }))}
               placeholder="gerado a partir do título"
-              hint={form.slug ? `/${form.type === 'column' ? 'coluna' : 'noticia'}/${form.slug}` : 'Deixe em branco para gerar do título.'}
+              hint={slugHint}
               error={errors.slug}
             />
           </Box>
