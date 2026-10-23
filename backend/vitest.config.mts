@@ -7,6 +7,12 @@ import { FAKE_CLOUDINARY_ENV } from './tests/helpers/cloudinaryTestEnv';
 // back to the development database.
 config({ path: '.env.test', quiet: true });
 
+// Inside Docker the database is "db:5432", not the localhost address written
+// in .env.test. docker-compose.yml passes the test database's address here.
+if (process.env.TEST_DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+}
+
 // Keep the suite deterministic: the real Cloudinary is never used here.
 // Pre-setting the keys stops dotenv (inside src/config/env.ts) from pulling
 // real credentials out of backend/.env; each group below sets its own.

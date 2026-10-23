@@ -30,13 +30,20 @@ only backend cost is `GET /api/posts/by-ids`.
 
 ## Running locally
 
+**With Docker** (database, API and site with one command): see the
+[root README](../README.md). The commands below then run inside the
+container, e.g. `docker compose exec api npm test`.
+
+**Without Docker**, as described here, the API runs on your machine and only
+Postgres is in Docker.
+
 Only `DATABASE_URL` is required. Cloudinary, `SESSION_SECRET` and the seed
 variables all have development defaults, so the API runs before anyone has
 Cloudinary keys. To upload images, videos and PDFs, set `CLOUDINARY_URL` (see
 [Media](#media-cloudinary)).
 
 ```bash
-docker compose up -d            # from the repository root
+docker compose up -d db         # from the repository root: only Postgres
 cd backend
 cp .env.example .env            # set DATABASE_URL (check the port in docker-compose.yml)
 npm install
@@ -73,6 +80,10 @@ log in once and Insomnia keeps and sends the cookie. There is no token to copy.
 npm run db:test:setup   # creates .env.test from .env and the _test database (idempotent)
 npm test
 ```
+
+In Docker: `docker compose exec api npm run db:test:setup`, then
+`docker compose exec api npm test`. There the address comes from
+`TEST_DATABASE_URL` (set in `docker-compose.yml`) and no `.env.test` is written.
 
 The suite rebuilds the test database on every run by replaying the files in
 `prisma/migrations`, so the hand-written SQL (CHECK constraints, the partial

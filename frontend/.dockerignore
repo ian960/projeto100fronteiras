@@ -1,0 +1,9 @@
+# What `docker build` never copies into the image. At runtime compose mounts
+# the folder anyway; this keeps the image small and free of secrets.
+node_modules
+dist
+*.log
+
+.env
+.env.*
+!.env.example

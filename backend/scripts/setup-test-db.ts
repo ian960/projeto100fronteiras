@@ -4,6 +4,9 @@
 //    pointing at "<your database>_test" on the same server and port.
 // 2. Creates that database if it does not exist.
 //
+// In Docker, docker-compose.yml passes TEST_DATABASE_URL instead (the server
+// is "db:5432" there), so step 1 is skipped and no file is written.
+//
 // Safe to run any number of times. It never touches the development database
 // and never runs migrations — the test suite rebuilds the schema itself.
 
@@ -52,10 +55,13 @@ function ensureEnvTest(): void {
   console.log(`Created .env.test → database "${devName}_test" on ${url.host}`);
 }
 
-async function ensureDatabase(): Promise<void> {
+function readEnvTestUrl(): string {
   const testUrl = dotenv.parse(fs.readFileSync(envTestPath)).DATABASE_URL;
   if (!testUrl) fail('DATABASE_URL is missing from backend/.env.test.');
+  return testUrl;
+}
 
+async function ensureDatabase(testUrl: string): Promise<void> {
   const url = new URL(testUrl);
   const name = url.pathname.replace(/^\//, '');
 
@@ -100,8 +106,13 @@ async function ensureDatabase(): Promise<void> {
 }
 
 async function main() {
-  ensureEnvTest();
-  await ensureDatabase();
+  const fromDocker = process.env.TEST_DATABASE_URL;
+  if (fromDocker) {
+    await ensureDatabase(fromDocker);
+  } else {
+    ensureEnvTest();
+    await ensureDatabase(readEnvTestUrl());
+  }
   console.log('Ready. Run: npm test');
 }
 
