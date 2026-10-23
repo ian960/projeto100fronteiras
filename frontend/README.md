@@ -8,7 +8,11 @@ React 19 + Vite 8 + TypeScript. One app with two halves:
 
 ## Running
 
-The backend must be running first (`npm run dev` in `backend/`).
+**With Docker**, `docker compose up` at the repository root runs the site
+together with the API and the database: see the [root README](../README.md).
+
+**Without Docker**, the backend must be running first (`npm run dev` in
+`backend/`):
 
 ```bash
 npm install

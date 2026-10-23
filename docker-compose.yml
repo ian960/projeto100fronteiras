@@ -1,3 +1,20 @@
+# Everything for development with one command, from the repository root:
+#
+#   docker compose up        db + api + web; Ctrl+C stops them
+#
+#   site and panel   http://localhost:5173
+#   API              http://localhost:3333/api/health   (Insomnia)
+#   Postgres         localhost:5433                      (DBeaver, Prisma Studio)
+#
+# The code is not copied into the containers: backend/ and frontend/ are
+# mounted, so saving a file in VS Code reloads the API or the page.
+# Commands that used to run in a terminal now run inside the container:
+#
+#   docker compose exec api npm run db:seed
+#   docker compose exec api npm test
+#
+# The root README has the full list.
+
 services:
   db:
     image: postgres:16-alpine
@@ -17,6 +34,55 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  api:
+    build:
+      context: ./backend
+      target: dev
+    container_name: portal_api
+    # A tiny init process as PID 1: Ctrl+C and `docker compose stop` reach
+    # Node at once instead of waiting 10 seconds to kill it.
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    # Everything else (SESSION_SECRET, CLOUDINARY_URL...) still comes from
+    # backend/.env. These are the values that are different inside Docker,
+    # and they win: dotenv never overrides a variable that is already set.
+    environment:
+      # Inside Docker the database is the "db" service on its own port 5432,
+      # not localhost:5433 as written in backend/.env.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      TEST_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}_test?schema=public
+      PORT: 3333
+      # Docker on Windows does not pass "file changed" events into the
+      # container. Polling checks the files every 300 ms instead.
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
+    ports: ["127.0.0.1:${API_PORT:-3333}:3333"]
+    volumes:
+      - ./backend:/app
+      # node_modules stays in the container (Linux builds). Without this line
+      # the mount above would hide it behind the Windows one.
+      - /app/node_modules
+
+  web:
+    build:
+      context: ./frontend
+      target: dev
+    container_name: portal_web
+    init: true
+    depends_on:
+      - api
+    environment:
+      # Vite forwards /api to the "api" service. Wins over frontend/.env.
+      VITE_API_PROXY_TARGET: http://api:3333
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
+    ports: ["127.0.0.1:${WEB_PORT:-5173}:5173"]
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
 volumes:
   pgdata:
