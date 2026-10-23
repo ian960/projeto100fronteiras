@@ -33,6 +33,28 @@ no CORS setup, no tokens.
 
 Node 22.22 or newer (React Router 8 requires it).
 
+## Production (Cloudflare)
+
+`npm run build` makes `dist/`; Cloudflare serves it, and `worker/index.ts`
+handles three things (config in `wrangler.jsonc`, steps in
+[DEPLOY.md](../DEPLOY.md)):
+
+- `/api/*` is forwarded to the API on Render with `PROXY_SECRET` and the
+  visitor's IP. Same origin for the browser, so the cookie works on Safari.
+- `/noticia/:slug` and `/coluna/:slug` get the article's `<meta og:*>` tags
+  written into `index.html`: WhatsApp and Facebook do not run JavaScript.
+- A ping every 10 minutes keeps Render's free API from sleeping.
+
+`public/_headers` sets the security headers, including a Content Security
+Policy. **A new outside service (a font host, an analytics script, another
+video site) has to be added there and in `SECURITY_HEADERS` in
+`worker/index.ts`**, or the browser blocks it.
+
+| script | what it does |
+|---|---|
+| `npm run preview:worker` | the built site behind the Worker, against the API on `localhost:3333` |
+| `npm run deploy` | build and publish by hand (normally Cloudflare does it on every push) |
+
 ## Where things are
 
 ```

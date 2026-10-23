@@ -52,6 +52,19 @@ export const errorMiddleware: ErrorRequestHandler = (err, req, res, _next) => {
     }
   }
 
+  // Raised by Express itself or by express.json(): malformed JSON, a body
+  // over the limit, a broken %-escape in the URL. The client's fault, not a
+  // bug, so a 4xx and no error log.
+  const status = (err as { status?: unknown }).status;
+  if (typeof status === 'number' && status >= 400 && status < 500) {
+    return res.status(status).json({
+      error:
+        status === 413
+          ? { code: 'PAYLOAD_TOO_LARGE', message: 'Request body is too large.' }
+          : { code: 'BAD_REQUEST', message: 'Malformed request.' },
+    });
+  }
+
   logger.error('Unhandled error', { err, method: req.method, url: req.originalUrl });
 
   return res.status(500).json({

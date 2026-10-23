@@ -37,6 +37,9 @@ export type IMediaView = {
   srcset: string | null;
   // Videos: a full-size frame for <video poster>.
   posterUrl: string | null;
+  // Images: 1200×630 JPEG, the size WhatsApp and Facebook expect for the
+  // card of a shared link (og:image). Small enough for WhatsApp's limit.
+  shareUrl: string | null;
 };
 
 // What the panel needs to send a file straight to Cloudinary. Every field in

@@ -72,7 +72,7 @@ export function presentMedia(media: IMedia): IMediaView {
   // If it has since been switched off, say so with empty URLs instead of
   // crashing every page that shows a picture.
   if (!config) {
-    return { ...facts, url: '', thumbnailUrl: '', srcset: null, posterUrl: null };
+    return { ...facts, url: '', thumbnailUrl: '', srcset: null, posterUrl: null, shareUrl: null };
   }
 
   if (media.kind === MediaKind.VIDEO) {
@@ -85,6 +85,7 @@ export function presentMedia(media: IMedia): IMediaView {
       thumbnailUrl: `${video}/so_0,c_fill,w_480,h_270,q_auto/${asset(media, 'jpg')}`,
       posterUrl: `${video}/so_0,c_limit,w_1280,q_auto/${asset(media, 'jpg')}`,
       srcset: null,
+      shareUrl: null,
     };
   }
 
@@ -98,6 +99,7 @@ export function presentMedia(media: IMedia): IMediaView {
       thumbnailUrl: `${image}/pg_1,c_limit,w_480,${WEB}/${asset(media, 'jpg')}`,
       srcset: null,
       posterUrl: null,
+      shareUrl: null,
     };
   }
 
@@ -107,6 +109,7 @@ export function presentMedia(media: IMedia): IMediaView {
     thumbnailUrl: imageUrl(config, media, 480),
     srcset: imageSrcset(config, media, media.width),
     posterUrl: null,
+    shareUrl: `${base(config, 'image')}/c_fill,w_1200,h_630,q_auto/${asset(media, 'jpg')}`,
   };
 }
 

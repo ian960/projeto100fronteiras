@@ -42,6 +42,7 @@ export type Media = {
   thumbnailUrl: string; // small image, video frame or PDF page 1
   srcset: string | null; // images
   posterUrl: string | null; // videos
+  shareUrl: string | null; // images: 1200×630 for link previews
 };
 
 export type AuthorSummary = {

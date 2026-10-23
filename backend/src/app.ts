@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { env } from './config/env';
 import { isMediaConfigured } from './config/cloudinary';
 import { sessionMiddleware } from './config/session';
+import { proxyGuard } from './shared/middlewares/proxyGuard';
 import { buildRouter } from './routes/routes';
 import { notFound } from './shared/middlewares/notFound';
 import { errorMiddleware } from './shared/middlewares/error.middleware';
@@ -13,11 +14,16 @@ import { errorMiddleware } from './shared/middlewares/error.middleware';
 export function createApp() {
   const app = express();
 
-  // Behind nginx or Cloudflare, so the client IP arrives in X-Forwarded-For.
-  // The rate limiter and the secure cookie both depend on this being set.
+  // Behind Render's proxy, which says in X-Forwarded-Proto that the visitor
+  // came over https. express-session only sends the Secure cookie when it
+  // trusts that. (The visitor's IP comes from the Worker: see proxyGuard.)
   app.set('trust proxy', 1);
 
   app.use(helmet());
+
+  // Before the body and the session: a request that did not come through the
+  // site's Worker is refused without touching the database.
+  app.use(proxyGuard(env.PROXY_SECRET));
 
   app.use(
     cors({

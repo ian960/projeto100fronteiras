@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /painel
+Disallow: /entrar
+Disallow: /cadastro
+Disallow: /api/

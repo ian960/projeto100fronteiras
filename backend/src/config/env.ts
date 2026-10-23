@@ -63,6 +63,13 @@ const schema = z
       z.url().default('https://res.cloudinary.com'),
     ),
 
+    // Shared with the Cloudflare Worker that serves the site (see
+    // shared/middlewares/proxyGuard.ts). Required in production.
+    PROXY_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32, 'PROXY_SECRET needs at least 32 characters').optional(),
+    ),
+
     // First admin, created by `npm run db:seed`.
     SEED_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().default('Admin')),
     SEED_ADMIN_EMAIL: z.preprocess(emptyToUndefined, z.email().default('admin@portal.local')),
@@ -74,6 +81,16 @@ const schema = z
         code: 'custom',
         path: ['SESSION_SECRET'],
         message: 'SESSION_SECRET is required in production.',
+      });
+    }
+
+    // Without it the API cannot tell readers apart behind the Worker, and the
+    // login limit would be shared by everyone (see proxyGuard.ts).
+    if (value.NODE_ENV === 'production' && !value.PROXY_SECRET) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['PROXY_SECRET'],
+        message: 'PROXY_SECRET is required in production (the same value as in the Cloudflare Worker).',
       });
     }
 

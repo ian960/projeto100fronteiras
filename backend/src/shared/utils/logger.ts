@@ -5,19 +5,22 @@ function write(level: Level, message: string, meta?: unknown) {
     level,
     time: new Date().toISOString(),
     message,
-    ...(meta !== undefined ? { meta: serialize(meta) } : {}),
+    ...(meta !== undefined ? { meta } : {}),
   };
 
-  const line = JSON.stringify(entry);
+  const line = JSON.stringify(entry, errorsAsObjects);
   if (level === 'error') console.error(line);
   else console.log(line);
 }
 
-function serialize(meta: unknown) {
-  if (meta instanceof Error) {
-    return { name: meta.name, message: meta.message, stack: meta.stack };
+// JSON.stringify turns an Error into {} (its fields are not enumerable), at
+// any depth: `logger.error('x', { err })` would log nothing useful.
+function errorsAsObjects(_key: string, value: unknown) {
+  if (value instanceof Error) {
+    const code = (value as { code?: unknown }).code;
+    return { name: value.name, message: value.message, ...(code !== undefined ? { code } : {}), stack: value.stack };
   }
-  return meta;
+  return value;
 }
 
 export const logger = {

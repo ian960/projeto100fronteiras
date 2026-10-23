@@ -76,6 +76,8 @@ describe('uploading and registering', () => {
     expect(media.originalName).toBe('praça.png');
     expect(await fetchStatus(media.url)).toBe(200);
     expect(await fetchStatus(media.thumbnailUrl)).toBe(200);
+    expect(media.shareUrl).toMatch(/\/c_fill,w_1200,h_630,q_auto\/v\d+\/.+\.jpg$/);
+    expect(await fetchStatus(media.shareUrl)).toBe(200);
 
     const row = await prisma.media.findUniqueOrThrow({ where: { id: media.id } });
     expect(row.uploadedById).toBe(admin.id);

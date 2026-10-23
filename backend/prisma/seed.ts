@@ -11,8 +11,15 @@ const DEV_ADMIN_PASSWORD = 'admin12345';
 //
 // Idempotent: running it twice changes nothing. Run with `npm run db:seed`.
 async function main() {
-  if (isProduction && !env.SEED_ADMIN_PASSWORD) {
-    throw new Error('SEED_ADMIN_PASSWORD must be set to seed a production database.');
+  // Also refused when the database is not on this machine or in Docker:
+  // seeding the Render database from a laptop runs with NODE_ENV unset.
+  const host = new URL(env.DATABASE_URL).hostname;
+  const isLocalDatabase = ['localhost', '127.0.0.1', '::1', 'db'].includes(host);
+
+  if ((isProduction || !isLocalDatabase) && !env.SEED_ADMIN_PASSWORD) {
+    throw new Error(
+      `SEED_ADMIN_PASSWORD must be set to seed ${isProduction ? 'a production' : `the database at ${host}`}.`,
+    );
   }
 
   const email = env.SEED_ADMIN_EMAIL.toLowerCase();
