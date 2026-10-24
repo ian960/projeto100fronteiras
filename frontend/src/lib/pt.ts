@@ -29,6 +29,10 @@ const exact: Record<string, string> = {
   'This value is already in use.': 'Este valor já está em uso.',
   'This record is referenced by others.': 'Este item está em uso e não pode ser excluído.',
   'Unexpected error. Please try again.': 'Erro inesperado no servidor. Tente de novo.',
+  'Malformed request.': 'O pedido chegou incompleto. Recarregue a página e tente de novo.',
+  'Request body is too large.': 'O conteúdo é grande demais para enviar de uma vez.',
+  'Use the site address, not the API address.': 'Acesse pelo endereço do site.',
+  'The server is not answering. Try again in a minute.': 'O servidor não está respondendo. Tente de novo em um minuto.',
 
   // not found
   'Post not found.': 'Matéria não encontrada.',

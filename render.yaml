@@ -1,0 +1,56 @@
+# Render Blueprint: the API and its Postgres. Render reads this file when the
+# repository is connected (Dashboard → New → Blueprint) and again on every
+# push to master. The site is not here: it is on Cloudflare (frontend/wrangler.jsonc).
+#
+# Free plans. Two things to know:
+#   - The API sleeps after 15 minutes without requests; waking takes about a
+#     minute. The Cloudflare Worker pings it every 10 minutes to keep it awake.
+#   - The free database is DELETED 30 days after it is created, and has no
+#     backups. Move it to a paid plan (Basic, US$ 6/month) before that date.
+
+services:
+  - type: web
+    name: portal-api
+    runtime: node
+    plan: free
+    # The closest of Render's regions to Brazil. Cannot be changed later.
+    region: virginia
+    rootDir: backend
+    branch: master
+    autoDeployTrigger: commit
+    # Dev dependencies too: TypeScript and the Prisma CLI are needed to build
+    # and to apply migrations, and NODE_ENV=production would skip them.
+    buildCommand: npm ci --include=dev && npm run build
+    # Applies pending migrations, then starts the compiled API.
+    startCommand: npx prisma migrate deploy && node dist/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: portal-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      # Copy this value into the Cloudflare Worker's PROXY_SECRET secret.
+      - key: PROXY_SECRET
+        generateValue: true
+      # Asked for when the Blueprint is created.
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: SITE_URL
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: portal
+
+databases:
+  - name: portal-db
+    plan: free
+    region: virginia
+    databaseName: portal
+    user: portal
+    # The same major version as docker-compose.yml.
+    postgresMajorVersion: "16"

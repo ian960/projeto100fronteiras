@@ -102,13 +102,26 @@ It never talks to the real Cloudinary. Two groups run one after the other:
 `npm run typecheck` checks `src/`, `tests/` and `scripts/` — vitest does not
 type-check, so this is the only place test types are verified.
 
-## Production build
+## Production
+
+On Render, as described in [`render.yaml`](../render.yaml) and
+[DEPLOY.md](../DEPLOY.md):
 
 ```bash
-npm run build           # prisma generate + tsc -p tsconfig.build.json
-npm start               # node dist/server.js
-npm run db:deploy       # apply migrations on the server
+npm ci --include=dev && npm run build                 # build: prisma generate + tsc
+npx prisma migrate deploy && node dist/server.js      # start
 ```
+
+`NODE_ENV=production` refuses to start without `SESSION_SECRET`,
+`CLOUDINARY_URL` and `PROXY_SECRET`. The API is reached only through the
+site's Cloudflare Worker, which adds two headers
+(`shared/middlewares/proxyGuard.ts`):
+
+- `x-proxy-secret`: equal to `PROXY_SECRET`, or the request gets a 403.
+  Render's health check (`/api/health`) is the only exception.
+- `x-client-ip`: the visitor's address. Behind the Worker every request
+  comes from Cloudflare, so the login rate limit keys on this instead of
+  `req.ip`; otherwise everyone would share one limit.
 
 The Prisma generator uses `moduleFormat = "cjs"`. Without it, the generated
 client contains `import.meta.url`, which `tsx` tolerates in development but
@@ -268,8 +281,13 @@ included.
 
 ## Still open
 
-- Cloudflare in front of the domain, with `Cache-Control` on public routes.
-  A viral article will take down a small VPS otherwise.
+- Edge caching of public routes (`/api/home`, `/api/posts/...`) in the
+  Worker, once the site is on its own domain (the Cache API does nothing on
+  `workers.dev`). A viral article would otherwise land on the API.
+- Redirects from old addresses. A post's address follows its headline only
+  until the first publication; a category's or author's follows the name when
+  it was made from it. Links to the old address of a renamed category or
+  author stop working.
 - The Quill `formats` whitelist in the panel must match `ALLOWED_TAGS` in
   `shared/utils/sanitizeHtml.ts`.
 - Do not enable alignment, indent, colour or size in the editor toolbar: Quill

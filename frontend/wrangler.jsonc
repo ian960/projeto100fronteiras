@@ -1,0 +1,38 @@
+// The site on Cloudflare: the files Vite builds (dist/) plus the Worker in
+// worker/index.ts. Deployed by Cloudflare on every push to master (Workers
+// Builds), or by hand with `npm run deploy`.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "portal-sem-fronteiras",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Any address without a file (/painel/materias, /categoria/cidade...)
+    // gets index.html, and React Router takes it from there.
+    "not_found_handling": "single-page-application",
+    // Only these reach the Worker. Everything else is a plain file, which
+    // Cloudflare serves without counting it against the Worker's free quota.
+    "run_worker_first": ["/api/*", "/noticia/*", "/coluna/*"]
+  },
+
+  "vars": {
+    // The API's address on Render. If Render gave the service another name
+    // (it adds a suffix when the name is taken), change it here and push.
+    "API_ORIGIN": "https://portal-api.onrender.com"
+  },
+  // PROXY_SECRET is a secret, not a var: set it in the dashboard (Settings →
+  // Variables and Secrets) with the same value as on Render.
+
+  // Keeps Render's free instance awake (it sleeps after 15 minutes without a
+  // request). Delete this block on a paid Render plan.
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

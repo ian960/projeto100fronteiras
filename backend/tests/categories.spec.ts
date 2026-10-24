@@ -30,7 +30,7 @@ describe('categories', () => {
     expect(response.body.error.code).toBe('CONFLICT');
   });
 
-  it('keeps the slug when the name changes', async () => {
+  it('moves a slug made from the name when the name changes', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
@@ -46,8 +46,42 @@ describe('categories', () => {
       .send({ name: 'Política e Poder' })
       .expect(200);
 
-    // Moving the slug on a rename would 404 every shared link.
-    expect(updated.body.data.category.slug).toBe('politica');
+    expect(updated.body.data.category.slug).toBe('politica-e-poder');
+  });
+
+  it('keeps a slug typed by hand when the name changes', async () => {
+    const admin = await makeAdmin();
+    const { client } = await loginAs(admin.email);
+
+    const createdResponse = await client
+      .post('/api/admin/categories')
+      .send({ name: 'Cidade', slug: 'nossa-cidade' })
+      .expect(201);
+
+    const id = createdResponse.body.data.category.id;
+
+    const updated = await client
+      .patch(`/api/admin/categories/${id}`)
+      .send({ name: 'Cidade e Região' })
+      .expect(200);
+
+    expect(updated.body.data.category.slug).toBe('nossa-cidade');
+  });
+
+  it('renames anyway when the new slug is taken, keeping the old one', async () => {
+    const admin = await makeAdmin();
+    const { client } = await loginAs(admin.email);
+
+    // Different names, same slug: "Saúde" and "Saude" both make "saude".
+    await client.post('/api/admin/categories').send({ name: 'Saúde' }).expect(201);
+    const other = await client.post('/api/admin/categories').send({ name: 'Bem-estar' }).expect(201);
+
+    const updated = await client
+      .patch(`/api/admin/categories/${other.body.data.category.id}`)
+      .send({ name: 'Saude' })
+      .expect(200);
+
+    expect(updated.body.data.category).toMatchObject({ name: 'Saude', slug: 'bem-estar' });
   });
 
   it('refuses to delete a category that has posts, and says how many', async () => {

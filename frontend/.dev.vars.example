@@ -1,0 +1,2 @@
+# Copy to .dev.vars for `npm run preview:worker` (wrangler dev). Never committed.
+PROXY_SECRET=the-same-value-as-PROXY_SECRET-in-backend-env

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { defineConfig, env } from 'prisma/config';
+import { defineConfig } from 'prisma/config';
 
 // Used by the Prisma CLI only (migrate, studio, db seed). The running API
 // connects through the pg driver adapter in src/config/prisma.ts.
@@ -11,5 +11,8 @@ export default defineConfig({
     // `migrate reset`. Run it explicitly: npm run db:seed
     seed: 'tsx prisma/seed.ts',
   },
-  datasource: { url: env('DATABASE_URL') },
+  // process.env rather than Prisma's env(): `prisma generate`, part of
+  // `npm run build`, needs no database, and env() refuses to run without
+  // DATABASE_URL. Migrate and seed do need it, and say so when it is missing.
+  datasource: { url: process.env.DATABASE_URL ?? '' },
 });

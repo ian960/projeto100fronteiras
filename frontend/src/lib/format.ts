@@ -67,3 +67,22 @@ export function formatBytes(bytes: number): string {
   if (bytes >= MB) return `${(bytes / MB).toFixed(1).replace('.', ',')} MB`;
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
+
+// Same rules as backend/src/shared/utils/slugify.ts, so the panel can show
+// the address before saving. The server decides; this only previews.
+export function slugify(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// True when `slug` was made from `source` (possibly with a "-2"), false when
+// someone typed it. Made addresses follow their title or name.
+export function isSlugOf(slug: string, source: string): boolean {
+  const base = slugify(source);
+  return base !== '' && (slug === base || new RegExp(`^${base}-\\d+$`).test(slug));
+}

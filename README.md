@@ -6,7 +6,10 @@ columnists, and the API behind both.
 | folder | what | details |
 |---|---|---|
 | `backend/` | API: Node, Express 5, Prisma 7, Postgres | [backend/README.md](backend/README.md) |
-| `frontend/` | site + panel: React 19, Vite 8 | [frontend/README.md](frontend/README.md) |
+| `frontend/` | site + panel: React 19, Vite 8, Cloudflare Worker | [frontend/README.md](frontend/README.md) |
+
+In production the site runs on Cloudflare and the API and database on Render:
+see [DEPLOY.md](DEPLOY.md).
 
 ## Running everything with Docker
 
