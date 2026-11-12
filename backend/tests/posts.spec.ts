@@ -625,5 +625,19 @@ describe('home payload', () => {
     expect(response.body.data.featured.id).toBe(news.id);
     expect(response.body.data.latestNews).toHaveLength(1);
     expect(response.body.data.latestColumns).toHaveLength(1);
+    // One block per category that has news; empty categories are left out.
+    expect(response.body.data.sections).toEqual([
+      { category: { id: category.id, name: category.name, slug: category.slug }, posts: [expect.objectContaining({ id: news.id })] },
+    ]);
+  });
+
+  it('leaves out categories with no published news', async () => {
+    const { admin, writer, category } = await adminContext();
+    await makeCategory();
+    await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+
+    const response = await agent().get('/api/home').expect(200);
+
+    expect(response.body.data.sections).toEqual([]);
   });
 });

@@ -77,10 +77,18 @@ export type IPostWithAudit = IPostDetail & {
 
 // The home page in a single request. Three queries server-side beats three
 // round trips from a phone on mobile data.
+// One block per category on the home page, in menu order. Categories with no
+// published news are left out.
+export type IHomeSection = {
+  category: ICategorySummary;
+  posts: IPostListItem[];
+};
+
 export type IHomePayload = {
   featured: IPostListItem | null;
   latestNews: IPostListItem[];
   latestColumns: IPostListItem[];
+  sections: IHomeSection[];
 };
 
 // Why the relations are optional in every composed type above:

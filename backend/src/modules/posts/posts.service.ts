@@ -27,8 +27,11 @@ import type {
   UpdatePostInput,
 } from './posts.service.types';
 
-const HOME_NEWS_LIMIT = 8;
+// The top of the home: lead + three beside it + the latest list.
+const HOME_NEWS_LIMIT = 10;
 const HOME_COLUMNS_LIMIT = 4;
+// Per category block further down the home.
+const HOME_SECTION_LIMIT = 4;
 
 export class PostsService {
   // ── helpers ───────────────────────────────────────────────────────────────
@@ -189,13 +192,25 @@ export class PostsService {
 
   // Whole home page in one request.
   async getHome(): Promise<IHomePayload> {
-    const [featured, latestNews, latestColumns] = await Promise.all([
+    const [featured, latestNews, latestColumns, categories] = await Promise.all([
       postsRepository.findFeatured(),
       postsRepository.findLatest(PostType.NEWS, HOME_NEWS_LIMIT),
       postsRepository.findLatest(PostType.COLUMN, HOME_COLUMNS_LIMIT),
+      categoriesRepository.findAllActive(),
     ]);
 
-    return { featured, latestNews, latestColumns };
+    // One small query per category: a portal has a handful of them, and the
+    // home is one request for the reader instead of one per block.
+    const sections = (
+      await Promise.all(
+        categories.map(async (category) => ({
+          category: { id: category.id, name: category.name, slug: category.slug },
+          posts: await postsRepository.findLatest(PostType.NEWS, HOME_SECTION_LIMIT, category.id),
+        })),
+      )
+    ).filter((section) => section.posts.length > 0);
+
+    return { featured, latestNews, latestColumns, sections };
   }
 
   // Reader bookmarks: the browser keeps the ids, this resolves them in one go.
