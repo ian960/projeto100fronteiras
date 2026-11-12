@@ -21,7 +21,7 @@
   "vars": {
     // The API's address on Render. If Render gave the service another name
     // (it adds a suffix when the name is taken), change it here and push.
-    "API_ORIGIN": "https://portal-api.onrender.com"
+    "API_ORIGIN": "https://portal-api-o5v4.onrender.com"
   },
   // PROXY_SECRET is a secret, not a var: set it in the dashboard (Settings →
   // Variables and Secrets) with the same value as on Render.
