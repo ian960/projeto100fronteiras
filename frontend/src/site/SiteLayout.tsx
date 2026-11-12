@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, ScrollRestoration, useNavigate } from 'react-rou
 import { cx } from '../components/ui';
 import { useBookmarks } from '../lib/bookmarks';
 import { useLogout, useMe } from '../lib/hooks';
-import { FronteiraLine } from './parts';
+import { useTheme } from '../lib/theme';
 import { useCategories } from './queries';
 
 // "quarta-feira, 11 de novembro": a news site says what day it is.
@@ -15,6 +15,45 @@ function SearchIcon() {
       <circle cx="8.5" cy="8.5" r="5.5" />
       <path d="m13 13 4.5 4.5" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <circle cx="10" cy="10" r="3.5" />
+      <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M4 16l1.4-1.4M14.6 5.4 16 4" />
+    </svg>
+  );
+}
+
+// One switch, two places: beside the search on a wide screen, and in the
+// footer, where it fits on a phone (the masthead has no room for a third icon).
+function ThemeButton({ className, withLabel = false }: { className: string; withLabel?: boolean }) {
+  const { theme, toggle } = useTheme();
+  const night = theme === 'noite';
+
+  return (
+    // The icon is a toggle (pressed = night on); the footer's words already
+    // say what a press does.
+    <button
+      type="button"
+      onClick={toggle}
+      aria-pressed={withLabel ? undefined : night}
+      title={withLabel ? undefined : 'Modo noturno'}
+      className={className}
+    >
+      {night ? <SunIcon /> : <MoonIcon />}
+      {withLabel ? <span>{night ? 'Voltar ao modo claro' : 'Modo noturno'}</span> : <span className="sr-only">Modo noturno</span>}
+    </button>
   );
 }
 
@@ -31,44 +70,39 @@ function Masthead() {
         Ir para o conteúdo
       </a>
 
-      {/* The border line runs the full width at mid-height; the name and the
-          controls sit on top of it with the page's background, so the line is
-          visibly interrupted by "Sem Fronteiras". */}
-      <div className="relative">
-        <FronteiraLine className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2" />
-        <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:py-6">
-          <Link to="/" className="bg-papel pr-3 sm:pr-5" aria-label="Sem Fronteiras, página inicial">
-            <span className="titulo block text-[1.85rem] leading-none text-anil sm:text-[2.75rem]" style={{ fontWeight: 720 }}>
-              Sem Fronteiras
-            </span>
-          </Link>
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:py-6">
+        <Link to="/" aria-label="Sem Fronteiras, página inicial">
+          <span className="titulo block text-[1.85rem] leading-none text-anil sm:text-[2.75rem]" style={{ fontWeight: 720 }}>
+            Sem Fronteiras
+          </span>
+        </Link>
 
-          <nav aria-label="Atalhos" className="flex items-center gap-1 bg-papel pl-2 text-sm font-medium sm:gap-2 sm:pl-4">
-            <Link to="/busca" className="inline-flex size-11 items-center justify-center rounded-full hover:bg-superficie sm:size-10" aria-label="Buscar">
-              <SearchIcon />
+        <nav aria-label="Atalhos" className="flex items-center gap-1 text-sm font-medium sm:gap-2">
+          <Link to="/busca" className="inline-flex size-11 items-center justify-center rounded-full hover:bg-superficie sm:size-10" aria-label="Buscar">
+            <SearchIcon />
+          </Link>
+          <ThemeButton className="hidden size-10 items-center justify-center rounded-full hover:bg-superficie sm:inline-flex" />
+          <Link to="/salvos" className="hidden h-10 items-center rounded-full px-3 hover:bg-superficie sm:inline-flex">
+            Salvos{ids.length > 0 && <span className="ml-1.5 text-tinta-suave">{ids.length}</span>}
+          </Link>
+          {canUsePanel ? (
+            <Link to="/painel" className="inline-flex h-10 items-center rounded-full bg-anil px-4 text-sobre-anil hover:bg-anil-escuro">
+              Painel
             </Link>
-            <Link to="/salvos" className="hidden h-10 items-center rounded-full px-3 hover:bg-superficie sm:inline-flex">
-              Salvos{ids.length > 0 && <span className="ml-1.5 text-tinta-suave">{ids.length}</span>}
+          ) : me ? (
+            <button
+              type="button"
+              className="h-10 rounded-full px-3 hover:bg-superficie"
+              onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/') })}
+            >
+              Sair
+            </button>
+          ) : (
+            <Link to="/entrar" className="inline-flex h-10 items-center rounded-full px-3 hover:bg-superficie">
+              Entrar
             </Link>
-            {canUsePanel ? (
-              <Link to="/painel" className="inline-flex h-10 items-center rounded-full bg-anil px-4 text-sobre-anil hover:bg-anil-escuro">
-                Painel
-              </Link>
-            ) : me ? (
-              <button
-                type="button"
-                className="h-10 rounded-full px-3 hover:bg-superficie"
-                onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/') })}
-              >
-                Sair
-              </button>
-            ) : (
-              <Link to="/entrar" className="inline-flex h-10 items-center rounded-full px-3 hover:bg-superficie">
-                Entrar
-              </Link>
-            )}
-          </nav>
-        </div>
+          )}
+        </nav>
       </div>
     </header>
   );
@@ -135,7 +169,6 @@ function CategoryNav({ compact }: { compact: boolean }) {
 function Footer() {
   return (
     <footer className="mt-24 bg-rodape text-white">
-      <FronteiraLine />
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-2">
         <div>
           <p className="titulo text-[1.75rem]" style={{ fontWeight: 720 }}>
@@ -156,6 +189,7 @@ function Footer() {
           <Link to="/painel" className="hover:underline underline-offset-4">
             Área da redação
           </Link>
+          <ThemeButton withLabel className="inline-flex items-center gap-2 hover:underline underline-offset-4" />
         </nav>
       </div>
     </footer>
@@ -163,6 +197,7 @@ function Footer() {
 }
 
 export default function SiteLayout() {
+  const { theme } = useTheme();
   // The masthead going out of view is what turns on the compact name.
   const sentinel = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
@@ -177,7 +212,7 @@ export default function SiteLayout() {
 
   return (
     // .tema-site: the night colors apply to everything inside (index.css).
-    <div className="tema-site flex min-h-dvh flex-col bg-papel text-tinta">
+    <div className="tema-site flex min-h-dvh flex-col bg-papel text-tinta" data-tema={theme}>
       <Masthead />
       <div ref={sentinel} aria-hidden="true" className="h-px" />
       <CategoryNav compact={compact} />

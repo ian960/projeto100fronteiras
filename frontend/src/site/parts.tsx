@@ -6,27 +6,6 @@ import { useBookmarks } from '../lib/bookmarks';
 import { formatBytes, formatDate, formatRelative, postPath } from '../lib/format';
 import type { AuthorSummary, PostDetail, PostListItem } from '../lib/types';
 
-// ── The border line ──────────────────────────────────────────────────────────
-// A map's dash-dot border, drawn once across the masthead and interrupted by
-// the portal's name. It is the one decorative gesture on the site.
-
-export function FronteiraLine({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden="true" className={cx('h-[3px] w-full', className)} preserveAspectRatio="none">
-      <line
-        x1="0"
-        y1="1.5"
-        x2="100%"
-        y2="1.5"
-        stroke="var(--color-sol)"
-        strokeWidth="3"
-        strokeDasharray="16 7 3 7"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 // ── What kind of text is this ────────────────────────────────────────────────
 // News carries its category in blue; a column is opinion, in green. Readers
 // should never mistake one for the other.

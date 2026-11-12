@@ -20,7 +20,7 @@
   --color-papel: #ffffff;
   --color-superficie: #f2f4f8;  /* quiet bands and panel background */
   --color-linha: #dde2ea;       /* borders */
-  --color-sol: #e9a800;         /* the border line and the reading bar; never text */
+  --color-sol: #e9a800;         /* the reading bar; never text */
   --color-mata: #2e6b4e;        /* opinion: everything that is a column, not news */
   --color-mata-claro: #e7f1eb;
   --color-rodape: #1e3270;      /* footer background */
@@ -33,32 +33,31 @@
   --color-ok-claro: #e3f3ea;
 }
 
-/* Night reading, for the public site only (the panel stays light). The site
-   wraps itself in .tema-site, so these values reach every page under it and
-   nothing else. Follows the phone's own setting: no switch to find. */
-@media (prefers-color-scheme: dark) {
-  .tema-site {
-    color-scheme: dark;
-    --color-anil: #93a9f2;
-    --color-anil-escuro: #b3c3f7;
-    --color-sobre-anil: #0e1320;
-    --color-tinta: #e8ebf2;
-    --color-tinta-suave: #a2abbf;
-    --color-papel: #0e1320;
-    --color-superficie: #161d2e;
-    --color-linha: #283149;
-    --color-sol: #f2b930;
-    --color-mata: #7cc9a3;
-    --color-mata-claro: #16291f;
-    --color-rodape: #0a0e18;
-    --color-selecao: #2b3a66;
-  }
+/* Night mode, for the public site only (the panel stays light). Light is the
+   default; the reader turns night on with the moon button (lib/theme.ts),
+   which sets data-tema="noite" on the site's wrapper. These values reach
+   every page under it and nothing else. */
+.tema-site[data-tema="noite"] {
+  color-scheme: dark;
+  --color-anil: #93a9f2;
+  --color-anil-escuro: #b3c3f7;
+  --color-sobre-anil: #0e1320;
+  --color-tinta: #e8ebf2;
+  --color-tinta-suave: #a2abbf;
+  --color-papel: #0e1320;
+  --color-superficie: #161d2e;
+  --color-linha: #283149;
+  --color-sol: #f2b930;
+  --color-mata: #7cc9a3;
+  --color-mata-claro: #16291f;
+  --color-rodape: #0a0e18;
+  --color-selecao: #2b3a66;
+}
 
-  /* The page behind the site (overscroll, the strip under a short page). */
-  html:has(.tema-site) {
-    background: #0e1320;
-    color-scheme: dark;
-  }
+/* The page behind the site (overscroll, the strip under a short page). */
+html:has(.tema-site[data-tema="noite"]) {
+  background: #0e1320;
+  color-scheme: dark;
 }
 
 @layer base {
