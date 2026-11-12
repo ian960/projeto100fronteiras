@@ -14,20 +14,51 @@
 
   --color-anil: #1e3270;        /* brand: wordmark, links, primary actions */
   --color-anil-escuro: #15245a; /* hover/pressed on anil */
-  --color-tinta: #1a2233;       /* body text */
-  --color-tinta-suave: #556074; /* metadata, secondary text */
+  --color-sobre-anil: #ffffff;  /* text on an anil background */
+  --color-tinta: #141b2c;       /* body text */
+  --color-tinta-suave: #586377; /* metadata, secondary text */
   --color-papel: #ffffff;
-  --color-superficie: #f3f5f9;  /* quiet bands and panel background */
-  --color-linha: #dce1ea;       /* borders */
-  --color-sol: #e9a800;         /* the border line; used nowhere else on the site */
+  --color-superficie: #f2f4f8;  /* quiet bands and panel background */
+  --color-linha: #dde2ea;       /* borders */
+  --color-sol: #e9a800;         /* the border line and the reading bar; never text */
   --color-mata: #2e6b4e;        /* opinion: everything that is a column, not news */
-  --color-mata-claro: #e6f0ea;
+  --color-mata-claro: #e7f1eb;
+  --color-rodape: #1e3270;      /* footer background */
+  --color-selecao: #d6def5;
   --color-alerta: #b42318;
   --color-alerta-claro: #fdecea;
   --color-aviso: #8a5a00;
   --color-aviso-claro: #fdf3d8;
   --color-ok: #1f7a4d;
   --color-ok-claro: #e3f3ea;
+}
+
+/* Night reading, for the public site only (the panel stays light). The site
+   wraps itself in .tema-site, so these values reach every page under it and
+   nothing else. Follows the phone's own setting: no switch to find. */
+@media (prefers-color-scheme: dark) {
+  .tema-site {
+    color-scheme: dark;
+    --color-anil: #93a9f2;
+    --color-anil-escuro: #b3c3f7;
+    --color-sobre-anil: #0e1320;
+    --color-tinta: #e8ebf2;
+    --color-tinta-suave: #a2abbf;
+    --color-papel: #0e1320;
+    --color-superficie: #161d2e;
+    --color-linha: #283149;
+    --color-sol: #f2b930;
+    --color-mata: #7cc9a3;
+    --color-mata-claro: #16291f;
+    --color-rodape: #0a0e18;
+    --color-selecao: #2b3a66;
+  }
+
+  /* The page behind the site (overscroll, the strip under a short page). */
+  html:has(.tema-site) {
+    background: #0e1320;
+    color-scheme: dark;
+  }
 }
 
 @layer base {
@@ -50,7 +81,7 @@
   }
 
   ::selection {
-    background: #d6def5;
+    background: var(--color-selecao);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -66,6 +97,7 @@
 /* Headline type. Optical size follows the rendered size, so big headlines get
    the tighter display cut automatically. */
 .titulo {
+  overflow-wrap: break-word; /* a pasted URL in a headline must not widen the page */
   font-family: var(--font-serif);
   font-optical-sizing: auto;
   font-weight: 620;

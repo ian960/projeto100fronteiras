@@ -6,7 +6,7 @@ import { ApiError, errorMessage } from '../../lib/api';
 import { useBookmarks } from '../../lib/bookmarks';
 import { useDocumentTitle } from '../../lib/hooks';
 import { formatRelative, postPath } from '../../lib/format';
-import { Kicker, SectionHeading, StoryList } from '../parts';
+import { Kicker, ListLead, SectionHeading, StoryList } from '../parts';
 import type { PostFilters } from '../queries';
 import { useAuthor, useCategory, useColumnists, usePostsByIds, usePublishedPosts } from '../queries';
 import NotFoundPage from './NotFoundPage';
@@ -28,7 +28,14 @@ function usePageParam(): [number, (page: number) => void] {
   return [page, setPage];
 }
 
-function PagedPosts({ filters, empty }: { filters: PostFilters; empty: ReactNode }) {
+// leadFirst: on the first page, the newest story gets a photo beside its
+// headline. showKicker: off where every story has the same category.
+function PagedPosts({ filters, empty, leadFirst = false, showKicker = true }: {
+  filters: PostFilters;
+  empty: ReactNode;
+  leadFirst?: boolean;
+  showKicker?: boolean;
+}) {
   const [page, setPage] = usePageParam();
   const { data, isPending, error, isPlaceholderData } = usePublishedPosts({ ...filters, page });
 
@@ -36,9 +43,13 @@ function PagedPosts({ filters, empty }: { filters: PostFilters; empty: ReactNode
   if (error) return <Alert>Não foi possível carregar a lista. {errorMessage(error)}</Alert>;
   if (data.items.length === 0) return <>{empty}</>;
 
+  const [first, ...rest] = data.items;
+  const withLead = leadFirst && data.page === 1 && first;
+
   return (
     <div className={isPlaceholderData ? 'opacity-60 transition-opacity' : undefined}>
-      <StoryList posts={data.items} />
+      {withLead && <ListLead post={first} showKicker={showKicker} />}
+      <StoryList posts={withLead ? rest : data.items} showKicker={showKicker} />
       <div className="mt-4">
         <Pagination page={data.page} totalPages={data.totalPages} onChange={setPage} />
       </div>
@@ -48,8 +59,8 @@ function PagedPosts({ filters, empty }: { filters: PostFilters; empty: ReactNode
 
 function PageHeader({ title, children, tone = 'anil' }: { title: string; children?: ReactNode; tone?: 'anil' | 'mata' }) {
   return (
-    <header className="mb-6">
-      <h1 className={`titulo text-[2.2rem] sm:text-5xl ${tone === 'mata' ? 'text-mata' : 'text-anil'}`}>{title}</h1>
+    <header className="mb-8">
+      <h1 className={`titulo text-[2.4rem] sm:text-[3.4rem] ${tone === 'mata' ? 'text-mata' : 'text-anil'}`}>{title}</h1>
       {children && <div className="mt-3 max-w-2xl text-lg text-tinta-suave">{children}</div>}
     </header>
   );
@@ -62,7 +73,7 @@ export function NewsPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Últimas notícias" />
-      <PagedPosts filters={{ type: 'news' }} empty={<EmptyState title="Nenhuma notícia publicada ainda" />} />
+      <PagedPosts filters={{ type: 'news' }} leadFirst empty={<EmptyState title="Nenhuma notícia publicada ainda" />} />
     </div>
   );
 }
@@ -85,6 +96,8 @@ export function CategoryPage() {
       <PageHeader title={category.name} />
       <PagedPosts
         filters={{ type: 'news', category: slug }}
+        leadFirst
+        showKicker={false}
         empty={<EmptyState title={`Nada publicado em ${category.name} ainda`}>Volte mais tarde ou veja as últimas notícias.</EmptyState>}
       />
     </div>
@@ -155,7 +168,7 @@ export function ColumnistsPage() {
   const latest = usePublishedPosts({ type: 'column', limit: 6 });
 
   return (
-    <div>
+    <div className="mx-auto max-w-3xl">
       <PageHeader title="Opinião" tone="mata">
         Textos assinados por quem escreve para o portal. As colunas expressam a opinião de seus autores.
       </PageHeader>
@@ -166,7 +179,7 @@ export function ColumnistsPage() {
       {columnists && columnists.length === 0 && <EmptyState title="Nenhum colunista ainda" />}
 
       {columnists && columnists.length > 0 && (
-        <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
           {columnists.map((author) => (
             <li key={author.id}>
               <Link to={`/autor/${author.slug}`} className="group flex gap-4 border-b border-linha py-5">
@@ -183,7 +196,7 @@ export function ColumnistsPage() {
       )}
 
       {latest.data && latest.data.items.length > 0 && (
-        <section className="mt-14 max-w-3xl" aria-label="Colunas mais recentes">
+        <section className="mt-14" aria-label="Colunas mais recentes">
           <SectionHeading tone="mata">Colunas mais recentes</SectionHeading>
           <StoryList posts={latest.data.items} showImages={false} />
         </section>
