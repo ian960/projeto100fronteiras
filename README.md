@@ -47,6 +47,7 @@ Ports can be changed in `.env` (`WEB_PORT`, `API_PORT`, `POSTGRES_PORT`).
 | stop | `docker compose stop` |
 | seed | `docker compose exec api npm run db:seed` |
 | demo content (empty database only) | `docker compose exec api npm run db:demo` |
+| take the demo content out again | `docker compose exec api npm run db:demo:remove` |
 | tests (first time) | `docker compose exec api npm run db:test:setup` |
 | tests | `docker compose exec api npm test` |
 | typecheck | `docker compose exec api npm run typecheck` and `docker compose exec web npm run typecheck` |
@@ -70,7 +71,8 @@ docker compose exec api npm run db:demo                    # demo news, columns 
 ```
 
 `db:demo` refuses a database that already has content, so it never duplicates
-anything. Its pictures go to Cloudinary (the `portal-dev` folder); the ones from
+anything. `db:demo:remove` takes out what it created, and only that; the same
+pair works on the live site (DEPLOY.md, "Demo content"). Its pictures go to Cloudinary (the `portal-dev` folder); the ones from
 before the reset stay there until someone deletes them in Cloudinary.
 
 ### How it works

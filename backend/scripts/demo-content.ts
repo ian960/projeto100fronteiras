@@ -1,13 +1,30 @@
-// Fills an empty local database with demo content, the way the newsroom
-// would: categories, writers and columnists with photos, published news with
-// covers, opinion columns and a lead story. For development only.
+// Demo content for presenting the portal, and a quick way to take it out.
+//
+//   npm run db:demo           fills an empty database: categories, writers and
+//                             columnists with photos, published news with
+//                             covers, opinion columns and a lead story
+//   npm run db:demo:remove    removes what db:demo created, and nothing else
+//
+// On your machine, with `docker compose up` running:
 //
 //   docker compose exec api npm run db:demo
 //
-// It goes through the API's own routes, like the panel does, so everything is
-// checked as real content would be. That needs the API running and the admin
-// from `npm run db:seed`. The pictures (scripts/demo-images) go to Cloudinary
-// when it is configured; without it the stories go without them.
+// On the live site, from your computer (DEPLOY.md, "Demo content"): the same
+// command through `docker compose run`, with the Render database's external
+// URL, the site's address and the admin's login:
+//
+//   DATABASE_URL=<external URL>  DEMO_SITE_URL=<site>  SEED_ADMIN_EMAIL  SEED_ADMIN_PASSWORD
+//
+// Everything goes through the API's own routes, as the panel does: the content
+// is checked like real content, and removing it deletes the pictures from
+// Cloudinary too. The database is read directly only to check that it belongs
+// to that site, to date the stories over the last hours and days, and to
+// delete the two demo accounts (the API has no route that deletes a user).
+//
+// What counts as demo content: the four demo bylines and everything they sign,
+// the accounts ending in @demo.local, the files those use, and the five demo
+// categories once nothing else is filed under them. Never sign a real story
+// with a demo byline: removing the demo would take it along.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,8 +34,13 @@ import { env, isProduction } from '../src/config/env';
 // The same development fallback as prisma/seed.ts.
 const DEV_ADMIN_PASSWORD = 'admin12345';
 const COLUMNIST_PASSWORD = 'senha-demo-123';
+const DEMO_EMAIL_DOMAIN = '@demo.local';
 const IMAGES = path.join(__dirname, 'demo-images');
-const API = `http://localhost:${env.PORT}`;
+const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1', 'db'];
+
+// The live site, when given. Its Worker forwards /api/* to Render.
+const SITE = process.env.DEMO_SITE_URL?.trim().replace(/\/+$/, '') || null;
+const API = SITE ?? `http://localhost:${env.PORT}`;
 
 type Json = Record<string, any>;
 
@@ -43,34 +65,7 @@ function client() {
 
 type Call = ReturnType<typeof client>;
 
-// The panel's upload: ask the API for a signature, send the file straight to
-// Cloudinary, then register what Cloudinary answered.
-async function upload(call: Call, purpose: 'cover' | 'author', file: string): Promise<string> {
-  const { upload: signed } = await call('POST', '/api/media/signature', { purpose });
-  const form = new FormData();
-  for (const [key, value] of Object.entries(signed.fields as Record<string, string>)) form.append(key, value);
-  form.append('file', new Blob([fs.readFileSync(path.join(IMAGES, file))], { type: 'image/jpeg' }), file);
-
-  const response = await fetch(signed.uploadUrl as string, { method: 'POST', body: form });
-  const answer = (await response.json()) as Json;
-  if (!response.ok) throw new Error(`Cloudinary refused ${file}: ${answer.error?.message ?? response.status}`);
-
-  const { media } = await call('POST', '/api/media', {
-    purpose,
-    publicId: answer.public_id,
-    version: String(answer.version),
-    signature: answer.signature,
-    resourceType: answer.resource_type,
-    format: answer.format,
-    bytes: answer.bytes,
-    width: answer.width ?? null,
-    height: answer.height ?? null,
-    duration: null,
-    pages: null,
-    originalName: file,
-  });
-  return media.id as string;
-}
+// ── the content ──────────────────────────────────────────────────────────────
 
 const html = (paragraphs: string[]) => paragraphs.map((text) => `<p>${text}</p>`).join('');
 
@@ -96,19 +91,21 @@ const WRITERS = [
 const COLUMNISTS = [
   {
     name: 'Lúcia Medeiros',
-    email: 'lucia@demo.local',
+    email: `lucia${DEMO_EMAIL_DOMAIN}`,
     photo: 'lucia.jpg',
     columnTitle: 'Crônicas da Orla',
     bio: 'Escritora e professora. Escreve sobre a cidade que a gente vive e não repara.',
   },
   {
     name: 'Rafael Nóbrega',
-    email: 'rafael@demo.local',
+    email: `rafael${DEMO_EMAIL_DOMAIN}`,
     photo: 'rafael.jpg',
     columnTitle: 'Bola no Chão',
     bio: 'Jornalista esportivo há vinte anos, torcedor há mais tempo ainda.',
   },
 ];
+
+const DEMO_BYLINES = [...WRITERS, ...COLUMNISTS].map((author) => author.name);
 
 // [title, category, picture, excerpt, writer]. The first one leads the home.
 const TOP_NEWS: Array<[string, string, string, string, string]> = [
@@ -152,34 +149,88 @@ const COLUMNS: Array<[string, string, string]> = [
   ['Por que o futebol de várzea merece mais atenção da prefeitura', 'Os campos de bairro formam mais jogadores do que qualquer escolinha paga.', 'Rafael Nóbrega'],
 ];
 
-async function main() {
-  // Same rule as the seed: never against production, never against a
-  // database that is not on this machine or in Docker (Render's, say).
-  const host = new URL(env.DATABASE_URL).hostname;
-  if (isProduction || !['localhost', '127.0.0.1', '::1', 'db'].includes(host)) {
-    throw new Error(`Demo content is for a local database only, not ${host}.`);
-  }
+// ── where it runs ────────────────────────────────────────────────────────────
 
-  // Running it twice would duplicate everything.
-  if ((await prisma.post.count()) > 0 || (await prisma.category.count()) > 0) {
-    throw new Error('The database already has content. Demo content goes into an empty database (see the README: "start over").');
+// Logs in as the admin, after making sure the database and the API are the
+// same place: a local database with the live site's address (or the other
+// way round) would check one and fill the other.
+async function connect(): Promise<{ admin: Call; uploads: string }> {
+  if (isProduction) throw new Error('Run this from your computer, not on the server.');
+
+  const host = new URL(env.DATABASE_URL).hostname;
+  const remote = !LOCAL_HOSTS.includes(host);
+  if (remote && !SITE) {
+    throw new Error(`The database is at ${host}. For the live site, also pass DEMO_SITE_URL with the site's address.`);
+  }
+  if (remote && !env.SEED_ADMIN_PASSWORD) {
+    throw new Error('For the live site, pass the admin\'s login in SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD.');
   }
 
   let uploads: string;
   try {
-    uploads = (await (await fetch(`${API}/api/health`)).json() as Json).data.uploads;
+    uploads = ((await (await fetch(`${API}/api/health`)).json()) as Json).data.uploads;
   } catch {
-    throw new Error(`The API is not answering at ${API}. Start it first (docker compose up).`);
+    throw new Error(`The API is not answering at ${API}. ${SITE ? 'Check the address.' : 'Start it first (docker compose up).'}`);
   }
-  const withPictures = uploads === 'cloudinary';
-  if (!withPictures) console.log('Cloudinary is not configured: the stories go without pictures.');
 
   const admin = client();
+  let me: Json;
   try {
     await admin('POST', '/api/auth/login', { email: env.SEED_ADMIN_EMAIL, password: env.SEED_ADMIN_PASSWORD ?? DEV_ADMIN_PASSWORD });
+    me = (await admin('GET', '/api/auth/me')).user;
   } catch {
-    throw new Error(`Could not log in as ${env.SEED_ADMIN_EMAIL}. Run npm run db:seed first.`);
+    throw new Error(`Could not log in as ${env.SEED_ADMIN_EMAIL} at ${API}. ${SITE ? 'Check the email and password.' : 'Run npm run db:seed first.'}`);
   }
+
+  const sameUser = await prisma.user.findUnique({ where: { id: me.id }, select: { email: true } });
+  if (sameUser?.email !== me.email) {
+    throw new Error(`The database (${host}) is not the one behind ${API}.`);
+  }
+
+  console.log(`Working on ${SITE ?? 'the local database'} as ${me.email}.`);
+  return { admin, uploads };
+}
+
+// ── adding it ────────────────────────────────────────────────────────────────
+
+// The panel's upload: ask the API for a signature, send the file straight to
+// Cloudinary, then register what Cloudinary answered.
+async function upload(call: Call, purpose: 'cover' | 'author', file: string): Promise<string> {
+  const { upload: signed } = await call('POST', '/api/media/signature', { purpose });
+  const form = new FormData();
+  for (const [key, value] of Object.entries(signed.fields as Record<string, string>)) form.append(key, value);
+  form.append('file', new Blob([fs.readFileSync(path.join(IMAGES, file))], { type: 'image/jpeg' }), file);
+
+  const response = await fetch(signed.uploadUrl as string, { method: 'POST', body: form });
+  const answer = (await response.json()) as Json;
+  if (!response.ok) throw new Error(`Cloudinary refused ${file}: ${answer.error?.message ?? response.status}`);
+
+  const { media } = await call('POST', '/api/media', {
+    purpose,
+    publicId: answer.public_id,
+    version: String(answer.version),
+    signature: answer.signature,
+    resourceType: answer.resource_type,
+    format: answer.format,
+    bytes: answer.bytes,
+    width: answer.width ?? null,
+    height: answer.height ?? null,
+    duration: null,
+    pages: null,
+    originalName: file,
+  });
+  return media.id as string;
+}
+
+async function create() {
+  // Running it twice would duplicate everything.
+  if ((await prisma.post.count()) > 0 || (await prisma.category.count()) > 0) {
+    throw new Error('The database already has content. Demo content goes into an empty database (npm run db:demo:remove takes out a previous demo).');
+  }
+
+  const { admin, uploads } = await connect();
+  const withPictures = uploads === 'cloudinary';
+  if (!withPictures) console.log('Cloudinary is not configured: the stories go without pictures.');
 
   const picture = async (purpose: 'cover' | 'author', file: string) => (withPictures ? upload(admin, purpose, file) : undefined);
 
@@ -272,11 +323,83 @@ async function main() {
     await prisma.post.update({ where: { id }, data: { publishedAt: new Date(now - minutes(60 * 26 + index * 190)) } });
   }
 
+  await admin('POST', '/api/auth/logout');
   console.log(`Published ${TOP_NEWS.length + OLDER_NEWS.length} news stories and ${COLUMNS.length} columns.`);
   console.log(`Columnists log in with ${COLUMNISTS.map((c) => c.email).join(' or ')}, password ${COLUMNIST_PASSWORD}.`);
+  console.log('To take all of it out later: npm run db:demo:remove');
 }
 
-main()
+// ── taking it out ────────────────────────────────────────────────────────────
+
+async function remove() {
+  const { admin } = await connect();
+
+  const authors = await prisma.author.findMany({ where: { name: { in: DEMO_BYLINES } }, select: { id: true, photoId: true } });
+  const users = await prisma.user.findMany({ where: { email: { endsWith: DEMO_EMAIL_DOMAIN } }, select: { id: true } });
+  const authorIds = authors.map((author) => author.id);
+  const userIds = users.map((user) => user.id);
+
+  // What the demo bylines sign, and anything the demo accounts wrote during
+  // a presentation.
+  const posts = await prisma.post.findMany({
+    where: { OR: [{ authorId: { in: authorIds } }, { createdById: { in: userIds } }] },
+    select: { id: true, coverId: true, videoId: true, attachments: { select: { mediaId: true } } },
+  });
+
+  const files = new Set<string>();
+  for (const post of posts) {
+    if (post.coverId) files.add(post.coverId);
+    if (post.videoId) files.add(post.videoId);
+    for (const attachment of post.attachments) files.add(attachment.mediaId);
+  }
+  for (const author of authors) if (author.photoId) files.add(author.photoId);
+  for (const file of await prisma.media.findMany({ where: { uploadedById: { in: userIds } }, select: { id: true } })) {
+    files.add(file.id);
+  }
+
+  if (posts.length === 0 && authors.length === 0 && users.length === 0) {
+    console.log('There is no demo content here.');
+    return;
+  }
+
+  for (const post of posts) {
+    await admin('DELETE', `/api/admin/posts/${post.id}`);
+    process.stdout.write('.');
+  }
+  for (const author of authors) await admin('DELETE', `/api/admin/authors/${author.id}`);
+
+  // The API deletes each file from Cloudinary too, and refuses one that
+  // something else still uses: that one stays.
+  let filesKept = 0;
+  for (const id of files) {
+    try {
+      await admin('DELETE', `/api/media/${id}`);
+      process.stdout.write('.');
+    } catch {
+      filesKept += 1;
+    }
+  }
+  console.log('');
+
+  // A demo category stays if real stories were filed under it.
+  const keptCategories: string[] = [];
+  for (const category of await prisma.category.findMany({ where: { name: { in: CATEGORIES } }, select: { id: true, name: true } })) {
+    try {
+      await admin('DELETE', `/api/admin/categories/${category.id}`);
+    } catch {
+      keptCategories.push(category.name);
+    }
+  }
+
+  await admin('POST', '/api/auth/logout');
+  await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+
+  console.log(`Removed ${posts.length} stories, ${authors.length} bylines, ${users.length} demo accounts and ${files.size - filesKept} files.`);
+  if (filesKept > 0) console.log(`${filesKept} file(s) stayed because something else still uses them.`);
+  if (keptCategories.length > 0) console.log(`Kept these categories, which have other stories: ${keptCategories.join(', ')}.`);
+}
+
+(process.argv.includes('--remove') ? remove() : create())
   .catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

@@ -16,6 +16,7 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "db:demo": "tsx scripts/demo-content.ts",
+    "db:demo:remove": "tsx scripts/demo-content.ts --remove",
     "db:test:setup": "tsx scripts/setup-test-db.ts"
   },
   "keywords": [],
