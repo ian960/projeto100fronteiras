@@ -13,3 +13,6 @@ src/generated
 .agents
 .claude
 .windsurf
+
+# Pictures for `npm run db:demo`. Development only; compose mounts them.
+scripts/demo-images
