@@ -8,14 +8,14 @@ import {
   ValidationError,
 } from '../../shared/errors/AppError';
 import { logger } from '../../shared/utils/logger';
-import type { MediaKind } from '../../shared/types/enums';
+import { MediaKind } from '../../shared/types/enums';
 import type { SessionUser } from '../auth/auth.types';
 import { CloudinaryError, destroy, signParams, uploadFromUrl } from './cloudinary.client';
 import * as policy from './media.policy';
 import { PURPOSE_RULES, type MediaPurpose, type PurposeRule } from './media.purposes';
 import { mediaRepository } from './media.repository';
 import type { IMedia, IMediaView, ISignedUpload } from './media.types';
-import { presentMedia } from './media.urls';
+import { presentMedia, VIDEO_EAGER } from './media.urls';
 import type { ImportMediaInput, RegisterMediaInput, UploadedFacts } from './media.service.types';
 
 // How a file gets into the project:
@@ -76,6 +76,13 @@ export class MediaService {
       // "0", not "false": exactly what Cloudinary's own SDK sends.
       overwrite: '0',
     };
+
+    // A video's mp4 and pictures are made right after the upload, in the
+    // background: over 40 MB, the free plan will not make them on the spot.
+    if (rule.kind === MediaKind.VIDEO) {
+      params.eager = VIDEO_EAGER;
+      params.eager_async = 'true';
+    }
 
     const signature = signParams(params, cloud.apiSecret);
 

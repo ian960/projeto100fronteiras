@@ -56,6 +56,20 @@ describe('signing an upload', () => {
     expect(first.fields.allowed_formats).toBe('pdf');
   });
 
+  it('has Cloudinary prepare a video right after the upload', async () => {
+    const { client } = await asAdmin();
+
+    const video = await signUpload(client, 'video');
+    const cover = await signUpload(client, 'cover');
+
+    // Over 40 MB, Cloudinary's free plan will not convert a video when someone
+    // presses play. The mp4 and the two pictures are made in the background,
+    // right after the upload, and the signature covers that request too.
+    expect(video.fields.eager).toBe('q_auto/mp4|so_0,c_fill,w_480,h_270,q_auto/jpg|so_0,c_limit,w_1280,q_auto/jpg');
+    expect(video.fields.eager_async).toBe('true');
+    expect(cover.fields.eager).toBeUndefined();
+  });
+
   it('is for the panel only', async () => {
     const reader = await makeUser();
     const { client } = await loginAs(reader.email);
@@ -104,9 +118,19 @@ describe('uploading and registering', () => {
     const video = await uploadMedia(client, 'video', mp4File());
     expect(video.kind).toBe('video');
     expect(video.durationSec).toBe(12.5);
+    // Cloudinary answers "pages": 0 for a video; only a PDF has pages.
+    expect(video.pages).toBeNull();
     expect(video.url).toMatch(/\/video\/upload\/q_auto\/v\d+\/.+\.mp4$/);
     expect(await fetchStatus(video.url)).toBe(200);
     expect(await fetchStatus(video.posterUrl)).toBe(200);
+
+    // Each URL asks for exactly a version prepared at upload: in any other
+    // order Cloudinary would see a new version and convert on the spot.
+    const prepared = (await signUpload(client, 'video')).fields.eager!.split('|');
+    for (const url of [video.url, video.thumbnailUrl, video.posterUrl]) {
+      const [, transformation, extension] = url.match(/\/video\/upload\/(.+)\/v\d+\/.+\.(\w+)$/)!;
+      expect(prepared).toContain(`${transformation}/${extension}`);
+    }
 
     const pdf = await uploadMedia(client, 'document', pdfFile(3));
     expect(pdf.kind).toBe('document');

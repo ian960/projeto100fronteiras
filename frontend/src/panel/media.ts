@@ -120,7 +120,13 @@ export function importMedia(purpose: Extract<MediaPurpose, 'cover' | 'body' | 'a
 
 // The message under a file field, whatever went wrong.
 export function uploadErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.fields.file ?? error.fields.url ?? error.message;
+  if (error instanceof ApiError) {
+    if (error.fields.file ?? error.fields.url) return (error.fields.file ?? error.fields.url)!;
+    // The API refused what Cloudinary said about the file. There is no field
+    // on screen to fix, so "check the highlighted fields" would mislead.
+    if (Object.keys(error.fields).length > 0) return 'O arquivo foi enviado, mas o portal não conseguiu registrá-lo. Tente de novo.';
+    return error.message;
+  }
   if (error instanceof Error) return error.message;
   return 'Não foi possível enviar o arquivo.';
 }
