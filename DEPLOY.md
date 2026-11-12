@@ -86,7 +86,31 @@ The seed refuses to run against a database that is not on your machine
 unless `SEED_ADMIN_PASSWORD` is set. If it fails with "self-signed
 certificate", use `?sslmode=no-verify` instead of `?sslmode=require`.
 
-## 5. Check
+## 5. Demo content (optional, for presenting)
+
+The site can start with the same demo stories as development, and lose them
+in one command when real work begins. From the repository root on your
+computer, with the external URL from step 4 and the admin created there:
+
+```bash
+docker compose run --rm \
+  -e DATABASE_URL="<external URL>?sslmode=require" \
+  -e DEMO_SITE_URL="https://portal-sem-fronteiras.<your-account>.workers.dev" \
+  -e SEED_ADMIN_EMAIL="you@example.com" \
+  -e SEED_ADMIN_PASSWORD="the admin's password" \
+  api npm run db:demo
+```
+
+To take it out, the same command ending in `db:demo:remove`. It removes the
+four demo bylines and everything they sign, the two `@demo.local` accounts,
+their pictures (from Cloudinary too) and the demo categories with nothing
+else in them. Real stories stay, as long as nobody signs one with a demo
+byline.
+
+`db:demo` only fills an empty database, so it never duplicates anything. Both
+refuse when the database and the site address do not belong together.
+
+## 6. Check
 
 - The site opens, and so does `/api/health` on the site's address.
 - Log in on the panel (also on an iPhone).
