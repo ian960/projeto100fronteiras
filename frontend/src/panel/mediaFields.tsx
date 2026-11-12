@@ -386,7 +386,7 @@ export function VideoField({ value, onChange, error, disabled }: {
           )}
           {!disabled && (
             <p className="text-sm text-tinta-suave">
-              MP4 ou MOV (gravado no celular), até 100 MB. O Cloudinary converte para um formato que todo navegador toca.
+              MP4 ou MOV (gravado no celular), até 100 MB. O Cloudinary converte para um formato que todo navegador toca. Um vídeo grande leva alguns minutos para ficar pronto depois do envio.
             </p>
           )}
         </div>

@@ -165,7 +165,9 @@ export async function startFakeCloudinary(options: FakeCloudinaryOptions): Promi
       secure_url: deliveryUrl(asset),
       original_filename: originalFilename,
       asset_folder: asset.assetFolder,
-      ...(asset.pages ? { pages: asset.pages } : {}),
+      // A PDF's page count. Cloudinary answers "pages": 0 for a video, and
+      // leaves it out for a photo.
+      ...(asset.pages ? { pages: asset.pages } : asset.resourceType === 'video' ? { pages: 0 } : {}),
       ...(asset.duration ? { duration: asset.duration } : {}),
     };
   }

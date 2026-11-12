@@ -19,6 +19,26 @@ const WEB = 'f_auto,q_auto';
 
 type Ref = Pick<IMedia, 'publicId' | 'version' | 'format'>;
 
+// The three versions of a video the site shows. q_auto + .mp4: Cloudinary
+// converts .mov/.webm to H.264 mp4, which every browser plays. so_0: the
+// first frame, as a picture.
+//
+// On the free plan Cloudinary refuses to convert a video over 40 MB at the
+// moment someone presses play. So it makes these right after the upload, in
+// the background (VIDEO_EAGER, sent by media.service sign()). The URLs must
+// use exactly these strings: any other order is another version, which
+// Cloudinary would try to convert on the spot again.
+const VIDEO_VERSIONS = {
+  playback: { transformation: 'q_auto', extension: 'mp4' },
+  thumbnail: { transformation: 'so_0,c_fill,w_480,h_270,q_auto', extension: 'jpg' },
+  poster: { transformation: 'so_0,c_limit,w_1280,q_auto', extension: 'jpg' },
+} as const;
+
+// "q_auto/mp4|so_0,…/jpg|…": Cloudinary's eager parameter for a video upload.
+export const VIDEO_EAGER = Object.values(VIDEO_VERSIONS)
+  .map(({ transformation, extension }) => `${transformation}/${extension}`)
+  .join('|');
+
 function base(config: CloudinaryConfig, resourceType: 'image' | 'video'): string {
   return `${config.deliveryBase}/${config.cloudName}/${resourceType}/upload`;
 }
@@ -76,14 +96,15 @@ export function presentMedia(media: IMedia): IMediaView {
   }
 
   if (media.kind === MediaKind.VIDEO) {
-    const video = base(config, 'video');
+    const video = (version: keyof typeof VIDEO_VERSIONS) => {
+      const { transformation, extension } = VIDEO_VERSIONS[version];
+      return `${base(config, 'video')}/${transformation}/${asset(media, extension)}`;
+    };
     return {
       ...facts,
-      // q_auto + .mp4: Cloudinary converts .mov/.webm to H.264 mp4, which
-      // every browser plays.
-      url: `${video}/q_auto/${asset(media, 'mp4')}`,
-      thumbnailUrl: `${video}/so_0,c_fill,w_480,h_270,q_auto/${asset(media, 'jpg')}`,
-      posterUrl: `${video}/so_0,c_limit,w_1280,q_auto/${asset(media, 'jpg')}`,
+      url: video('playback'),
+      thumbnailUrl: video('thumbnail'),
+      posterUrl: video('poster'),
       srcset: null,
       shareUrl: null,
     };

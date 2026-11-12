@@ -31,7 +31,13 @@ export const registerMediaSchema = z.object({
     width: z.number().int().positive().nullish(),
     height: z.number().int().positive().nullish(),
     duration: z.number().nonnegative().nullish(),
-    pages: z.number().int().positive().nullish(),
+    // Only a PDF has pages. Cloudinary answers "pages": 0 for a video.
+    pages: z
+      .number()
+      .int()
+      .nonnegative()
+      .nullish()
+      .transform((pages) => pages || null),
     // The name of the file on the writer's computer. Display only.
     originalName: z.string().trim().min(1).max(200),
   }),
