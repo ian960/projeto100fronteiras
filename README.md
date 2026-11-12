@@ -46,6 +46,7 @@ Ports can be changed in `.env` (`WEB_PORT`, `API_PORT`, `POSTGRES_PORT`).
 | start in the background | `docker compose up -d`, then `docker compose logs -f api web` |
 | stop | `docker compose stop` |
 | seed | `docker compose exec api npm run db:seed` |
+| demo content (empty database only) | `docker compose exec api npm run db:demo` |
 | tests (first time) | `docker compose exec api npm run db:test:setup` |
 | tests | `docker compose exec api npm test` |
 | typecheck | `docker compose exec api npm run typecheck` and `docker compose exec web npm run typecheck` |
@@ -55,6 +56,22 @@ Ports can be changed in `.env` (`WEB_PORT`, `API_PORT`, `POSTGRES_PORT`).
 
 **Never run `docker compose down -v`.** The `-v` deletes the database volume.
 `docker compose down` (without `-v`) is safe.
+
+### Start over with an empty database
+
+Erases everything in the local database (stories, users, categories) and fills
+it again. With `docker compose up` running, in a second terminal:
+
+```bash
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > ../backup-portal.sql  # a copy first, outside the repo
+docker compose exec api npx prisma migrate reset --force   # empty, every migration applied
+docker compose exec api npm run db:seed                    # the admin (admin@portal.local / admin12345)
+docker compose exec api npm run db:demo                    # demo news, columns and columnists
+```
+
+`db:demo` refuses a database that already has content, so it never duplicates
+anything. Its pictures go to Cloudinary (the `portal-dev` folder); the ones from
+before the reset stay there until someone deletes them in Cloudinary.
 
 ### How it works
 

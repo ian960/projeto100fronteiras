@@ -14,7 +14,7 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
 type Variant = 'primario' | 'secundario' | 'perigo' | 'texto';
 
 const variants: Record<Variant, string> = {
-  primario: 'bg-anil text-white hover:bg-anil-escuro disabled:bg-anil/50',
+  primario: 'bg-anil text-sobre-anil hover:bg-anil-escuro disabled:bg-anil/50',
   secundario: 'bg-papel text-tinta border border-linha hover:border-tinta-suave disabled:text-tinta-suave',
   perigo: 'bg-papel text-alerta border border-alerta/40 hover:bg-alerta-claro disabled:opacity-50',
   texto: 'text-anil hover:underline underline-offset-4 disabled:text-tinta-suave',

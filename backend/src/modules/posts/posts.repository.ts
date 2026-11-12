@@ -168,10 +168,10 @@ export class PostsRepository implements IPostsRepository {
     }
   }
 
-  async findLatest(type: FindPublishedFilters['type'], limit: number): Promise<IPostListItem[]> {
+  async findLatest(type: FindPublishedFilters['type'], limit: number, categoryId?: string): Promise<IPostListItem[]> {
     try {
       const rows = await prisma.post.findMany({
-        where: { status: 'published', ...(type ? { type } : {}) },
+        where: { status: 'published', ...(type ? { type } : {}), ...(categoryId ? { categoryId } : {}) },
         select: this.listSelect,
         orderBy: { publishedAt: 'desc' },
         take: limit,

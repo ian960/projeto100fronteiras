@@ -114,10 +114,18 @@ export type PostWithAudit = PostDetail & {
   publishedBy?: Pick<User, 'id' | 'name' | 'email'> | null;
 };
 
+export type HomeSection = {
+  category: { id: string; name: string; slug: string };
+  posts: PostListItem[];
+};
+
 export type HomePayload = {
   featured: PostListItem | null;
   latestNews: PostListItem[];
   latestColumns: PostListItem[];
+  // Missing while the API still runs an older version: the site and the API
+  // are deployed separately, and the site is usually live first.
+  sections?: HomeSection[];
 };
 
 export type Health = {

@@ -15,6 +15,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "db:demo": "tsx scripts/demo-content.ts",
     "db:test:setup": "tsx scripts/setup-test-db.ts"
   },
   "keywords": [],

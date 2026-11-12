@@ -15,7 +15,7 @@ export interface IPostsRepository {
   ): Promise<Paginated<IPostListItem>>;
   findPublishedBySlug(slug: string): Promise<IPostDetail | null>;
   findFeatured(): Promise<IPostListItem | null>;
-  findLatest(type: FindPublishedFilters['type'], limit: number): Promise<IPostListItem[]>;
+  findLatest(type: FindPublishedFilters['type'], limit: number, categoryId?: string): Promise<IPostListItem[]>;
   findPublishedByIds(ids: string[]): Promise<IPostListItem[]>;
 
   // Panel

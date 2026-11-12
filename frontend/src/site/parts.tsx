@@ -1,30 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import { Link } from 'react-router';
 import { Avatar, cx } from '../components/ui';
 import { useBookmarks } from '../lib/bookmarks';
 import { formatBytes, formatDate, formatRelative, postPath } from '../lib/format';
 import type { AuthorSummary, PostDetail, PostListItem } from '../lib/types';
-
-// ── The border line ──────────────────────────────────────────────────────────
-// A map's dash-dot border, drawn once across the masthead and interrupted by
-// the portal's name. It is the one decorative gesture on the site.
-
-export function FronteiraLine({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden="true" className={cx('h-[3px] w-full', className)} preserveAspectRatio="none">
-      <line
-        x1="0"
-        y1="1.5"
-        x2="100%"
-        y2="1.5"
-        stroke="var(--color-sol)"
-        strokeWidth="3"
-        strokeDasharray="16 7 3 7"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 // ── What kind of text is this ────────────────────────────────────────────────
 // News carries its category in blue; a column is opinion, in green. Readers
@@ -51,8 +31,23 @@ export function Kicker({ post, linked = true }: { post: Pick<PostListItem, 'type
   );
 }
 
-export function Byline({ author, date, compact }: { author?: AuthorSummary; date: string | null; compact?: boolean }) {
-  if (!author) return <p className="text-sm text-tinta-suave">{formatDate(date)}</p>;
+// "11 de novembro de 2026" and, on articles, ", 4 min de leitura".
+function DateLine({ date, readingMinutes }: { date: string | null; readingMinutes?: number }) {
+  return (
+    <p className="text-tinta-suave">
+      {formatDate(date)}
+      {readingMinutes ? <span className="whitespace-nowrap">, {readingMinutes} min de leitura</span> : null}
+    </p>
+  );
+}
+
+export function Byline({ author, date, compact, readingMinutes }: {
+  author?: AuthorSummary;
+  date: string | null;
+  compact?: boolean;
+  readingMinutes?: number;
+}) {
+  if (!author) return <div className="text-sm"><DateLine date={date} readingMinutes={readingMinutes} /></div>;
 
   if (compact) {
     return (
@@ -73,7 +68,7 @@ export function Byline({ author, date, compact }: { author?: AuthorSummary; date
             {author.name}
           </Link>
         </p>
-        <p className="text-tinta-suave">{formatDate(date)}</p>
+        <DateLine date={date} readingMinutes={readingMinutes} />
       </div>
     </div>
   );
@@ -191,6 +186,10 @@ export function Attachments({ items }: { items: PostDetail['attachments'] }) {
 }
 
 // ── Reader actions ───────────────────────────────────────────────────────────
+// 44px tall on a phone (a thumb), 36px with a mouse.
+
+const pill =
+  'inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors sm:h-9 sm:px-3.5';
 
 export function BookmarkButton({ id, withLabel = true }: { id: string; withLabel?: boolean }) {
   const { isSaved, toggle } = useBookmarks();
@@ -201,10 +200,7 @@ export function BookmarkButton({ id, withLabel = true }: { id: string; withLabel
       type="button"
       onClick={() => toggle(id)}
       aria-pressed={saved}
-      className={cx(
-        'inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition-colors',
-        saved ? 'border-anil bg-anil text-white' : 'border-linha text-tinta hover:border-tinta-suave',
-      )}
+      className={cx(pill, saved ? 'border-anil bg-anil text-sobre-anil' : 'border-linha text-tinta hover:border-tinta-suave')}
     >
       <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
         <path d="M4 2.5h8v11l-4-2.8-4 2.8z" strokeLinejoin="round" />
@@ -214,7 +210,15 @@ export function BookmarkButton({ id, withLabel = true }: { id: string; withLabel
   );
 }
 
-export function ShareActions({ title, url }: { title: string; url: string }) {
+function WhatsAppIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4" fill="currentColor">
+      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.8-1.2.2-.6.2-1.1.1-1.2l-.4-.3Z" />
+    </svg>
+  );
+}
+
+export function ShareActions({ title, url, whatsAppLabel = 'Enviar no WhatsApp' }: { title: string; url: string; whatsAppLabel?: string }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -233,39 +237,79 @@ export function ShareActions({ title, url }: { title: string; url: string }) {
         href={`https://wa.me/?text=${encodeURIComponent(`${title} ${url}`)}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex h-9 items-center gap-2 rounded-full border border-linha px-3.5 text-sm font-medium hover:border-tinta-suave"
+        className={cx(pill, 'border-linha text-tinta hover:border-tinta-suave')}
       >
-        Enviar no WhatsApp
+        <WhatsAppIcon />
+        {whatsAppLabel}
       </a>
-      <button
-        type="button"
-        onClick={copy}
-        className="inline-flex h-9 items-center rounded-full border border-linha px-3.5 text-sm font-medium hover:border-tinta-suave"
-      >
+      <button type="button" onClick={copy} className={cx(pill, 'border-linha text-tinta hover:border-tinta-suave')}>
+        <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M6.5 9.5a3 3 0 0 0 4.2 0l2.3-2.3a3 3 0 0 0-4.2-4.2l-.9.9M9.5 6.5a3 3 0 0 0-4.2 0L3 8.8A3 3 0 0 0 7.2 13l.9-.9" strokeLinecap="round" />
+        </svg>
         <span aria-live="polite">{copied ? 'Link copiado' : 'Copiar link'}</span>
       </button>
     </>
   );
 }
 
-// ── Story layouts ────────────────────────────────────────────────────────────
+// A thin bar in the border-line yellow along the top edge, filling as the
+// reader goes down the article. It moves only when they scroll.
+export function ReadingProgress({ target }: { target: RefObject<HTMLElement | null> }) {
+  const bar = useRef<HTMLDivElement>(null);
 
-// The lead story: image and headline side by side on wide screens, stacked on
-// a phone, where the headline comes first so it is readable without scrolling.
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const element = target.current;
+      if (!element || !bar.current) return;
+      const box = element.getBoundingClientRect();
+      const total = box.height - window.innerHeight;
+      // A text that fits on one screen has no progress to show.
+      const done = total <= 0 ? 0 : Math.min(1, Math.max(0, -box.top / total));
+      bar.current.style.transform = `scaleX(${done})`;
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [target]);
+
+  return (
+    <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[3px]">
+      <div ref={bar} className="h-full origin-left bg-sol" style={{ transform: 'scaleX(0)' }} />
+    </div>
+  );
+}
+
+// ── Story layouts ────────────────────────────────────────────────────────────
+// Importance is shown by size: the lead gets the big photo, the next three a
+// medium one, the rest a thumbnail or no image at all. No boxes or shadows.
+
+// The lead story. On a phone the photo runs edge to edge.
 export function LeadStory({ post }: { post: PostListItem }) {
   return (
-    <article className="grid gap-5 md:grid-cols-12 md:items-center md:gap-8">
-      <Link to={postPath(post)} className="block overflow-hidden rounded-lg md:order-2 md:col-span-7" tabIndex={-1} aria-hidden="true">
-        <Cover post={post} eager sizes="(min-width: 768px) 58vw, 100vw" />
-      </Link>
-      <div className="md:order-1 md:col-span-5">
+    <article>
+      {post.cover && (
+        <Link to={postPath(post)} className="-mx-4 block overflow-hidden sm:mx-0 sm:rounded-xl" tabIndex={-1} aria-hidden="true">
+          <Cover post={post} eager sizes="(min-width: 1024px) 760px, 100vw" />
+        </Link>
+      )}
+      <div className={post.cover ? 'mt-5' : undefined}>
         <Kicker post={post} />
-        <h2 className="titulo mt-2 text-[2rem] sm:text-[2.6rem] lg:text-[3rem]">
+        <h2 className="titulo mt-2 text-[2rem] sm:text-[2.75rem] lg:text-[3.1rem]">
           <Link to={postPath(post)} className="hover:text-anil">
             {post.title}
           </Link>
         </h2>
-        {post.excerpt && <p className="mt-3 font-serif text-lg leading-relaxed text-tinta-suave">{post.excerpt}</p>}
+        {post.excerpt && <p className="mt-3 max-w-2xl font-serif text-lg leading-relaxed text-tinta-suave sm:text-xl">{post.excerpt}</p>}
         <div className="mt-5">
           <Byline author={post.author} date={post.publishedAt} />
         </div>
@@ -274,37 +318,125 @@ export function LeadStory({ post }: { post: PostListItem }) {
   );
 }
 
-// A row in a list: headline first, small image on the right. Reads well at
-// 360px wide, where most of this portal's traffic comes from.
-export function StoryRow({ post, showImage = true }: { post: PostListItem; showImage?: boolean }) {
+// Beside the lead on a wide screen: photo on top. On a phone it is a row with
+// the photo on the right, like the rest of the list but with a bigger headline.
+export function SecondaryStory({ post, photoOnWide = true }: { post: PostListItem; photoOnWide?: boolean }) {
   return (
-    <article className="flex gap-4 py-5">
+    <article className="flex gap-4 lg:flex-col lg:gap-3">
+      {post.cover && (
+        <Link
+          to={postPath(post)}
+          tabIndex={-1}
+          aria-hidden="true"
+          className={cx('order-2 w-28 shrink-0 overflow-hidden rounded-lg lg:order-none lg:w-full', !photoOnWide && 'lg:hidden')}
+        >
+          <Cover post={post} className="aspect-square lg:aspect-video" sizes="(min-width: 1024px) 320px, 112px" />
+        </Link>
+      )}
       <div className="min-w-0 flex-1">
         <Kicker post={post} />
-        <h3 className="titulo mt-1 text-xl sm:text-[1.375rem]">
+        <h3 className="titulo mt-1 text-[1.3rem] lg:text-[1.375rem]">
           <Link to={postPath(post)} className="hover:text-anil">
             {post.title}
           </Link>
         </h3>
-        {post.excerpt && <p className="mt-1.5 line-clamp-2 text-[0.9375rem] text-tinta-suave">{post.excerpt}</p>}
+        <p className="mt-1.5 text-sm text-tinta-suave">{formatRelative(post.publishedAt)}</p>
+      </div>
+    </article>
+  );
+}
+
+// A row in a list: headline first, small image on the right. Reads well at
+// 360px wide, where most of this portal's traffic comes from.
+export function StoryRow({ post, showImage = true, showKicker = true }: { post: PostListItem; showImage?: boolean; showKicker?: boolean }) {
+  return (
+    <article className="flex gap-4 py-5">
+      <div className="min-w-0 flex-1">
+        {showKicker && <Kicker post={post} />}
+        <h3 className={cx('titulo text-xl sm:text-[1.375rem]', showKicker && 'mt-1')}>
+          <Link to={postPath(post)} className="hover:text-anil">
+            {post.title}
+          </Link>
+        </h3>
+        {post.excerpt && <p className="mt-1.5 line-clamp-2 text-[0.9375rem] leading-relaxed text-tinta-suave">{post.excerpt}</p>}
         <p className="mt-2 text-sm text-tinta-suave">{formatRelative(post.publishedAt)}</p>
       </div>
       {showImage && post.cover && (
-        <Link to={postPath(post)} tabIndex={-1} aria-hidden="true" className="w-24 shrink-0 sm:w-36">
-          <Cover post={post} className="aspect-square rounded-md sm:aspect-[4/3]" sizes="144px" />
+        <Link to={postPath(post)} tabIndex={-1} aria-hidden="true" className="w-28 shrink-0 overflow-hidden rounded-lg sm:w-40">
+          <Cover post={post} className="aspect-square sm:aspect-[4/3]" sizes="160px" />
         </Link>
       )}
     </article>
   );
 }
 
-export function StoryList({ posts, showImages = true }: { posts: PostListItem[]; showImages?: boolean }) {
+export function StoryList({ posts, showImages = true, showKicker = true }: { posts: PostListItem[]; showImages?: boolean; showKicker?: boolean }) {
   return (
     <div className="divide-y divide-linha">
       {posts.map((post) => (
-        <StoryRow key={post.id} post={post} showImage={showImages} />
+        <StoryRow key={post.id} post={post} showImage={showImages} showKicker={showKicker} />
       ))}
     </div>
+  );
+}
+
+// The first story of a category page: a medium photo beside the headline.
+export function ListLead({ post, showKicker = true }: { post: PostListItem; showKicker?: boolean }) {
+  return (
+    <article className="grid gap-4 border-b border-linha pb-6 sm:grid-cols-5 sm:gap-6">
+      {post.cover && (
+        <Link to={postPath(post)} tabIndex={-1} aria-hidden="true" className="-mx-4 block overflow-hidden sm:col-span-3 sm:mx-0 sm:rounded-xl">
+          <Cover post={post} eager sizes="(min-width: 640px) 460px, 100vw" />
+        </Link>
+      )}
+      <div className={post.cover ? 'sm:col-span-2' : 'sm:col-span-5'}>
+        {showKicker && <Kicker post={post} />}
+        <h2 className="titulo mt-1 text-[1.7rem] sm:text-[1.9rem]">
+          <Link to={postPath(post)} className="hover:text-anil">
+            {post.title}
+          </Link>
+        </h2>
+        {post.excerpt && <p className="mt-2 font-serif text-lg leading-relaxed text-tinta-suave">{post.excerpt}</p>}
+        <p className="mt-3 text-sm text-tinta-suave">{formatRelative(post.publishedAt)}</p>
+      </div>
+    </article>
+  );
+}
+
+// A category's block on the home page: one story with its photo, the next
+// ones as headlines.
+export function SectionBlock({ name, slug, posts }: { name: string; slug: string; posts: PostListItem[] }) {
+  const [first, ...rest] = posts;
+  if (!first) return null;
+
+  return (
+    <section aria-label={name}>
+      <SectionHeading action={{ to: `/categoria/${slug}`, label: `Mais em ${name}` }}>{name}</SectionHeading>
+      <article className="mt-5">
+        {first.cover && (
+          <Link to={postPath(first)} tabIndex={-1} aria-hidden="true" className="block overflow-hidden rounded-lg">
+            <Cover post={first} sizes="(min-width: 1024px) 360px, (min-width: 768px) 50vw, 100vw" />
+          </Link>
+        )}
+        <h3 className={cx('titulo text-[1.3rem]', first.cover && 'mt-3')}>
+          <Link to={postPath(first)} className="hover:text-anil">
+            {first.title}
+          </Link>
+        </h3>
+        <p className="mt-1.5 text-sm text-tinta-suave">{formatRelative(first.publishedAt)}</p>
+      </article>
+      {rest.length > 0 && (
+        <ul className="mt-4 divide-y divide-linha border-t border-linha">
+          {rest.map((post) => (
+            <li key={post.id} className="py-3">
+              <Link to={postPath(post)} className="titulo block text-[1.0625rem] hover:text-anil">
+                {post.title}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -312,18 +444,18 @@ export function StoryList({ posts, showImages = true }: { posts: PostListItem[];
 export function OpinionItem({ post }: { post: PostListItem }) {
   const author = post.author;
   return (
-    <article className="flex gap-3.5 py-5">
-      {author && <Avatar src={author.photoUrl} name={author.name} size={52} />}
+    <article className="flex gap-3.5">
+      {author && <Avatar src={author.photoUrl} name={author.name} size={56} />}
       <div className="min-w-0">
         {author && (
           <p className="text-sm">
             <Link to={`/autor/${author.slug}`} className="font-semibold text-mata hover:underline underline-offset-4">
               {author.name}
             </Link>
-            {author.columnTitle && <span className="text-tinta-suave">, {author.columnTitle}</span>}
+            {author.columnTitle && <span className="block text-tinta-suave">{author.columnTitle}</span>}
           </p>
         )}
-        <h3 className="titulo mt-1 text-[1.3rem]">
+        <h3 className="titulo mt-1.5 text-[1.25rem]">
           <Link to={postPath(post)} className="hover:text-mata">
             {post.title}
           </Link>
@@ -333,16 +465,36 @@ export function OpinionItem({ post }: { post: PostListItem }) {
   );
 }
 
-export function SectionHeading({ children, tone = 'anil', action }: {
+// The opinion column of the home. On a phone the pieces sit side by side and
+// slide with a finger; on a wide screen they stack beside the latest news.
+export function OpinionPanel({ posts }: { posts: PostListItem[] }) {
+  return (
+    <section aria-label="Opinião" className="rounded-2xl bg-mata-claro px-4 py-5 sm:px-6 sm:py-6">
+      <SectionHeading tone="mata" action={{ to: '/colunistas', label: 'Colunistas' }}>
+        Opinião
+      </SectionHeading>
+      <div className="-mx-4 mt-5 flex snap-x snap-mandatory scroll-px-4 gap-5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-0 lg:divide-y lg:divide-mata/15 lg:overflow-visible lg:px-0">
+        {posts.map((post) => (
+          <div key={post.id} className="w-[82%] shrink-0 snap-start sm:w-[45%] lg:w-auto lg:py-5 lg:first:pt-0 lg:last:pb-0">
+            <OpinionItem post={post} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function SectionHeading({ children, tone = 'anil', action, as: Heading = 'h2' }: {
   children: string;
   tone?: 'anil' | 'mata';
   action?: { to: string; label: string };
+  as?: 'h2' | 'h3';
 }) {
   return (
     <div className={cx('flex items-baseline justify-between gap-4 border-b-2 pb-2', tone === 'mata' ? 'border-mata' : 'border-anil')}>
-      <h2 className={cx('titulo text-2xl', tone === 'mata' ? 'text-mata' : 'text-anil')}>{children}</h2>
+      <Heading className={cx('titulo text-2xl', tone === 'mata' ? 'text-mata' : 'text-anil')}>{children}</Heading>
       {action && (
-        <Link to={action.to} className="text-sm font-medium text-tinta-suave hover:text-tinta hover:underline underline-offset-4">
+        <Link to={action.to} className="shrink-0 text-sm font-medium text-tinta-suave hover:text-tinta hover:underline underline-offset-4">
           {action.label}
         </Link>
       )}

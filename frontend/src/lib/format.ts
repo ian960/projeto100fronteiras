@@ -86,3 +86,10 @@ export function isSlugOf(slug: string, source: string): boolean {
   const base = slugify(source);
   return base !== '' && (slug === base || new RegExp(`^${base}-\\d+$`).test(slug));
 }
+
+// Minutes to read an article: about 200 words a minute, the pace of reading
+// Portuguese on a phone. Counts the words of the HTML without the tags.
+export function readingMinutes(html: string): number {
+  const words = html.replace(/<[^>]+>/g, ' ').trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 200));
+}

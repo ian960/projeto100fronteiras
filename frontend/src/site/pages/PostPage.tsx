@@ -1,8 +1,10 @@
+import { useRef } from 'react';
 import { Link, useParams } from 'react-router';
 import { Alert, Avatar, Loading, cx } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
 import { useDocumentTitle } from '../../lib/hooks';
-import { Attachments, BookmarkButton, Byline, Cover, Kicker, SectionHeading, ShareActions, StoryList, VideoEmbed } from '../parts';
+import { readingMinutes } from '../../lib/format';
+import { Attachments, BookmarkButton, Byline, Cover, Kicker, ReadingProgress, SectionHeading, ShareActions, StoryList, VideoEmbed } from '../parts';
 import { useAuthor, usePost, usePublishedPosts } from '../queries';
 import NotFoundPage from './NotFoundPage';
 
@@ -10,6 +12,7 @@ export default function PostPage() {
   const { slug = '' } = useParams();
   const { data: post, isPending, error } = usePost(slug);
   useDocumentTitle(post?.title);
+  const body = useRef<HTMLDivElement>(null);
 
   if (isPending) return <Loading />;
 
@@ -23,14 +26,21 @@ export default function PostPage() {
   const url = window.location.href;
 
   return (
-    <article className="mx-auto max-w-3xl">
-      <header>
-        <Kicker post={post} />
-        <h1 className="titulo mt-3 text-[2.1rem] sm:text-[3rem]">{post.title}</h1>
-        {post.subtitle && <p className="mt-4 font-serif text-xl leading-relaxed text-tinta-suave sm:text-[1.375rem]">{post.subtitle}</p>}
+    <article className="mx-auto max-w-4xl">
+      <ReadingProgress target={body} />
 
-        <div className="mt-6 flex flex-col gap-4 border-y border-linha py-4 sm:flex-row sm:items-center sm:justify-between">
-          <Byline author={post.author} date={post.publishedAt} />
+      <header className="mx-auto max-w-3xl">
+        <Kicker post={post} />
+        <h1 className="titulo mt-3 text-[2.1rem] sm:text-[3.1rem]">{post.title}</h1>
+        {post.subtitle && <p className="mt-4 font-serif text-xl leading-relaxed text-tinta-suave sm:text-[1.375rem]">{post.subtitle}</p>}
+        {!post.subtitle && post.excerpt && (
+          <p className="mt-4 font-serif text-xl leading-relaxed text-tinta-suave sm:text-[1.375rem]">{post.excerpt}</p>
+        )}
+
+        {/* The buttons go under the byline when both do not fit on one line,
+            instead of squeezing the date into three short lines. */}
+        <div className="mt-7 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 border-y border-linha py-4">
+          <Byline author={post.author} date={post.publishedAt} readingMinutes={readingMinutes(post.content)} />
           <div className="flex flex-wrap gap-2">
             <BookmarkButton id={post.id} />
             <ShareActions title={post.title} url={url} />
@@ -39,14 +49,18 @@ export default function PostPage() {
       </header>
 
       {post.cover && (
-        // Full-bleed on a phone: the photo is the second thing a reader sees.
-        <div className="-mx-4 mt-8 sm:mx-0">
-          <Cover post={post} eager className="sm:rounded-lg" sizes="(min-width: 768px) 768px, 100vw" />
-        </div>
+        // Full-bleed on a phone; on a wide screen a little wider than the
+        // text, so the photo leads the eye into the article.
+        <figure className="-mx-4 mt-8 sm:mx-0">
+          <Cover post={post} eager className="sm:rounded-xl" sizes="(min-width: 896px) 896px, 100vw" />
+          {post.coverAlt && post.coverAlt !== post.title && (
+            <figcaption className="mt-2 px-4 text-sm text-tinta-suave sm:px-0">{post.coverAlt}</figcaption>
+          )}
+        </figure>
       )}
 
       {(post.videoYoutubeId || post.video) && (
-        <div className="mt-8">
+        <div className="mx-auto mt-8 max-w-3xl">
           <VideoEmbed post={post} />
         </div>
       )}
@@ -55,9 +69,19 @@ export default function PostPage() {
           em, u, s, a, lists, blockquote and our own Cloudinary photos (with
           srcset and lazy loading) can reach this point. */}
       <div
+        ref={body}
         className={cx('corpo-materia mx-auto mt-10', isOpinion && 'corpo-materia--opiniao')}
         dangerouslySetInnerHTML={{ __html: post.content }}
       />
+
+      {/* Most readers arrive from a WhatsApp link: the end of the text is
+          where they decide to pass it on. */}
+      <div className="corpo-largura mx-auto mt-10 flex flex-col gap-3 border-t border-linha pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-serif text-lg text-tinta">Conhece alguém que precisa ler isto?</p>
+        <div className="flex flex-wrap gap-2">
+          <ShareActions title={post.title} url={url} whatsAppLabel="Enviar" />
+        </div>
+      </div>
 
       <div className="corpo-largura mx-auto">
         <Attachments items={post.attachments} />
@@ -75,7 +99,7 @@ function AuthorBox({ slug, opinion }: { slug: string; opinion: boolean }) {
   if (!author) return null;
 
   return (
-    <aside className={cx('mx-auto mt-12 flex max-w-[38rem] gap-4 rounded-lg p-5', opinion ? 'bg-mata-claro' : 'bg-superficie')}>
+    <aside className={cx('mx-auto mt-10 flex max-w-[38rem] gap-4 rounded-2xl p-5 sm:p-6', opinion ? 'bg-mata-claro' : 'bg-superficie')}>
       <Avatar src={author.photoUrl} name={author.name} size={64} />
       <div>
         <p className="font-semibold">
