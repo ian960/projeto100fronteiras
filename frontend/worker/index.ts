@@ -19,7 +19,7 @@ interface Env {
   PROXY_SECRET: string;
 }
 
-const SITE_NAME = 'Sem Fronteiras';
+const SITE_NAME = 'Portal100Fronteiras';
 
 export default {
   async fetch(request, env) {

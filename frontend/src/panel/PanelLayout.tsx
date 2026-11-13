@@ -63,7 +63,7 @@ function Shell({ me, children }: { me: User; children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-baseline gap-3">
             <Link to="/painel" className="titulo text-xl text-anil" style={{ fontWeight: 720 }}>
-              Sem Fronteiras
+              Portal100Fronteiras
             </Link>
             <span className="hidden text-sm text-tinta-suave sm:inline">Área da redação</span>
           </div>

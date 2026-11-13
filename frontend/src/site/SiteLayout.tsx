@@ -71,9 +71,16 @@ function Masthead() {
       </a>
 
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:py-6">
-        <Link to="/" aria-label="Sem Fronteiras, página inicial">
-          <span className="titulo block text-[1.85rem] leading-none text-anil sm:text-[2.75rem]" style={{ fontWeight: 720 }}>
-            Sem Fronteiras
+        <Link to="/" aria-label="Portal100Fronteiras, página inicial">
+          {/* The name grows with the screen up to its full size, so it always
+              fits beside the buttons, on a phone and at the width where the
+              wide layout's extra buttons appear, without pushing the page
+              sideways. */}
+          <span
+            className="titulo block whitespace-nowrap text-[clamp(1.1rem,5.6vw,2.75rem)] leading-none text-anil"
+            style={{ fontWeight: 720 }}
+          >
+            Portal100Fronteiras
           </span>
         </Link>
 
@@ -139,7 +146,7 @@ function CategoryNav({ compact }: { compact: boolean }) {
           )}
           style={{ fontWeight: 720 }}
         >
-          <span className="text-[1.15rem]">Sem Fronteiras</span>
+          <span className="text-[1.15rem]">Portal100Fronteiras</span>
         </Link>
 
         {/* Scrolls sideways on a phone instead of wrapping into a tall block. */}
@@ -172,7 +179,7 @@ function Footer() {
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-2">
         <div>
           <p className="titulo text-[1.75rem]" style={{ fontWeight: 720 }}>
-            Sem Fronteiras
+            Portal100Fronteiras
           </p>
           <p className="mt-2 max-w-sm text-[0.9375rem] leading-relaxed text-white/75">Notícias e opinião, publicadas pela nossa própria redação.</p>
         </div>

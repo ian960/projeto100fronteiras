@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError, get, post } from './api';
 import type { Health, User } from './types';
 
-const SITE = 'Sem Fronteiras';
+const SITE = 'Portal100Fronteiras';
 
 export function useDocumentTitle(title?: string | null) {
   useEffect(() => {
