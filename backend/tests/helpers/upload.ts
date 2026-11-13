@@ -5,7 +5,7 @@ import type { agent } from './agent';
 // "Cloudinary", forward its answer to the API.
 
 type Agent = ReturnType<typeof agent>;
-type Purpose = 'cover' | 'body' | 'author' | 'video' | 'document';
+type Purpose = 'cover' | 'body' | 'author' | 'avatar' | 'video' | 'document';
 export type TestFile = { name: string; bytes: Buffer };
 
 // ── tiny files with just enough of a real header ─────────────────────────────

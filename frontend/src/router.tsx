@@ -43,6 +43,9 @@ export const router = createBrowserRouter([
       { path: 'salvos', element: <SavedPage /> },
       { path: 'entrar', element: <LoginPage /> },
       { path: 'cadastro', element: <RegisterPage /> },
+      // Loaded on demand: it brings the photo upload, which a reader on a news
+      // page never needs.
+      { path: 'minha-conta', lazy: async () => ({ Component: (await import('./site/pages/AccountPage')).default }) },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

@@ -7,6 +7,7 @@ export const MediaPurpose = {
   COVER: 'cover',
   BODY: 'body', // photo inside the text of a post
   AUTHOR: 'author',
+  AVATAR: 'avatar', // a user's own account photo; the only purpose a reader may upload for
   VIDEO: 'video',
   DOCUMENT: 'document',
 } as const;
@@ -62,6 +63,16 @@ export const PURPOSE_RULES: Record<MediaPurpose, PurposeRule> = {
     accept: IMAGE_ACCEPT,
     maxBytes: 10 * MB,
     minWidth: 200,
+  },
+  avatar: {
+    kind: MediaKind.IMAGE,
+    resourceType: 'image',
+    folder: 'avatars',
+    formats: IMAGE_FORMATS,
+    accept: IMAGE_ACCEPT,
+    // Readers upload these, so the limit is tighter than the newsroom's.
+    maxBytes: 5 * MB,
+    minWidth: 100,
   },
   video: {
     kind: MediaKind.VIDEO,

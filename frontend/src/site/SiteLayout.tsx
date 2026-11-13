@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, ScrollRestoration, useNavigate } from 'react-router';
-import { cx } from '../components/ui';
+import { Link, NavLink, Outlet, ScrollRestoration } from 'react-router';
+import { Avatar, cx } from '../components/ui';
 import { useBookmarks } from '../lib/bookmarks';
-import { useLogout, useMe } from '../lib/hooks';
+import { useMe } from '../lib/hooks';
 import { useTheme } from '../lib/theme';
 import { useCategories } from './queries';
 
@@ -60,8 +60,6 @@ function ThemeButton({ className, withLabel = false }: { className: string; with
 function Masthead() {
   const { ids } = useBookmarks();
   const { data: me } = useMe();
-  const logout = useLogout();
-  const navigate = useNavigate();
   const canUsePanel = me && (me.role === 'admin' || me.role === 'columnist');
 
   return (
@@ -97,13 +95,11 @@ function Masthead() {
               Painel
             </Link>
           ) : me ? (
-            <button
-              type="button"
-              className="h-10 rounded-full px-3 hover:bg-superficie"
-              onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/') })}
-            >
-              Sair
-            </button>
+            // A reader's own page: photo, name, bio, password, and "Sair".
+            <Link to="/minha-conta" className="inline-flex h-10 items-center gap-2 rounded-full pl-1 pr-1 hover:bg-superficie sm:pr-3">
+              <Avatar src={me.avatarUrl} name={me.name} size={32} />
+              <span className="sr-only sm:not-sr-only">Minha conta</span>
+            </Link>
           ) : (
             <Link to="/entrar" className="inline-flex h-10 items-center rounded-full px-3 hover:bg-superficie">
               Entrar
@@ -192,6 +188,9 @@ function Footer() {
           </Link>
           <Link to="/salvos" className="hover:underline underline-offset-4">
             Salvos
+          </Link>
+          <Link to="/minha-conta" className="hover:underline underline-offset-4">
+            Minha conta
           </Link>
           <Link to="/painel" className="hover:underline underline-offset-4">
             Área da redação

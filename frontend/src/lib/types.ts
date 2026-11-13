@@ -6,7 +6,7 @@ export type AuthorType = 'writer' | 'columnist';
 export type PostType = 'news' | 'column';
 export type PostStatus = 'draft' | 'pending' | 'published';
 export type MediaKind = 'image' | 'video' | 'document';
-export type MediaPurpose = 'cover' | 'body' | 'author' | 'video' | 'document';
+export type MediaPurpose = 'cover' | 'body' | 'author' | 'avatar' | 'video' | 'document';
 
 export type Paginated<T> = {
   items: T[];
@@ -74,6 +74,10 @@ export type User = {
   createdAt: string;
   updatedAt: string;
   author?: AuthorSummary | null;
+  // Only on your own account (GET /auth/me): "Minha conta".
+  bio?: string | null;
+  avatarId?: string | null;
+  avatarUrl?: string | null; // square, centred on the face
 };
 
 export type PostListItem = {

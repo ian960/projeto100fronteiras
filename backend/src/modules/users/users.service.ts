@@ -8,8 +8,13 @@ import type { SessionUser } from '../auth/auth.types';
 import { authorsRepository } from '../authors/authors.repository';
 import { mediaService } from '../media/media.service';
 import { usersRepository } from './users.repository';
-import type { IUserPublic, IUserWithAuthor } from './users.types';
-import type { ListUsersInput, PromoteUserInput, UpdateUserInput } from './users.service.types';
+import type { IUserMe, IUserPublic, IUserWithAuthor } from './users.types';
+import type {
+  ListUsersInput,
+  PromoteUserInput,
+  UpdateMeInput,
+  UpdateUserInput,
+} from './users.service.types';
 
 export class UsersService {
   private async ensureExists(id: string): Promise<IUserPublic> {
@@ -18,10 +23,20 @@ export class UsersService {
     return user;
   }
 
-  async getMe(id: string): Promise<IUserWithAuthor> {
-    const user = await usersRepository.findByIdWithAuthor(id);
+  async getMe(id: string): Promise<IUserMe> {
+    const user = await usersRepository.findMe(id);
     if (!user) throw new NotFound('User not found.');
     return user;
+  }
+
+  // "Minha conta": anyone logged in edits their own name, bio and photo.
+  // The photo must be an image this same person uploaded.
+  async updateMe(actor: SessionUser, input: UpdateMeInput): Promise<IUserMe> {
+    if (input.avatarId) {
+      await mediaService.requireUsable(actor, input.avatarId, MediaKind.IMAGE, 'avatarId');
+    }
+
+    return usersRepository.updateProfile(actor.id, input);
   }
 
   list(input: ListUsersInput): Promise<Paginated<IUserWithAuthor>> {

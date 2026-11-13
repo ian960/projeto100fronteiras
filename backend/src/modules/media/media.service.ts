@@ -60,7 +60,8 @@ function cleanName(name: string): string {
 }
 
 export class MediaService {
-  sign(purpose: MediaPurpose): ISignedUpload {
+  sign(actor: SessionUser, purpose: MediaPurpose): ISignedUpload {
+    this.assertMayUploadFor(actor, purpose);
     const cloud = getCloudinary();
     const rule = PURPOSE_RULES[purpose];
     const folder = folderFor(rule);
@@ -95,6 +96,7 @@ export class MediaService {
   }
 
   async register(actor: SessionUser, input: RegisterMediaInput): Promise<IMediaView> {
+    this.assertMayUploadFor(actor, input.purpose);
     const cloud = getCloudinary();
     const rule = PURPOSE_RULES[input.purpose];
 
@@ -140,6 +142,7 @@ export class MediaService {
   // A pasted link is copied into Cloudinary, so the post does not depend on
   // someone else's website keeping the picture online.
   async importFromUrl(actor: SessionUser, input: ImportMediaInput): Promise<IMediaView> {
+    this.assertMayUploadFor(actor, input.purpose);
     const rule = PURPOSE_RULES[input.purpose];
     const folder = folderFor(rule);
 
@@ -256,6 +259,12 @@ export class MediaService {
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
+
+  private assertMayUploadFor(actor: SessionUser, purpose: MediaPurpose): void {
+    if (!policy.canUploadFor(actor, purpose)) {
+      throw new Forbidden('You can only upload your account photo.');
+    }
+  }
 
   // The upload already happened, so a file that breaks the rules is removed
   // from Cloudinary right away instead of lingering there unused.

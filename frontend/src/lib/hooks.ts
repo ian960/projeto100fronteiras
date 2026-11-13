@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError, get, post } from './api';
+import { ApiError, get, patch, post } from './api';
 import type { Health, User } from './types';
 
 const SITE = 'Portal100Fronteiras';
@@ -45,6 +45,22 @@ export function useLogout() {
       client.removeQueries({ predicate: (query) => query.queryKey[0] === 'panel' });
       client.setQueryData(['me'], null);
     },
+  });
+}
+
+// "Minha conta": the logged-in user edits their own name, bio and photo.
+export function useUpdateMe() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name?: string; bio?: string | null; avatarId?: string | null }) =>
+      patch<{ user: User }>('/auth/me', input).then((data) => data.user),
+    onSuccess: (user) => client.setQueryData(['me'], user),
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (input: { currentPassword: string; newPassword: string }) => post('/auth/change-password', input),
   });
 }
 

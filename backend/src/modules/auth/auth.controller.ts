@@ -3,7 +3,7 @@ import { created, noContent, ok } from '../../shared/http/response';
 import { Unauthenticated } from '../../shared/errors/AppError';
 import { usersService } from '../users/users.service';
 import { authService } from './auth.service';
-import { changePasswordSchema, loginSchema, registerSchema } from './auth.schemas';
+import { changePasswordSchema, loginSchema, registerSchema, updateMeSchema } from './auth.schemas';
 
 function requireUser(req: Request) {
   if (!req.user) throw new Unauthenticated();
@@ -59,6 +59,13 @@ export class AuthController {
   me = async (req: Request, res: Response) => {
     const actor = requireUser(req);
     const user = await usersService.getMe(actor.id);
+    return ok(res, { user });
+  };
+
+  updateMe = async (req: Request, res: Response) => {
+    const actor = requireUser(req);
+    const parsed = updateMeSchema.parse({ body: req.body });
+    const user = await usersService.updateMe(actor, parsed.body);
     return ok(res, { user });
   };
 
