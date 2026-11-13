@@ -119,7 +119,7 @@ export function RegisterPage() {
     return (
       <AuthCard title="Conta criada" footer={<Link to="/" className="font-medium text-anil hover:underline underline-offset-4">Ir para a página inicial</Link>}>
         <p className="text-lg leading-relaxed">
-          Você já está conectado. Se vai escrever colunas para o portal, avise o administrador: ele libera o seu acesso à área da redação.
+          Sua conta foi criada com sucesso. Seja bem-vindo!
         </p>
       </AuthCard>
     );
