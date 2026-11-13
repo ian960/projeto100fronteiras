@@ -32,6 +32,15 @@ export class MediaRepository implements IMediaRepository {
     }
   }
 
+  async findByUploader(userId: string): Promise<IMedia[]> {
+    try {
+      return await prisma.media.findMany({ where: { uploadedById: userId } });
+    } catch (err) {
+      logger.error('Failed to list media by uploader', err);
+      throw err;
+    }
+  }
+
   async create(data: CreateMediaData): Promise<IMedia> {
     try {
       return await prisma.media.create({

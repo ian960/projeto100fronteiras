@@ -5,6 +5,7 @@ export interface IMediaRepository {
   findById(id: string): Promise<IMedia | null>;
   findByIds(ids: string[]): Promise<IMedia[]>;
   findByPublicId(publicId: string): Promise<IMedia | null>;
+  findByUploader(userId: string): Promise<IMedia[]>;
   create(data: CreateMediaData): Promise<IMedia>;
   countUsage(media: Pick<IMedia, 'id' | 'publicId'>): Promise<MediaUsage>;
   delete(id: string): Promise<void>;

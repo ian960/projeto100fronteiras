@@ -206,6 +206,10 @@ export function useUserActions() {
       mutationFn: ({ id, newPassword }: { id: string; newPassword: string }) =>
         post(`/admin/users/${id}/reset-password`, { newPassword }),
     }),
+    remove: useMutation({
+      mutationFn: (id: string) => del(`/admin/users/${id}`),
+      onSuccess,
+    }),
   };
 }
 

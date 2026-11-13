@@ -12,6 +12,7 @@ export function authRouter(): Router {
 
   router.get('/me', authenticate, authController.me);
   router.patch('/me', authenticate, authController.updateMe);
+  router.delete('/me', authenticate, authController.deleteMe);
   router.post('/change-password', authenticate, authController.changePassword);
 
   return router;

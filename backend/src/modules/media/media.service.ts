@@ -1,5 +1,5 @@
 import { randomUUID, timingSafeEqual } from 'node:crypto';
-import { getCloudinary } from '../../config/cloudinary';
+import { getCloudinary, isMediaConfigured } from '../../config/cloudinary';
 import {
   Conflict,
   Forbidden,
@@ -212,6 +212,38 @@ export class MediaService {
 
     await this.destroyInCloudinary(media);
     await mediaRepository.delete(id);
+  }
+
+  // ── used when an account is deleted ───────────────────────────────────────
+
+  // Removes every file this person uploaded that nothing uses any more, from
+  // Cloudinary and from the table. Files still on a post or a byline stay:
+  // the published text keeps its pictures. Returns how many were left behind.
+  async removeUnusedOf(userId: string): Promise<number> {
+    const files = await mediaRepository.findByUploader(userId);
+    let kept = 0;
+
+    for (const media of files) {
+      const usage = await mediaRepository.countUsage(media);
+      const inUse = Object.values(usage).some((count) => count > 0);
+
+      if (inUse || !isMediaConfigured()) {
+        kept += 1;
+        continue;
+      }
+
+      try {
+        await this.destroyInCloudinary(media);
+        await mediaRepository.delete(media.id);
+      } catch (err) {
+        // One file Cloudinary would not delete must not block the account
+        // deletion; the account is anonymized instead (users.service).
+        logger.error('Could not remove a file of a deleted account', err);
+        kept += 1;
+      }
+    }
+
+    return kept;
   }
 
   // ── used by posts and authors ─────────────────────────────────────────────

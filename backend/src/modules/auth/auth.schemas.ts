@@ -40,6 +40,14 @@ export const updateMeSchema = z.object({
     }),
 });
 
+// Deleting your own account asks for the password again: a session left open
+// on a shared computer must not be enough to erase someone.
+export const deleteMeSchema = z.object({
+  body: z.object({
+    password: z.string().min(1).max(200),
+  }),
+});
+
 export const changePasswordSchema = z.object({
   body: z.object({
     currentPassword: z.string().min(1).max(200),

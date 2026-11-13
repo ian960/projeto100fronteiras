@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { prisma } from '../src/config/prisma';
 import { agent, loginAs } from './helpers/agent';
 import { pngFile, uploadMedia } from './helpers/upload';
-import { makeMedia, makeUser } from './factories';
+import { makeAdmin, makeColumn, makeColumnist, makeMedia, makeUser, TEST_PASSWORD } from './factories';
 
 // "Minha conta": every logged-in user edits their own name, bio and photo
-// through PATCH /api/auth/me.
+// through PATCH /api/auth/me, and may delete the account (DELETE /api/auth/me).
+// The admin deletes others through DELETE /api/admin/users/:id.
 
 async function asReader() {
   const reader = await makeUser();
@@ -101,5 +102,72 @@ describe('own account', () => {
 
     const response = await client.patch('/api/auth/me').send({ avatarId: pdf.id }).expect(422);
     expect(response.body.error.fields).toHaveProperty('avatarId');
+  });
+});
+
+describe('deleting an account', () => {
+  it('lets a reader delete their own account, photo included', async () => {
+    const { reader, client } = await asReader();
+    const media = await uploadMedia(client, 'avatar', pngFile(400, 400));
+    await client.patch('/api/auth/me').send({ avatarId: media.id }).expect(200);
+
+    await client.delete('/api/auth/me').send({ password: TEST_PASSWORD }).expect(204);
+
+    expect(await prisma.user.findUnique({ where: { id: reader.id } })).toBeNull();
+    expect(await prisma.media.findUnique({ where: { id: media.id } })).toBeNull();
+    // The session went with it.
+    await client.get('/api/auth/me').expect(401);
+  });
+
+  it('asks for the password first', async () => {
+    const { reader, client } = await asReader();
+
+    const response = await client.delete('/api/auth/me').send({ password: 'not-the-password' }).expect(422);
+
+    expect(response.body.error.fields).toHaveProperty('password');
+    expect(await prisma.user.findUnique({ where: { id: reader.id } })).not.toBeNull();
+  });
+
+  it('keeps the posts of a columnist and wipes the person', async () => {
+    const columnist = await makeColumnist();
+    const column = await makeColumn({ authorId: columnist.author.id, createdById: columnist.user.id });
+    const { client } = await loginAs(columnist.user.email);
+
+    await client.delete('/api/auth/me').send({ password: TEST_PASSWORD }).expect(204);
+
+    const stored = await prisma.user.findUniqueOrThrow({ where: { id: columnist.user.id } });
+    expect(stored).toMatchObject({ name: 'Conta excluída', active: false, role: 'reader', bio: null, avatarId: null });
+    expect(stored.email).not.toBe(columnist.user.email);
+    expect(await prisma.post.findUnique({ where: { id: column.id } })).not.toBeNull();
+
+    // Nobody can log in with the old address or password.
+    await agent().post('/api/auth/login').send({ email: columnist.user.email, password: TEST_PASSWORD }).expect(401);
+  });
+
+  it('lets the admin delete any account but their own', async () => {
+    const admin = await makeAdmin();
+    const reader = await makeUser();
+    const { client } = await loginAs(admin.email);
+
+    await client.delete(`/api/admin/users/${reader.id}`).expect(204);
+    expect(await prisma.user.findUnique({ where: { id: reader.id } })).toBeNull();
+
+    await client.delete(`/api/admin/users/${admin.id}`).expect(403);
+  });
+
+  it('never deletes the last active admin', async () => {
+    await prisma.user.updateMany({ where: { role: 'admin' }, data: { active: false } });
+    const admin = await makeAdmin();
+    const { client } = await loginAs(admin.email);
+
+    await client.delete('/api/auth/me').send({ password: TEST_PASSWORD }).expect(409);
+    expect(await prisma.user.findUnique({ where: { id: admin.id } })).not.toBeNull();
+  });
+
+  it('keeps readers away from the admin route', async () => {
+    const { client } = await asReader();
+    const other = await makeUser();
+
+    await client.delete(`/api/admin/users/${other.id}`).expect(403);
   });
 });

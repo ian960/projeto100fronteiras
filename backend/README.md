@@ -172,6 +172,7 @@ POST   /api/auth/logout
 ### Authenticated
 ```
 GET    /api/auth/me                    PATCH  /api/auth/me   (own name, bio, avatarId)
+DELETE /api/auth/me   {password}      (own account)
 POST   /api/auth/change-password
 POST   /api/media/signature            POST /api/media
 POST   /api/media/import               DELETE /api/media/:id   (admin)
@@ -184,6 +185,7 @@ Readers may use `/api/media/signature` and `POST /api/media` only with
 ```
 GET    /api/admin/users                GET    /api/admin/users/:id
 POST   /api/admin/users/:id/promote    PATCH  /api/admin/users/:id
+DELETE /api/admin/users/:id            (anyone but yourself; never the last admin)
 POST   /api/admin/users/:id/reset-password
 CRUD   /api/admin/categories
 CRUD   /api/admin/authors

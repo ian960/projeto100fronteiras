@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import argon2 from 'argon2';
 import { Conflict, Forbidden, NotFound, ValidationError } from '../../shared/errors/AppError';
 import { AuthorType, MediaKind, Role } from '../../shared/types/enums';
@@ -126,6 +127,47 @@ export class UsersService {
     }
 
     return updated;
+  }
+
+  // Deleting an account, by its owner (DELETE /auth/me) or by the admin
+  // (DELETE /admin/users/:id).
+  //
+  // A reader has nothing that points at them, so they are really deleted,
+  // photo included. Someone who wrote or published posts cannot be: the posts
+  // need their creator. Their personal data is wiped instead and the row stays
+  // as "Conta excluída", unable to log in. Either way the person is gone.
+  async deleteAccount(id: string): Promise<{ mode: 'deleted' | 'anonymized' }> {
+    const target = await this.ensureExists(id);
+
+    // Without an active admin nobody can run the portal or promote a new one.
+    if (target.role === Role.ADMIN && target.active && (await usersRepository.countActiveAdmins()) <= 1) {
+      throw new Conflict('The portal needs at least one active admin. Make someone else admin first.');
+    }
+
+    // The photo is the account's own; let go of it so it can be removed below.
+    await usersRepository.updateProfile(id, { avatarId: null });
+    const filesKept = await mediaService.removeUnusedOf(id);
+    const posts = await usersRepository.countPostsOf(id);
+
+    // Sessions are not tied to the row by a foreign key: wipe them by hand.
+    await authRepository.deleteSessionsOfUser(id);
+
+    if (posts === 0 && filesKept === 0) {
+      await usersRepository.delete(id);
+      return { mode: 'deleted' };
+    }
+
+    // A hash of random bytes nobody knows: login is impossible.
+    await usersRepository.anonymize(id, await argon2.hash(randomBytes(32).toString('hex')));
+    return { mode: 'anonymized' };
+  }
+
+  // The admin removes someone else's account. Their own goes through Minha conta.
+  async deleteByAdmin(actorId: string, id: string): Promise<{ mode: 'deleted' | 'anonymized' }> {
+    if (actorId === id) {
+      throw new Forbidden('Delete your own account from Minha conta.');
+    }
+    return this.deleteAccount(id);
   }
 
   // There is no email-based reset flow: readers who forget a password matter

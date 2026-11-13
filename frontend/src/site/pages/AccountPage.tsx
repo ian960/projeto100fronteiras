@@ -4,7 +4,7 @@ import { Navigate, useNavigate } from 'react-router';
 import { Alert, Button, ButtonLink, Loading, TextArea, TextField } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
 import { roleLabel } from '../../lib/format';
-import { useChangePassword, useDocumentTitle, useLogout, useMe, useUpdateMe } from '../../lib/hooks';
+import { useChangePassword, useDeleteMe, useDocumentTitle, useLogout, useMe, useUpdateMe } from '../../lib/hooks';
 import type { User } from '../../lib/types';
 import { ImageField } from '../../panel/mediaFields';
 import type { ImageValue } from '../../panel/mediaFields';
@@ -54,8 +54,62 @@ export default function AccountPage() {
             Sair da conta
           </Button>
         </section>
+        <DeleteAccount inNewsroom={inNewsroom} />
       </div>
     </div>
+  );
+}
+
+// Two steps and the password: a slip of the finger must not erase anyone.
+function DeleteAccount({ inNewsroom }: { inNewsroom: boolean }) {
+  const deleteMe = useDeleteMe();
+  const navigate = useNavigate();
+  const [password, setPassword] = useState('');
+  const [armed, setArmed] = useState(false);
+  const errors = deleteMe.error instanceof ApiError ? deleteMe.error.fields : {};
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!armed) {
+      setArmed(true);
+      return;
+    }
+    deleteMe.mutate(password, { onSuccess: () => navigate('/', { replace: true }) });
+  }
+
+  return (
+    <section className="rounded-lg border border-alerta/40 bg-papel p-5">
+      <h2 className="font-semibold text-alerta">Excluir conta</h2>
+      <p className="mb-4 mt-1 text-sm text-tinta-suave">
+        Apaga seus dados e a sua foto. Não dá para desfazer.
+        {inNewsroom && ' As colunas e matérias já publicadas continuam no site, com a assinatura de sempre.'}
+      </p>
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        {deleteMe.error && Object.keys(errors).length === 0 && <Alert>{errorMessage(deleteMe.error)}</Alert>}
+        <TextField
+          label="Sua senha"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => {
+            setArmed(false);
+            setPassword(e.target.value);
+          }}
+          error={errors.password}
+        />
+        {armed && <Alert tone="aviso">Tem certeza? Clique de novo para excluir a sua conta de vez.</Alert>}
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" variant="perigo" busy={deleteMe.isPending} disabled={!password}>
+            {armed ? 'Sim, excluir minha conta' : 'Excluir minha conta'}
+          </Button>
+          {armed && (
+            <Button type="button" variant="texto" onClick={() => setArmed(false)}>
+              Cancelar
+            </Button>
+          )}
+        </div>
+      </form>
+    </section>
   );
 }
 
