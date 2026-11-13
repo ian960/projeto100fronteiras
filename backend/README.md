@@ -181,6 +181,14 @@ POST   /api/media/import               DELETE /api/media/:id   (admin)
 Readers may use `/api/media/signature` and `POST /api/media` only with
 `purpose: "avatar"` (their account photo). Every other purpose is newsroom-only.
 
+### Comments
+```
+GET    /api/comments?postId=           (public: threads with one level of replies)
+POST   /api/comments  {postId, parentId?, content}     (any account)
+PATCH  /api/comments/:id  {content}    (only who wrote it; sets editedAt)
+DELETE /api/comments/:id               (who wrote it, the post's author, the admin)
+```
+
 ### Admin
 ```
 GET    /api/admin/users                GET    /api/admin/users/:id

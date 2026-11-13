@@ -89,6 +89,7 @@ model User {
   author Author?
 
   createdPosts   Post[]  @relation("PostCreatedBy")
+  comments       Comment[] @relation("CommentAuthor")
   publishedPosts Post[]  @relation("PostPublishedBy")
   uploadedMedia  Media[] @relation("MediaUploadedBy")
 
@@ -203,6 +204,8 @@ model Post {
   // PDFs listed under the text ("Documentos desta matéria").
   attachments PostAttachment[]
 
+  comments Comment[]
+
   // Home feed and columnists tab.
   @@index([type, status, publishedAt(sort: Desc)])
   // Category page.
@@ -298,4 +301,35 @@ model Session {
 
   @@index([expire], map: "IDX_session_expire")
   @@map("session")
+}
+
+// Readers' comments under a news story or a column. Plain text only.
+model Comment {
+  id String @id @default(uuid(7))
+
+  // Deleting the post takes its comments with it.
+  postId String @map("post_id")
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  // Null once the account is deleted: the text stays, signed "Conta excluída".
+  userId String? @map("user_id")
+  user   User?   @relation("CommentAuthor", fields: [userId], references: [id], onDelete: SetNull)
+
+  // One level of replies: a reply always hangs from a top-level comment
+  // (the service attaches a reply to a reply to the same top-level comment).
+  parentId String?   @map("parent_id")
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  content String // plain text, never HTML
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  editedAt  DateTime? @map("edited_at") // shown as "editado em…"
+  // A comment with replies is not removed, only emptied, so the replies keep
+  // their context. Without replies it is really deleted.
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([postId, createdAt])
+  @@index([parentId, createdAt])
+  @@map("comments")
 }

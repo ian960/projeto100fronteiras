@@ -97,6 +97,11 @@ const exact: Record<string, string> = {
   'The portal needs at least one active admin. Make someone else admin first.':
     'O portal precisa de pelo menos um administrador ativo. Torne outra pessoa administradora antes.',
   'Delete your own account from Minha conta.': 'Para excluir a sua própria conta, use a página Minha conta.',
+  'Comment not found.': 'Comentário não encontrado.',
+  'This comment no longer exists.': 'Este comentário não existe mais.',
+  'Only the person who wrote a comment can edit it.': 'Só quem escreveu o comentário pode editá-lo.',
+  'Too many comments. Wait a few minutes.': 'Muitos comentários seguidos. Espere alguns minutos.',
+  'Write something before sending.': 'Escreva alguma coisa antes de enviar.',
   'You can only upload your account photo.': 'Por aqui você só pode enviar a sua foto de perfil.',
   'Only an admin can delete files.': 'Só o administrador pode apagar arquivos.',
   'Cloudinary did not delete the file. Try again in a moment.': 'O Cloudinary não apagou o arquivo. Tente de novo em instantes.',

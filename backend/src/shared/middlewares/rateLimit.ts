@@ -23,6 +23,18 @@ export const loginLimiter = rateLimit({
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many attempts. Try again later.' } },
 });
 
+// Anyone with an account can comment; a script with one should not flood a
+// story. Generous for a person, tight for a bot.
+export const commentLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip,
+  keyGenerator,
+  message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many comments. Wait a few minutes.' } },
+});
+
 // A public sign-up endpoint with no limit becomes a fake-account dump.
 export const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
