@@ -41,22 +41,22 @@
   color-scheme: dark;
   --color-anil: #93a9f2;
   --color-anil-escuro: #b3c3f7;
-  --color-sobre-anil: #0e1320;
-  --color-tinta: #e8ebf2;
-  --color-tinta-suave: #a2abbf;
-  --color-papel: #0e1320;
-  --color-superficie: #161d2e;
-  --color-linha: #283149;
+  --color-sobre-anil: #0b0b0c;
+  --color-tinta: #ececee;
+  --color-tinta-suave: #a7a7ae;
+  --color-papel: #0b0b0c;
+  --color-superficie: #161618;
+  --color-linha: #2a2a2e;
   --color-sol: #f2b930;
   --color-mata: #7cc9a3;
   --color-mata-claro: #16291f;
-  --color-rodape: #0a0e18;
-  --color-selecao: #2b3a66;
+  --color-rodape: #050506;
+  --color-selecao: #34363f;
 }
 
 /* The page behind the site (overscroll, the strip under a short page). */
 html:has(.tema-site[data-tema="noite"]) {
-  background: #0e1320;
+  background: #0b0b0c;
   color-scheme: dark;
 }
 
@@ -190,6 +190,10 @@ html:has(.tema-site[data-tema="noite"]) {
   padding-left: 1em;
   font-style: italic;
   color: #2c3650;
+}
+
+.tema-site[data-tema="noite"] .corpo-materia blockquote {
+  color: var(--color-tinta-suave);
 }
 
 .corpo-materia--opiniao blockquote {
