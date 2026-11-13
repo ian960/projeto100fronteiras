@@ -26,6 +26,15 @@
   // PROXY_SECRET is a secret, not a var: set it in the dashboard (Settings →
   // Variables and Secrets) with the same value as on Render.
 
+  // Previews: each Pull Request gets its own test address on Cloudflare.
+  // There is only one API (Render), so the previews use it too. Careful:
+  // whatever you do on a preview changes the real data.
+  "previews": {
+    "vars": {
+      "API_ORIGIN": "https://portal-api-o5v4.onrender.com"
+    }
+  },
+
   // Keeps Render's free instance awake (it sleeps after 15 minutes without a
   // request). Delete this block on a paid Render plan.
   "triggers": {
