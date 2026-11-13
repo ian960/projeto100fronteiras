@@ -42,6 +42,13 @@ export class UsersController {
     return ok(res, { user });
   };
 
+  remove = async (req: Request, res: Response) => {
+    const actor = requireUser(req);
+    const parsed = userIdParamSchema.parse({ params: req.params });
+    await usersService.deleteByAdmin(actor.id, parsed.params.id);
+    return noContent(res);
+  };
+
   resetPassword = async (req: Request, res: Response) => {
     const parsed = resetPasswordSchema.parse({ params: req.params, body: req.body });
     await usersService.resetPassword(parsed.params.id, parsed.body.newPassword);

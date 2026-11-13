@@ -54,6 +54,16 @@ export class AuthService {
     };
   }
 
+  // For actions that must be confirmed with the password (deleting the account).
+  async confirmPassword(userId: string, password: string): Promise<void> {
+    const user = await usersRepository.findByIdWithCredentials(userId);
+    if (!user) throw new Unauthenticated();
+
+    if (!(await argon2.verify(user.passwordHash, password))) {
+      throw new ValidationError('Current password is incorrect.', { password: 'Incorrect password.' });
+    }
+  }
+
   async changePassword(userId: string, input: ChangePasswordInput): Promise<void> {
     const user = await usersRepository.findByIdWithCredentials(userId);
 

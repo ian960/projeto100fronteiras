@@ -3,7 +3,13 @@ import { created, noContent, ok } from '../../shared/http/response';
 import { Unauthenticated } from '../../shared/errors/AppError';
 import { usersService } from '../users/users.service';
 import { authService } from './auth.service';
-import { changePasswordSchema, loginSchema, registerSchema, updateMeSchema } from './auth.schemas';
+import {
+  changePasswordSchema,
+  deleteMeSchema,
+  loginSchema,
+  registerSchema,
+  updateMeSchema,
+} from './auth.schemas';
 
 function requireUser(req: Request) {
   if (!req.user) throw new Unauthenticated();
@@ -67,6 +73,22 @@ export class AuthController {
     const parsed = updateMeSchema.parse({ body: req.body });
     const user = await usersService.updateMe(actor, parsed.body);
     return ok(res, { user });
+  };
+
+  deleteMe = async (req: Request, res: Response) => {
+    const actor = requireUser(req);
+    const parsed = deleteMeSchema.parse({ body: req.body });
+
+    await authService.confirmPassword(actor.id, parsed.body.password);
+    await usersService.deleteAccount(actor.id);
+
+    // The service already wiped the sessions in the database; this drops the
+    // one in memory and the cookie.
+    await new Promise<void>((resolve, reject) => {
+      req.session.destroy((err) => (err ? reject(err) : resolve()));
+    });
+    res.clearCookie('portal.sid');
+    return noContent(res);
   };
 
   changePassword = async (req: Request, res: Response) => {

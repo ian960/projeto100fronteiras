@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError, get, patch, post } from './api';
+import { ApiError, del, get, patch, post } from './api';
 import type { Health, User } from './types';
 
 const SITE = 'Portal100Fronteiras';
@@ -55,6 +55,19 @@ export function useUpdateMe() {
     mutationFn: (input: { name?: string; bio?: string | null; avatarId?: string | null }) =>
       patch<{ user: User }>('/auth/me', input).then((data) => data.user),
     onSuccess: (user) => client.setQueryData(['me'], user),
+  });
+}
+
+// Deleting your own account, confirmed with the password. Afterwards the
+// browser holds nothing of that person.
+export function useDeleteMe() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (password: string) => del('/auth/me', { password }),
+    onSuccess: () => {
+      client.removeQueries({ predicate: (query) => query.queryKey[0] === 'panel' });
+      client.setQueryData(['me'], null);
+    },
   });
 }
 

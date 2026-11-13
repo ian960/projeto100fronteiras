@@ -118,8 +118,8 @@ export async function patch<T>(path: string, body: unknown): Promise<T> {
   return res.data;
 }
 
-export async function del(path: string): Promise<void> {
-  await request<void>('DELETE', path);
+export async function del(path: string, body?: unknown): Promise<void> {
+  await request<void>('DELETE', path, { body });
 }
 
 export async function upload<T>(path: string, form: FormData, query?: Query): Promise<T> {

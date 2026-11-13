@@ -174,6 +174,63 @@ export class UsersRepository implements IUsersRepository {
     }
   }
 
+  async countActiveAdmins(): Promise<number> {
+    try {
+      return await prisma.user.count({ where: { role: 'admin', active: true } });
+    } catch (err) {
+      logger.error('Failed to count admins', err);
+      throw err;
+    }
+  }
+
+  // Posts this account wrote or published. They point at the account, so while
+  // any exists the row cannot be deleted, only anonymized.
+  async countPostsOf(id: string): Promise<number> {
+    try {
+      return await prisma.post.count({ where: { OR: [{ createdById: id }, { publishedById: id }] } });
+    } catch (err) {
+      logger.error('Failed to count posts of user', err);
+      throw err;
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    try {
+      // The byline, if any, stays online without a login (onDelete: SetNull).
+      await prisma.user.delete({ where: { id } });
+    } catch (err) {
+      logger.error('Failed to delete user', err);
+      throw err;
+    }
+  }
+
+  // Everything that identifies the person goes; the row stays only because
+  // published posts and their files still point at it. The byline is let go,
+  // like on a real delete: the columns stay online under the author's name.
+  async anonymize(id: string, passwordHash: string): Promise<void> {
+    try {
+      await prisma.$transaction([
+        prisma.author.updateMany({ where: { userId: id }, data: { userId: null } }),
+        prisma.user.update({
+          where: { id },
+          data: {
+            name: 'Conta excluída',
+            // Unique and never deliverable (.invalid is reserved, RFC 2606).
+            email: `excluida-${id}@contas.invalid`,
+            passwordHash,
+            bio: null,
+            avatarId: null,
+            role: 'reader',
+            active: false,
+          },
+        }),
+      ]);
+    } catch (err) {
+      logger.error('Failed to anonymize user', err);
+      throw err;
+    }
+  }
+
   // One transaction, two writes.
   //
   // Split into two steps, a failure on the second would leave a user whose

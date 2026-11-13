@@ -479,6 +479,17 @@ export function UsersPage() {
                         >
                           {user.active ? 'Desativar' : 'Reativar'}
                         </Button>
+                        <ConfirmButton
+                          label="Excluir"
+                          confirmLabel="Excluir de vez"
+                          busy={actions.remove.isPending && actions.remove.variables === user.id}
+                          onConfirm={() =>
+                            actions.remove.mutate(user.id, {
+                              onSuccess: () => toast('Conta excluída'),
+                              onError: (err) => toast(errorMessage(err), 'erro'),
+                            })
+                          }
+                        />
                       </>
                     )}
                   </div>

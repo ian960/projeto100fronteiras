@@ -13,6 +13,7 @@ export function usersAdminRouter(): Router {
   router.get('/:id', usersController.getById);
   router.post('/:id/promote', usersController.promote);
   router.patch('/:id', usersController.update);
+  router.delete('/:id', usersController.remove);
   router.post('/:id/reset-password', usersController.resetPassword);
 
   return router;
