@@ -59,17 +59,18 @@ export class MediaRepository implements IMediaRepository {
   // the text search, which only runs when someone tries to delete a file.
   async countUsage(media: Pick<IMedia, 'id' | 'publicId'>): Promise<MediaUsage> {
     try {
-      const [covers, videos, attachments, authorPhotos, inText] = await Promise.all([
+      const [covers, videos, attachments, authorPhotos, userAvatars, inText] = await Promise.all([
         prisma.post.count({ where: { coverId: media.id } }),
         prisma.post.count({ where: { videoId: media.id } }),
         prisma.postAttachment.count({ where: { mediaId: media.id } }),
         prisma.author.count({ where: { photoId: media.id } }),
+        prisma.user.count({ where: { avatarId: media.id } }),
         // A photo inside the text is referenced by its URL, which contains
         // the public id.
         prisma.post.count({ where: { content: { contains: media.publicId } } }),
       ]);
 
-      return { covers, videos, attachments, authorPhotos, inText };
+      return { covers, videos, attachments, authorPhotos, userAvatars, inText };
     } catch (err) {
       logger.error('Failed to count media usage', err);
       throw err;

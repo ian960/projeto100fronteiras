@@ -13,12 +13,13 @@ function requireMedia(_req: Request, _res: Response, next: NextFunction) {
   return next();
 }
 
-// Columnists upload their own covers, photos, videos and PDFs, so both roles
-// are allowed here. Deleting a file is admin-only (checked in the service).
+// Columnists upload their own covers, photos, videos and PDFs. Readers come in
+// too, but only for their account photo (media.policy canUploadFor, checked in
+// the service). Deleting a file is admin-only (also checked in the service).
 export function mediaRouter(): Router {
   const router = Router();
 
-  router.use(authenticate, authorize(Role.ADMIN, Role.COLUMNIST), requireMedia);
+  router.use(authenticate, authorize(Role.ADMIN, Role.COLUMNIST, Role.READER), requireMedia);
 
   router.post('/signature', mediaController.sign);
   router.post('/import', mediaController.importFromUrl);

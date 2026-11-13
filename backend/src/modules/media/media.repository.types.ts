@@ -20,5 +20,6 @@ export type MediaUsage = {
   videos: number;
   attachments: number;
   authorPhotos: number;
+  userAvatars: number; // account photos (Minha conta)
   inText: number; // photos inside the text of a post
 };

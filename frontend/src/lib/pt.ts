@@ -94,6 +94,7 @@ const exact: Record<string, string> = {
   'Upload the file again.': 'Envie o arquivo de novo.',
   'This file cannot be used here.': 'Este arquivo não pode ser usado aqui.',
   'You can only use files you uploaded.': 'Você só pode usar arquivos que você mesmo enviou.',
+  'You can only upload your account photo.': 'Por aqui você só pode enviar a sua foto de perfil.',
   'Only an admin can delete files.': 'Só o administrador pode apagar arquivos.',
   'Cloudinary did not delete the file. Try again in a moment.': 'O Cloudinary não apagou o arquivo. Tente de novo em instantes.',
   'The same file is attached twice.': 'O mesmo arquivo foi anexado duas vezes.',

@@ -77,6 +77,13 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // The account's own profile, edited by its owner on "Minha conta".
+  // Different from the byline (Author): every user has these, readers too.
+  bio      String?
+  avatarId String? @map("avatar_id")
+  // SetNull: if the admin ever deletes the file, the account just loses its photo.
+  avatar   Media?  @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
+
   // Created when the admin promotes a reader to columnist.
   // Readers and the admin have none.
   author Author?
@@ -245,6 +252,7 @@ model Media {
   coverOf    Post[]           @relation("PostCover")
   videoOf    Post[]           @relation("PostVideo")
   photoOf    Author[]         @relation("AuthorPhoto")
+  avatarOf   User[]           @relation("UserAvatar")
   attachedTo PostAttachment[]
 
   // "My uploads", newest first.

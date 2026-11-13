@@ -155,7 +155,7 @@ export const imageValue = (media: Media): ImageValue => ({ id: media.id, preview
 
 export function ImageField({ label, purpose, value, onChange, error, hint, optional, round, disabled }: {
   label: string;
-  purpose: Extract<MediaPurpose, 'cover' | 'author'>;
+  purpose: Extract<MediaPurpose, 'cover' | 'author' | 'avatar'>;
   value: ImageValue;
   onChange: (value: ImageValue) => void;
   error?: string;
@@ -180,6 +180,7 @@ export function ImageField({ label, purpose, value, onChange, error, hint, optio
     setImporting(true);
     upload.setError(null);
     try {
+      if (purpose === 'avatar') return; // readers send a file; there is no link import for them
       const media = await importMedia(purpose, link.trim());
       onChange(imageValue(media));
       setLink('');
@@ -229,9 +230,11 @@ export function ImageField({ label, purpose, value, onChange, error, hint, optio
             <FileButton accept={IMAGE_ACCEPT} disabled={busy || !enabled} onFiles={([file]) => onFile(file!)}>
               {value ? 'Trocar imagem' : 'Enviar imagem'}
             </FileButton>
-            <Button type="button" variant="texto" small disabled={busy || !enabled} onClick={() => setLinkOpen(!linkOpen)} aria-expanded={linkOpen}>
-              Usar um link
-            </Button>
+            {purpose !== 'avatar' && (
+              <Button type="button" variant="texto" small disabled={busy || !enabled} onClick={() => setLinkOpen(!linkOpen)} aria-expanded={linkOpen}>
+                Usar um link
+              </Button>
+            )}
             {value && (
               <Button type="button" variant="texto" small disabled={busy} onClick={() => onChange(null)}>
                 Remover

@@ -5,6 +5,7 @@ const purpose = z.enum([
   MediaPurpose.COVER,
   MediaPurpose.BODY,
   MediaPurpose.AUTHOR,
+  MediaPurpose.AVATAR,
   MediaPurpose.VIDEO,
   MediaPurpose.DOCUMENT,
 ]);

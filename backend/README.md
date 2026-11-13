@@ -171,11 +171,14 @@ POST   /api/auth/logout
 
 ### Authenticated
 ```
-GET    /api/auth/me
+GET    /api/auth/me                    PATCH  /api/auth/me   (own name, bio, avatarId)
 POST   /api/auth/change-password
 POST   /api/media/signature            POST /api/media
 POST   /api/media/import               DELETE /api/media/:id   (admin)
 ```
+
+Readers may use `/api/media/signature` and `POST /api/media` only with
+`purpose: "avatar"` (their account photo). Every other purpose is newsroom-only.
 
 ### Admin
 ```

@@ -3,10 +3,17 @@ import { prisma } from '../../config/prisma';
 import { logger } from '../../shared/utils/logger';
 import { buildPaginated, toSkipTake } from '../../shared/utils/pagination';
 import type { Paginated, PaginationParams } from '../../shared/types/pagination';
-import { authorSummarySelect, toAuthorSummary } from '../authors/authors.select';
+import { authorSummarySelect, photoUrlOf, toAuthorSummary } from '../authors/authors.select';
+import { mediaSelect } from '../media/media.select';
+import type { IMedia } from '../media/media.types';
 import type { IUsersRepository, PromoteToColumnistData } from './users.repository.interfaces';
-import type { CreateUserData, FindUsersFilters, UpdateUserData } from './users.repository.types';
-import type { IUserCredentials, IUserPublic, IUserWithAuthor } from './users.types';
+import type {
+  CreateUserData,
+  FindUsersFilters,
+  UpdateProfileData,
+  UpdateUserData,
+} from './users.repository.types';
+import type { IUserCredentials, IUserMe, IUserPublic, IUserWithAuthor } from './users.types';
 
 export class UsersRepository implements IUsersRepository {
   // Note what is missing: passwordHash. Only the two credential methods below
@@ -22,6 +29,21 @@ export class UsersRepository implements IUsersRepository {
   } as const;
 
   private readonly withAuthor = { ...this.publicSelect, author: { select: authorSummarySelect } };
+
+  // The account's own profile, for its owner only.
+  private readonly meSelect = {
+    ...this.withAuthor,
+    bio: true,
+    avatarId: true,
+    avatar: { select: mediaSelect },
+  } as const;
+
+  private toMe<T extends { author: Parameters<typeof toAuthorSummary>[0] | null; avatar: IMedia | null }>(
+    row: T,
+  ) {
+    const { avatar, ...rest } = row;
+    return { ...this.toWithAuthor(rest), avatarUrl: photoUrlOf(avatar) };
+  }
 
   // The byline comes with its photo as a media row and leaves with photoUrl.
   private toWithAuthor<T extends { author: Parameters<typeof toAuthorSummary>[0] | null }>(
@@ -80,6 +102,26 @@ export class UsersRepository implements IUsersRepository {
       return row ? this.toWithAuthor(row) : null;
     } catch (err) {
       logger.error('Failed to find user with author', err);
+      throw err;
+    }
+  }
+
+  async findMe(id: string): Promise<IUserMe | null> {
+    try {
+      const row = await prisma.user.findUnique({ where: { id }, select: this.meSelect });
+      return row ? this.toMe(row) : null;
+    } catch (err) {
+      logger.error('Failed to load own account', err);
+      throw err;
+    }
+  }
+
+  async updateProfile(id: string, data: UpdateProfileData): Promise<IUserMe> {
+    try {
+      const row = await prisma.user.update({ where: { id }, data, select: this.meSelect });
+      return this.toMe(row);
+    } catch (err) {
+      logger.error('Failed to update own account', err);
       throw err;
     }
   }

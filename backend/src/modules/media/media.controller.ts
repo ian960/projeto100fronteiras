@@ -16,9 +16,9 @@ function requireUser(req: Request) {
 
 export class MediaController {
   sign = async (req: Request, res: Response) => {
-    requireUser(req);
+    const actor = requireUser(req);
     const parsed = signUploadSchema.parse({ body: req.body });
-    const upload = mediaService.sign(parsed.body.purpose);
+    const upload = mediaService.sign(actor, parsed.body.purpose);
     return ok(res, { upload });
   };
 

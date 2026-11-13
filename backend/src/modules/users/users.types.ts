@@ -23,4 +23,12 @@ export type IUserWithAuthor = IUserPublic & {
   author?: IAuthorSummary | null;
 };
 
+// What the owner of the account sees about themselves (GET/PATCH /auth/me):
+// everything public, plus their own profile with the photo as a ready URL.
+export type IUserMe = IUserWithAuthor & {
+  bio: string | null;
+  avatarId: string | null;
+  avatarUrl: string | null; // square, centred on the face
+};
+
 export type IUserCredentials = Pick<IUser, 'id' | 'email' | 'passwordHash' | 'role' | 'active'>;
