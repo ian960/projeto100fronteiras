@@ -16,6 +16,7 @@ import {
   postsPublicRouter,
 } from '../modules/posts/posts.routes';
 import { mediaRouter } from '../modules/media/media.routes';
+import { commentsRouter } from '../modules/comments/comments.routes';
 import { postsController } from '../modules/posts/posts.controller';
 
 export function buildRouter(): Router {
@@ -27,6 +28,8 @@ export function buildRouter(): Router {
   router.use('/categories', categoriesPublicRouter());
   router.use('/columnists', authorsPublicRouter());
   router.use('/posts', postsPublicRouter());
+  // Reading is public; writing checks the session inside the router.
+  router.use('/comments', commentsRouter());
 
   // ── admin ───────────────────────────────────────────────────────────────
   // Each of these routers applies authenticate + authorize(ADMIN) on itself,

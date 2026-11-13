@@ -80,6 +80,23 @@ export type User = {
   avatarUrl?: string | null; // square, centred on the face
 };
 
+// Comments under a post (backend: modules/comments/comments.types.ts).
+export type CommentBadge = 'admin' | 'author' | 'columnist';
+
+export type CommentView = {
+  id: string;
+  parentId: string | null;
+  content: string; // plain text; empty when deleted
+  deleted: boolean;
+  createdAt: string;
+  editedAt: string | null;
+  author: { id: string; name: string; avatarUrl: string | null; badge: CommentBadge | null } | null; // null: account deleted
+};
+
+export type CommentThread = CommentView & { replies: CommentView[] };
+
+export type CommentList = { postAuthorUserId: string | null; total: number; comments: CommentThread[] };
+
 export type PostListItem = {
   id: string;
   type: PostType;

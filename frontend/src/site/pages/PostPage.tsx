@@ -7,6 +7,7 @@ import { readingMinutes } from '../../lib/format';
 import { Attachments, BookmarkButton, Byline, Cover, Kicker, ReadingProgress, SectionHeading, ShareActions, StoryList, VideoEmbed } from '../parts';
 import { useAuthor, usePost, usePublishedPosts } from '../queries';
 import NotFoundPage from './NotFoundPage';
+import { Comments } from '../Comments';
 
 export default function PostPage() {
   const { slug = '' } = useParams();
@@ -88,6 +89,8 @@ export default function PostPage() {
       </div>
 
       {post.author && <AuthorBox slug={post.author.slug} opinion={isOpinion} />}
+
+      <Comments postId={post.id} opinion={isOpinion} />
 
       <Related post={post} />
     </article>
