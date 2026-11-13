@@ -38,7 +38,7 @@ cookie and nobody could log in from an iPhone.
 2. It asks for two values:
    - `CLOUDINARY_URL`: the "API environment variable" from Cloudinary.
    - `SITE_URL`: the Cloudflare address. Not known yet: type
-     `https://portal-sem-fronteiras.workers.dev` and fix it in step 3.
+     `https://projeto-sem-fronteiras.workers.dev` and fix it in step 3.
 3. **Apply.** The first build takes a few minutes. When the service shows
    "Live", open `https://<service>.onrender.com/api/health`: it should answer
    `"environment":"production","uploads":"cloudinary"`.
@@ -53,7 +53,7 @@ cookie and nobody could log in from an iPhone.
 1. Cloudflare Dashboard → **Workers & Pages → Create application → GitHub**
    → pick the repository.
 2. Settings:
-   - Project name: `portal-sem-fronteiras` (must match `name` in `wrangler.jsonc`)
+   - Project name: `projeto-sem-fronteiras` (must match `name` in `wrangler.jsonc`)
    - Production branch: `master`
    - Root directory: `frontend`
    - Build command: `npm run build`
@@ -61,7 +61,7 @@ cookie and nobody could log in from an iPhone.
 3. **Save and Deploy.** Then, in the Worker: **Settings → Variables and
    Secrets → Add → Secret**, name `PROXY_SECRET`, value copied from Render.
 4. The site's address is under **Settings → Domains & Routes**
-   (`https://portal-sem-fronteiras.<your-account>.workers.dev`).
+   (`https://projeto-sem-fronteiras.<your-account>.workers.dev`).
 
 ## 3. Back on Render
 
@@ -95,7 +95,7 @@ computer, with the external URL from step 4 and the admin created there:
 ```bash
 docker compose run --rm \
   -e DATABASE_URL="<external URL>?sslmode=require" \
-  -e DEMO_SITE_URL="https://portal-sem-fronteiras.<your-account>.workers.dev" \
+  -e DEMO_SITE_URL="https://projeto-sem-fronteiras.<your-account>.workers.dev" \
   -e SEED_ADMIN_EMAIL="you@example.com" \
   -e SEED_ADMIN_PASSWORD="the admin's password" \
   api npm run db:demo
