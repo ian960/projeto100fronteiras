@@ -93,7 +93,7 @@ describe('the rules the panel reads', () => {
     expect(cover.accept).not.toContain('svg');
     expect(cover.maxBytes).toBe(10 * 1024 * 1024);
     expect(cover.maxSourceBytes).toBeGreaterThan(cover.maxBytes);
-    expect(cover.minWidth).toBe(400);
+    expect(cover.minWidth).toBe(100);
     expect(cover.recommendedWidth).toBe(800);
     expect(video.maxSourceBytes).toBeUndefined();
   });
@@ -241,7 +241,7 @@ describe('what a forged or tampered upload gets', () => {
 
   it('removes from Cloudinary an image too small for a cover', async () => {
     const { client } = await asAdmin();
-    const file = pngFile(300, 200);
+    const file = pngFile(80, 60);
 
     const upload = await signUpload(client, 'cover');
     const cloud = await sendToCloudinary(upload, file);
@@ -250,7 +250,7 @@ describe('what a forged or tampered upload gets', () => {
       .send(registration('cover', cloud.body, file.name))
       .expect(422);
 
-    expect(response.body.error.fields.file).toBe('Use an image at least 400px wide.');
+    expect(response.body.error.fields.file).toBe('Use an image at least 100px wide.');
     expect(await fetchStatus(cloud.body.secure_url)).toBe(404);
     expect(await prisma.media.count()).toBe(0);
   });

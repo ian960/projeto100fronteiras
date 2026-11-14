@@ -250,8 +250,8 @@ post never depends on someone else's site keeping the picture online.
 
 | purpose | kind | formats | max sent (picked) | min width (warns under) |
 |---|---|---|---|---|
-| `cover` | image | jpg png webp avif heic heif gif bmp tiff | 10 MB (40 MB) | 400 px (800 px) |
-| `body` (photo in the text) | image | same | 10 MB (40 MB) | 200 px (400 px) |
+| `cover` | image | jpg png webp avif heic heif gif bmp tiff | 10 MB (40 MB) | 100 px (800 px) |
+| `body` (photo in the text) | image | same | 10 MB (40 MB) | 100 px (400 px) |
 | `author` | image | same | 10 MB (40 MB) | 100 px |
 | `avatar` | image | same | 5 MB (20 MB) | 100 px |
 | `video` | video | mp4 mov webm m4v | 100 MB | — |
