@@ -62,18 +62,21 @@ function ThemeButton({ className, withLabel = false }: { className: string; with
 // right. Drawn as a filled shape, thicker in the middle and tapering at both
 // ends like a pen stroke. It is exactly as wide as the name, and its height
 // is set in em, so the stroke grows and shrinks with the letters.
+// Generated: an asymmetric wave (high on the left, a valley at a third, a
+// gentle crest, rising at the end) drawn with a pen-like thickness, thicker
+// in the middle and thin at the tips.
+const WAVE_PATH =
+  'M1.0 6.3 L3.9 6.5 L6.8 6.6 L9.6 6.8 L12.4 7.1 L15.2 7.4 L17.9 7.8 L20.7 8.2 L23.4 8.6 L26.1 9.1 L28.8 9.7 L31.5 10.2 L34.1 10.8 L36.8 11.4 L39.4 12.0 L42.1 12.7 L44.8 13.3 L47.4 14.0 L50.1 14.7 L52.8 15.4 L55.5 16.1 L58.2 16.8 L60.9 17.4 L63.6 18.1 L66.4 18.8 L69.1 19.4 L71.9 20.0 L74.8 20.6 L77.6 21.2 L80.5 21.8 L83.4 22.3 L86.4 22.7 L89.4 23.2 L92.4 23.6 L95.5 23.9 L98.7 24.2 L101.8 24.4 L105.1 24.6 L108.3 24.7 L111.7 24.8 L115.0 24.7 L118.8 24.6 L122.4 24.5 L126.0 24.3 L129.6 24.0 L133.1 23.7 L136.5 23.4 L139.8 23.0 L143.1 22.6 L146.4 22.1 L149.6 21.6 L152.8 21.1 L155.9 20.5 L159.0 20.0 L162.0 19.4 L165.0 18.8 L168.0 18.1 L171.0 17.5 L173.9 16.9 L176.9 16.2 L179.8 15.6 L182.7 15.0 L185.6 14.3 L188.5 13.7 L191.3 13.1 L194.2 12.5 L197.1 12.0 L200.0 11.4 L202.9 10.9 L205.8 10.4 L208.8 9.9 L211.8 9.5 L214.7 9.1 L217.8 8.8 L220.8 8.5 L223.9 8.2 L227.0 8.0 L230.2 7.8 L233.4 7.7 L236.6 7.7 L240.0 7.7 L242.2 7.8 L244.3 7.9 L246.4 7.9 L248.5 8.0 L250.5 8.1 L252.4 8.2 L254.3 8.3 L256.2 8.4 L258.0 8.5 L259.8 8.6 L261.5 8.7 L263.2 8.8 L264.9 8.9 L266.5 9.0 L268.1 9.0 L269.6 9.1 L271.1 9.2 L272.6 9.2 L274.1 9.2 L275.5 9.2 L276.9 9.2 L278.2 9.2 L279.5 9.2 L280.9 9.1 L282.1 9.0 L283.4 8.9 L284.6 8.8 L285.9 8.7 L287.0 8.5 L288.2 8.3 L289.4 8.0 L290.5 7.8 L291.7 7.5 L292.8 7.1 L293.9 6.8 L295.0 6.4 L296.0 5.9 L297.1 5.4 L298.1 4.9 L299.2 4.3 L298.8 3.7 L297.8 4.1 L296.7 4.5 L295.6 4.9 L294.6 5.2 L293.5 5.5 L292.4 5.8 L291.3 6.0 L290.2 6.2 L289.1 6.4 L288.0 6.5 L286.8 6.7 L285.7 6.8 L284.5 6.8 L283.3 6.9 L282.0 6.9 L280.8 6.9 L279.5 6.9 L278.2 6.9 L276.9 6.8 L275.5 6.8 L274.1 6.7 L272.7 6.6 L271.3 6.5 L269.8 6.4 L268.2 6.3 L266.7 6.1 L265.1 6.0 L263.4 5.9 L261.7 5.7 L260.0 5.6 L258.2 5.4 L256.4 5.3 L254.5 5.1 L252.6 5.0 L250.7 4.9 L248.7 4.7 L246.6 4.6 L244.5 4.5 L242.3 4.4 L240.0 4.3 L236.7 4.2 L233.3 4.2 L230.1 4.3 L226.8 4.4 L223.6 4.6 L220.5 4.8 L217.4 5.1 L214.3 5.5 L211.3 5.8 L208.2 6.3 L205.3 6.7 L202.3 7.2 L199.3 7.7 L196.4 8.3 L193.5 8.8 L190.6 9.4 L187.7 10.0 L184.8 10.6 L181.9 11.3 L179.0 11.9 L176.1 12.5 L173.1 13.2 L170.2 13.8 L167.2 14.4 L164.3 15.1 L161.3 15.7 L158.3 16.3 L155.2 16.9 L152.1 17.4 L149.0 17.9 L145.8 18.5 L142.6 18.9 L139.4 19.4 L136.1 19.8 L132.7 20.1 L129.3 20.5 L125.8 20.7 L122.3 21.0 L118.6 21.1 L115.0 21.3 L111.6 21.3 L108.4 21.3 L105.2 21.2 L102.0 21.1 L98.9 20.9 L95.8 20.7 L92.8 20.4 L89.8 20.1 L86.8 19.7 L83.9 19.3 L81.0 18.8 L78.2 18.3 L75.3 17.8 L72.5 17.3 L69.7 16.7 L67.0 16.1 L64.2 15.5 L61.5 14.9 L58.8 14.3 L56.0 13.7 L53.3 13.0 L50.6 12.4 L48.0 11.8 L45.3 11.2 L42.6 10.6 L39.9 10.0 L37.2 9.5 L34.5 8.9 L31.8 8.4 L29.1 7.9 L26.4 7.5 L23.6 7.1 L20.9 6.7 L18.1 6.4 L15.3 6.1 L12.5 5.9 L9.7 5.7 L6.8 5.6 L3.9 5.6 L1.0 5.7 Z';
+
 function TitleWave() {
   return (
     <svg
       aria-hidden="true"
-      viewBox="0 0 300 24"
+      viewBox="0 0 300 30"
       preserveAspectRatio="none"
-      className="pointer-events-none absolute bottom-0 left-0 h-[0.3em] w-full overflow-visible"
+      className="pointer-events-none absolute bottom-0 left-0 h-[0.46em] w-full overflow-visible"
     >
-      <path
-        d="M2 4 C 50 14, 104 19.5, 160 16.5 S 258 7, 298 2.5 C 299.5 2.6, 299.2 3.6, 297.6 4.2 C 256 10, 212 19.6, 160 20 C 102 21.5, 46 16.5, 1.4 5.2 C 0.6 4.6, 1 3.8, 2 4 Z"
-        fill="currentColor"
-      />
+      <path d={WAVE_PATH} fill="currentColor" />
     </svg>
   );
 }
@@ -96,7 +99,7 @@ function Masthead() {
               wide layout's extra buttons appear, without pushing the page
               sideways. */}
           <span
-            className="titulo relative block whitespace-nowrap pb-[0.32em] text-[clamp(1.1rem,5.6vw,2.75rem)] leading-none text-anil"
+            className="titulo relative block whitespace-nowrap pb-[0.68em] text-[clamp(1.1rem,5.6vw,2.75rem)] leading-none text-anil"
             style={{ fontWeight: 720 }}
           >
             Portal100Fronteiras
