@@ -113,7 +113,8 @@ describe('Cloudinary de verdade (conta do backend/.env, pasta portal-testes)', (
     expect(media.durationSec).toBeCloseTo(2, 0);
 
     const mp4 = await opens(media.url, 120);
-    expect(mp4.headers.get('content-type')).toBe('video/mp4');
+    // Cloudinary may add the codec: "video/mp4;codecs=avc1".
+    expect(mp4.headers.get('content-type')).toMatch(/^video\/mp4(;|$)/);
     await opens(media.posterUrl, 120);
     await opens(media.thumbnailUrl, 120);
   });
