@@ -8,8 +8,9 @@ import { Cover } from './parts';
 // The home page carousel: the stories the admin featured, topped up by the API
 // with the latest news. Slides move with the arrows, the dots, a swipe on a
 // phone (native scrolling with snap points) or on their own every few seconds.
-// It stops moving by itself while the reader points at it, focuses inside it,
-// touches it, or asks the system for reduced motion.
+// Nothing changes under the mouse. It stops moving by itself only while the
+// reader focuses inside it (keyboard), touches it, or asks the system for
+// reduced motion.
 
 const AUTOPLAY_MS = 7000;
 
@@ -31,7 +32,7 @@ function Slide({ post, index, total, eager }: { post: PostListItem; index: numbe
       aria-label={`${index + 1} de ${total}`}
       className="relative w-full shrink-0 snap-start overflow-hidden sm:rounded-xl"
     >
-      <Link to={postPath(post)} className="group block">
+      <Link to={postPath(post)} className="block">
         {post.cover ? (
           <Cover
             post={post}
@@ -52,7 +53,7 @@ function Slide({ post, index, total, eager }: { post: PostListItem; index: numbe
               {label}
             </span>
           )}
-          <h2 className="titulo mt-3 max-w-4xl text-[1.75rem] leading-tight group-hover:underline group-hover:underline-offset-4 sm:text-[2.5rem] lg:text-[3rem]">
+          <h2 className="titulo mt-3 max-w-4xl text-[1.75rem] leading-tight sm:text-[2.5rem] lg:text-[3rem]">
             {post.title}
           </h2>
           {post.excerpt && (
@@ -117,8 +118,6 @@ export function HighlightsCarousel({ posts }: { posts: PostListItem[] }) {
       aria-roledescription="carrossel"
       aria-label="Destaques"
       className="relative -mx-4 sm:mx-0"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
       onTouchStart={() => setPaused(true)}
@@ -143,7 +142,7 @@ export function HighlightsCarousel({ posts }: { posts: PostListItem[] }) {
             type="button"
             onClick={() => goTo(current - 1)}
             aria-label="Destaque anterior"
-            className="absolute left-3 top-1/2 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/70 sm:inline-flex"
+            className="absolute left-3 top-1/2 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm sm:inline-flex"
           >
             <Arrow direction="prev" />
           </button>
@@ -151,7 +150,7 @@ export function HighlightsCarousel({ posts }: { posts: PostListItem[] }) {
             type="button"
             onClick={() => goTo(current + 1)}
             aria-label="Próximo destaque"
-            className="absolute right-3 top-1/2 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/70 sm:inline-flex"
+            className="absolute right-3 top-1/2 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm sm:inline-flex"
           >
             <Arrow direction="next" />
           </button>
