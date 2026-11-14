@@ -40,6 +40,9 @@ export type IMediaView = {
   // Images: 1200×630 JPEG, the size WhatsApp and Facebook expect for the
   // card of a shared link (og:image). Small enough for WhatsApp's limit.
   shareUrl: string | null;
+  // Images: 1200px wide crops in 16:9, 4:3 and 1:1, the three shapes Google
+  // asks for in an article's structured data (NewsArticle "image").
+  structuredDataUrls: string[] | null;
 };
 
 // What the panel needs to send a file straight to Cloudinary. Every field in

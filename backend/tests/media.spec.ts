@@ -116,6 +116,12 @@ describe('enviar e registrar', () => {
     expect(await fetchStatus(media.thumbnailUrl)).toBe(200);
     expect(media.shareUrl).toMatch(/\/c_fill,w_1200,h_630,q_auto\/v\d+\/.+\.jpg$/);
     expect(await fetchStatus(media.shareUrl)).toBe(200);
+    // 16:9, 4:3 and 1:1 at 1200px, for the article's structured data.
+    expect(media.structuredDataUrls).toHaveLength(3);
+    for (const [index, height] of [675, 900, 1200].entries()) {
+      expect(media.structuredDataUrls[index]).toMatch(new RegExp(`/c_fill,w_1200,h_${height},q_auto/v\\d+/.+\\.jpg$`));
+      expect(await fetchStatus(media.structuredDataUrls[index])).toBe(200);
+    }
 
     const row = await prisma.media.findUniqueOrThrow({ where: { id: media.id } });
     expect(row.uploadedById).toBe(admin.id);

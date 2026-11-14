@@ -5,12 +5,19 @@
 //   /api/*            forwarded to the API on Render. The browser only ever
 //                     talks to the site's own address, so the login cookie is
 //                     first-party (Safari blocks it otherwise) and no CORS.
-//   /noticia/:slug    index.html with the article's headline, summary and
-//   /coluna/:slug     cover in <meta> tags: the preview WhatsApp shows.
+//   /noticia/:slug    index.html with the page's title, description, preview
+//   /coluna/:slug     card, structured data and text already inside, for
+//   /categoria/:slug  Google and for WhatsApp's preview (seo.ts).
+//   /autor/:slug
+//   /sitemap.xml      built from the published articles (seo.ts).
+//   /sitemap-news.xml
+//   /robots.txt
 //   every 10 minutes  a request to the API, so Render's free plan does not
 //                     put it to sleep (waking up takes about a minute).
 
-interface Env {
+import { articlePage, authorPage, categoryPage, newsSitemap, robots, sitemap, type ApiFetch, type SeoEnv } from './seo';
+
+interface Env extends SeoEnv {
   ASSETS: Fetcher;
   // Where the API runs, e.g. https://portal-api.onrender.com (wrangler.jsonc).
   API_ORIGIN: string;
@@ -18,8 +25,6 @@ interface Env {
   // dashboard or with `npx wrangler secret put PROXY_SECRET`.
   PROXY_SECRET: string;
 }
-
-const SITE_NAME = 'Portal100Fronteiras';
 
 export default {
   async fetch(request, env) {
@@ -29,9 +34,20 @@ export default {
       return proxyToApi(request, env);
     }
 
-    const article = url.pathname.match(/^\/(noticia|coluna)\/([a-z0-9-]+)\/?$/);
-    if (article && (request.method === 'GET' || request.method === 'HEAD')) {
-      return pageWithPreview(request, env, article[2]!);
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      const api = apiFetch(request, env);
+
+      if (url.pathname === '/robots.txt') return robots(request, env);
+      if (url.pathname === '/sitemap.xml') return sitemap(request, env, api);
+      if (url.pathname === '/sitemap-news.xml') return newsSitemap(request, env, api);
+
+      const page = url.pathname.match(/^\/(noticia|coluna|categoria|autor)\/([a-z0-9-]+)\/?$/);
+      if (page) {
+        const [, kind, slug] = page as unknown as [string, string, string];
+        if (kind === 'categoria') return categoryPage(request, env, api, slug);
+        if (kind === 'autor') return authorPage(request, env, api, slug);
+        return articlePage(request, env, api, slug);
+      }
     }
 
     return env.ASSETS.fetch(request);
@@ -87,106 +103,10 @@ async function proxyToApi(request: Request, env: Env): Promise<Response> {
   }
 }
 
-// ── link previews ───────────────────────────────────────────────────────────
-
-type PostForPreview = {
-  title: string;
-  excerpt: string;
-  publishedAt: string | null;
-  cover: { url: string; shareUrl: string | null } | null;
-  author: { name: string } | null;
-};
-
-function escapeAttribute(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// GETs from the Worker itself (pages and sitemaps), with a time limit: when
+// Render is slow the page goes out without the extras instead of hanging.
+function apiFetch(request: Request, env: Env): ApiFetch {
+  const clientIp = request.headers.get('cf-connecting-ip') ?? '';
+  return (path, timeoutMs) =>
+    fetch(apiRequest(env, path, { clientIp, headers: { accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs) }));
 }
-
-// WhatsApp, Facebook and X read the page's <meta> tags without running any
-// JavaScript, so a single-page app would show the same generic card for every
-// article. Here the tags of the article are written into index.html before it
-// leaves. If anything fails, the plain page goes out: the article still opens.
-async function pageWithPreview(request: Request, env: Env, slug: string): Promise<Response> {
-  const page = await env.ASSETS.fetch(new Request(new URL('/', request.url), { headers: request.headers }));
-
-  let post: PostForPreview | null = null;
-  try {
-    const response = await fetch(
-      apiRequest(env, `/api/posts/${slug}`, {
-        clientIp: request.headers.get('cf-connecting-ip') ?? '',
-        headers: { accept: 'application/json' },
-      }),
-    );
-    if (response.ok) post = ((await response.json()) as { data: { post: PostForPreview } }).data.post;
-  } catch {
-    // The API is down or asleep: the page goes out without the preview.
-  }
-
-  if (!post || !page.ok) return page;
-
-  const url = new URL(request.url);
-  const title = `${post.title} | ${SITE_NAME}`;
-  const description = post.excerpt || post.title;
-
-  const tags: Array<[string, string, string]> = [
-    ['name', 'description', description],
-    ['property', 'og:site_name', SITE_NAME],
-    ['property', 'og:type', 'article'],
-    ['property', 'og:title', post.title],
-    ['property', 'og:description', description],
-    ['property', 'og:url', `${url.origin}${url.pathname}`],
-    ['name', 'twitter:card', post.cover ? 'summary_large_image' : 'summary'],
-  ];
-  if (post.cover?.shareUrl) {
-    tags.push(['property', 'og:image', post.cover.shareUrl]);
-    tags.push(['property', 'og:image:width', '1200']);
-    tags.push(['property', 'og:image:height', '630']);
-  } else if (post.cover) {
-    tags.push(['property', 'og:image', post.cover.url]);
-  }
-  if (post.publishedAt) tags.push(['property', 'article:published_time', post.publishedAt]);
-  if (post.author) tags.push(['property', 'article:author', post.author.name]);
-
-  const html = tags
-    .map(([attribute, key, value]) => `<meta ${attribute}="${key}" content="${escapeAttribute(value)}" />`)
-    .join('');
-
-  const response = new HTMLRewriter()
-    .on('title', {
-      element(element) {
-        element.setInnerContent(title);
-      },
-    })
-    // The generic tags from index.html, replaced by the article's own.
-    .on('meta[name="description"], meta[property^="og:"], meta[name^="twitter:"]', {
-      element(element) {
-        element.remove();
-      },
-    })
-    .on('head', {
-      element(element) {
-        element.append(`${html}<link rel="canonical" href="${escapeAttribute(`${url.origin}${url.pathname}`)}" />`, {
-          html: true,
-        });
-      },
-    })
-    .transform(page);
-
-  // Same headers as every other page (public/_headers): this response is
-  // built here, so Cloudflare does not add them by itself.
-  const headers = new Headers(response.headers);
-  for (const [key, value] of Object.entries(SECURITY_HEADERS)) headers.set(key, value);
-  headers.set('cache-control', 'no-cache');
-  return new Response(response.body, { status: response.status, headers });
-}
-
-// Keep in sync with public/_headers.
-const SECURITY_HEADERS: Record<string, string> = {
-  'content-security-policy':
-    "default-src 'self'; img-src 'self' data: https://res.cloudinary.com https://*.google-analytics.com https://*.googletagmanager.com; media-src 'self' https://res.cloudinary.com; " +
-    "frame-src https://www.youtube-nocookie.com; connect-src 'self' https://api.cloudinary.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; " +
-    "style-src 'self' 'unsafe-inline'; script-src 'self' https://*.googletagmanager.com; font-src 'self' data:; object-src 'none'; " +
-    "base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
-  'x-content-type-options': 'nosniff',
-  'referrer-policy': 'strict-origin-when-cross-origin',
-  'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=()',
-};
