@@ -12,6 +12,40 @@ import { PanelHeader, StatusPill, TypePill } from '../widgets';
 
 // ── Shared list ──────────────────────────────────────────────────────────────
 
+function BubbleIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+      <path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" />
+    </svg>
+  );
+}
+
+// "12 comentários". On a published post it opens the comments on the site.
+function CommentCount({ post }: { post: PostListItem }) {
+  const count = post.commentCount ?? 0;
+  const label = `${count} ${count === 1 ? 'comentário' : 'comentários'}`;
+  const className = cx(
+    'inline-flex items-center gap-1 rounded-full px-2.5 text-xs font-semibold leading-6',
+    count > 0 ? 'bg-anil/10 text-anil' : 'bg-superficie text-tinta-suave',
+  );
+
+  if (post.status !== 'published' || count === 0) {
+    return (
+      <span className={className}>
+        <BubbleIcon />
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <a href={`${postPath(post)}#comentarios`} target="_blank" rel="noreferrer" className={cx(className, 'hover:bg-anil/20')} title="Ver os comentários no site">
+      <BubbleIcon />
+      {label}
+    </a>
+  );
+}
+
 function PostRows({ posts, scope }: { posts: PostListItem[]; scope: Scope }) {
   const base = scope === 'admin' ? '/painel/materias' : '/painel/colunas';
   return (
@@ -32,6 +66,7 @@ function PostRows({ posts, scope }: { posts: PostListItem[]; scope: Scope }) {
             {post.featured && <span className="rounded-full bg-sol/20 px-2.5 text-xs font-semibold leading-6 text-aviso">Destaque</span>}
             {scope === 'admin' && <TypePill type={post.type} />}
             <StatusPill status={post.status} />
+            {post.commentCount !== undefined && <CommentCount post={post} />}
             {post.status === 'published' && (
               <Link to={postPath(post)} className="text-sm font-medium text-anil hover:underline underline-offset-4" target="_blank">
                 Ver no site

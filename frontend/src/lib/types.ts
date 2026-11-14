@@ -109,6 +109,8 @@ export type PostListItem = {
   coverAlt: string | null;
   cover: Media | null;
   featured: boolean;
+  // Only in the panel lists.
+  commentCount?: number;
   videoYoutubeId: string | null;
   videoId: string | null;
   publishedAt: string | null;

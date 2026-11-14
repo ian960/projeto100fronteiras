@@ -51,6 +51,8 @@ export type IPostSummary = Pick<
 export type IPostListItem = IPostSummary & {
   category?: ICategorySummary | null;
   author?: IAuthorSummary;
+  // Panel lists only.
+  commentCount?: number;
 };
 
 // A PDF under the text, in the order the writer chose.
