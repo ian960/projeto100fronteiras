@@ -57,6 +57,27 @@ function ThemeButton({ className, withLabel = false }: { className: string; with
   );
 }
 
+// A calligraphic underline under the portal's name: one smooth, asymmetric
+// wave that starts high on the left, dips a little and rises gently to the
+// right. Drawn as a filled shape, thicker in the middle and tapering at both
+// ends like a pen stroke. It is exactly as wide as the name, and its height
+// is set in em, so the stroke grows and shrinks with the letters.
+function TitleWave() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 300 24"
+      preserveAspectRatio="none"
+      className="pointer-events-none absolute bottom-0 left-0 h-[0.3em] w-full overflow-visible"
+    >
+      <path
+        d="M2 4 C 50 14, 104 19.5, 160 16.5 S 258 7, 298 2.5 C 299.5 2.6, 299.2 3.6, 297.6 4.2 C 256 10, 212 19.6, 160 20 C 102 21.5, 46 16.5, 1.4 5.2 C 0.6 4.6, 1 3.8, 2 4 Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function Masthead() {
   const { ids } = useBookmarks();
   const { data: me } = useMe();
@@ -75,10 +96,11 @@ function Masthead() {
               wide layout's extra buttons appear, without pushing the page
               sideways. */}
           <span
-            className="titulo block whitespace-nowrap text-[clamp(1.1rem,5.6vw,2.75rem)] leading-none text-anil"
+            className="titulo relative block whitespace-nowrap pb-[0.32em] text-[clamp(1.1rem,5.6vw,2.75rem)] leading-none text-anil"
             style={{ fontWeight: 720 }}
           >
             Portal100Fronteiras
+            <TitleWave />
           </span>
         </Link>
 
