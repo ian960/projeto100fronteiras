@@ -14,7 +14,7 @@ export interface IPostsRepository {
     pagination: PaginationParams,
   ): Promise<Paginated<IPostListItem>>;
   findPublishedBySlug(slug: string): Promise<IPostDetail | null>;
-  findFeatured(): Promise<IPostListItem | null>;
+  findFeatured(): Promise<IPostListItem[]>;
   findLatest(type: FindPublishedFilters['type'], limit: number, categoryId?: string): Promise<IPostListItem[]>;
   findPublishedByIds(ids: string[]): Promise<IPostListItem[]>;
 
@@ -34,6 +34,6 @@ export interface IPostsRepository {
   update(id: string, data: UpdatePostData): Promise<IPostDetail>;
   delete(id: string): Promise<void>;
 
-  // Clears the current feature flag and sets it on `id`, in one transaction.
-  setFeatured(id: string): Promise<IPostDetail>;
+  // Puts `id` in the home carousel (at the front) or takes it out.
+  setFeatured(id: string, featured: boolean): Promise<IPostDetail>;
 }

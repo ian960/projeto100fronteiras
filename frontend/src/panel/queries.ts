@@ -109,6 +109,12 @@ export function usePostActions(scope: Scope) {
       mutationFn: async (id: string) => (await post<{ post: PostDetail }>(`/admin/posts/${id}/feature`)).post,
       onSuccess,
     }),
+    unfeature: useMutation({
+      mutationFn: async (id: string) => {
+        await del(`/admin/posts/${id}/feature`);
+      },
+      onSuccess,
+    }),
     submit: useMutation({
       mutationFn: async (id: string) => (await post<{ post: PostDetail }>(`/columnist/posts/${id}/submit`)).post,
       onSuccess,

@@ -141,6 +141,8 @@ export type HomeSection = {
 };
 
 export type HomePayload = {
+  // The carousel. Missing while the API still runs an older version.
+  highlights?: PostListItem[];
   featured: PostListItem | null;
   latestNews: PostListItem[];
   latestColumns: PostListItem[];

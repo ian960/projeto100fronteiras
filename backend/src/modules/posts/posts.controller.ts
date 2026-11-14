@@ -105,6 +105,13 @@ export class PostsController {
     return ok(res, { post });
   };
 
+  unsetFeatured = async (req: Request, res: Response) => {
+    const actor = requireUser(req);
+    const parsed = postIdParamSchema.parse({ params: req.params });
+    const post = await postsService.unsetFeatured(actor, parsed.params.id);
+    return ok(res, { post });
+  };
+
   // ── columnist only ────────────────────────────────────────────────────────
 
   createMyColumn = async (req: Request, res: Response) => {

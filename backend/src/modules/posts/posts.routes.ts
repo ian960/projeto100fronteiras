@@ -29,6 +29,7 @@ export function postsAdminRouter(): Router {
   router.post('/:id/publish', postsController.publish);
   router.post('/:id/unpublish', postsController.unpublish);
   router.post('/:id/feature', postsController.setFeatured);
+  router.delete('/:id/feature', postsController.unsetFeatured);
 
   return router;
 }

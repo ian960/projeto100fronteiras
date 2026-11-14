@@ -171,9 +171,11 @@ model Post {
   cover    Media?  @relation("PostCover", fields: [coverId], references: [id], onDelete: Restrict)
   coverAlt String? @map("cover_alt")
 
-  // Lead story on the home page. Only one at a time — enforced by a partial
-  // unique index added in the migration (Prisma cannot express it here).
-  featured Boolean @default(false)
+  // In the home page carousel, chosen by the admin. Any number of posts; the
+  // most recently featured comes first. Fewer than four are topped up with
+  // the latest news (see getHome).
+  featured   Boolean   @default(false)
+  featuredAt DateTime? @map("featured_at")
 
   publishedAt DateTime? @map("published_at")
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -213,6 +215,8 @@ model Post {
   @@index([categoryId, status, publishedAt(sort: Desc)])
   // Author page and "my columns" in the panel.
   @@index([authorId, status, publishedAt(sort: Desc)])
+  // Home carousel.
+  @@index([featured, featuredAt(sort: Desc)])
   @@map("posts")
 }
 
