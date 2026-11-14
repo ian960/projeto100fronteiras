@@ -182,9 +182,9 @@ async function pageWithPreview(request: Request, env: Env, slug: string): Promis
 // Keep in sync with public/_headers.
 const SECURITY_HEADERS: Record<string, string> = {
   'content-security-policy':
-    "default-src 'self'; img-src 'self' data: https://res.cloudinary.com; media-src 'self' https://res.cloudinary.com; " +
-    "frame-src https://www.youtube-nocookie.com; connect-src 'self' https://api.cloudinary.com; " +
-    "style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:; object-src 'none'; " +
+    "default-src 'self'; img-src 'self' data: https://res.cloudinary.com https://*.google-analytics.com https://*.googletagmanager.com; media-src 'self' https://res.cloudinary.com; " +
+    "frame-src https://www.youtube-nocookie.com; connect-src 'self' https://api.cloudinary.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; " +
+    "style-src 'self' 'unsafe-inline'; script-src 'self' https://*.googletagmanager.com; font-src 'self' data:; object-src 'none'; " +
     "base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',

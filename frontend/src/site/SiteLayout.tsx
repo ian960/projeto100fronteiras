@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, ScrollRestoration } from 'react-router';
+import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router';
 import { Avatar, cx } from '../components/ui';
+import { pauseMeasuring, trackPage, useConsent } from '../lib/analytics';
 import { useBookmarks } from '../lib/bookmarks';
 import { useMe } from '../lib/hooks';
 import { useTheme } from '../lib/theme';
+import CookieBanner, { CookieSettingsButton } from './CookieBanner';
 import { useCategories } from './queries';
 
 // "quarta-feira, 11 de novembro": a news site says what day it is.
@@ -223,6 +225,7 @@ function Footer() {
           <Link to="/painel" className="hover:underline underline-offset-4">
             Área da redação
           </Link>
+          <CookieSettingsButton className="hover:underline underline-offset-4" />
           <ThemeButton withLabel className="inline-flex items-center gap-2 hover:underline underline-offset-4" />
         </nav>
       </div>
@@ -244,6 +247,15 @@ export default function SiteLayout() {
     return () => observer.disconnect();
   }, []);
 
+  // Google Analytics: one page view per screen of the public site, once the
+  // reader accepted cookies (lib/analytics.ts). Leaving for the panel pauses it.
+  const location = useLocation();
+  const consent = useConsent();
+  useEffect(() => {
+    trackPage(location.pathname + location.search);
+  }, [location.pathname, location.search, consent]);
+  useEffect(() => pauseMeasuring, []);
+
   return (
     // .tema-site: the night colors apply to everything inside (index.css).
     <div className="tema-site flex min-h-dvh flex-col bg-papel text-tinta" data-tema={theme}>
@@ -254,6 +266,7 @@ export default function SiteLayout() {
         <Outlet />
       </main>
       <Footer />
+      <CookieBanner />
       <ScrollRestoration />
     </div>
   );
