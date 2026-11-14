@@ -34,6 +34,22 @@ async function brevo(mail: Mail): Promise<void> {
   if (!response.ok) throw new Error(`Brevo answered ${response.status}: ${await response.text()}`);
 }
 
+// Development inbox (docker compose): http://localhost:8025 shows the message.
+async function mailpit(mail: Mail): Promise<void> {
+  const response = await fetch(`${env.MAILPIT_URL}/api/v1/send`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      From: { Email: env.MAIL_FROM ?? 'nao-responda@portal.local', Name: env.MAIL_FROM_NAME },
+      To: [{ Email: mail.to.email, Name: mail.to.name ?? '' }],
+      Subject: mail.subject,
+      Text: mail.text,
+      HTML: mail.html,
+    }),
+  });
+  if (!response.ok) throw new Error(`Mailpit answered ${response.status}: ${await response.text()}`);
+}
+
 async function resend(mail: Mail): Promise<void> {
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -55,6 +71,7 @@ export async function sendMail(mail: Mail): Promise<void> {
   try {
     if (env.MAIL_PROVIDER === 'brevo') return await brevo(mail);
     if (env.MAIL_PROVIDER === 'resend') return await resend(mail);
+    if (env.MAIL_PROVIDER === 'mailpit') return await mailpit(mail);
 
     outbox.push(mail);
     if (outbox.length > 50) outbox.shift();

@@ -74,7 +74,10 @@ const schema = z
     // to the API log instead, which is all development and tests need.
     // "brevo" works without a domain of our own (a verified sender address);
     // "resend" needs a verified domain. Switching is only these variables.
-    MAIL_PROVIDER: z.preprocess(emptyToUndefined, z.enum(['log', 'brevo', 'resend']).default('log')),
+    // "mailpit" is the fake inbox of docker compose (http://localhost:8025):
+    // every e-mail lands there, nothing reaches a real address.
+    MAIL_PROVIDER: z.preprocess(emptyToUndefined, z.enum(['log', 'mailpit', 'brevo', 'resend']).default('log')),
+    MAILPIT_URL: z.preprocess(emptyToUndefined, z.url().default('http://mailpit:8025')),
     MAIL_API_KEY: optionalString,
     MAIL_FROM: z.preprocess(emptyToUndefined, z.email().optional()),
     MAIL_FROM_NAME: z.preprocess(emptyToUndefined, z.string().default('Portal100Fronteiras')),
@@ -103,7 +106,7 @@ const schema = z
       });
     }
 
-    if (value.MAIL_PROVIDER !== 'log' && (!value.MAIL_API_KEY || !value.MAIL_FROM)) {
+    if ((value.MAIL_PROVIDER === 'brevo' || value.MAIL_PROVIDER === 'resend') && (!value.MAIL_API_KEY || !value.MAIL_FROM)) {
       ctx.addIssue({
         code: 'custom',
         path: ['MAIL_API_KEY'],
