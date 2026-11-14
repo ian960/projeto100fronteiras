@@ -149,8 +149,8 @@ describe('publishing', () => {
   });
 });
 
-describe('featured post', () => {
-  it('only ever keeps one', async () => {
+describe('home carousel', () => {
+  it('keeps every featured post, the most recently featured first', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     const first = await makeNews({
@@ -171,12 +171,79 @@ describe('featured post', () => {
     await client.post(`/api/admin/posts/${first.id}/feature`).expect(200);
     await client.post(`/api/admin/posts/${second.id}/feature`).expect(200);
 
-    // A partial unique index in Postgres makes two impossible; the repository
-    // clears the old flag and sets the new one in one transaction.
     const featured = await prisma.post.findMany({ where: { featured: true } });
+    expect(featured).toHaveLength(2);
 
-    expect(featured).toHaveLength(1);
-    expect(featured[0]?.id).toBe(second.id);
+    const home = await agent().get('/api/home').expect(200);
+    expect(home.body.data.highlights.map((post: { id: string }) => post.id)).toEqual([second.id, first.id]);
+    expect(home.body.data.featured.id).toBe(second.id);
+
+    // Featuring again moves it to the front.
+    await client.post(`/api/admin/posts/${first.id}/feature`).expect(200);
+    const again = await agent().get('/api/home').expect(200);
+    expect(again.body.data.highlights[0].id).toBe(first.id);
+  });
+
+  it('tops up to four slides with the latest news, without repeating', async () => {
+    const { admin, writer, category, client } = await adminContext();
+
+    const posts = [];
+    for (let i = 0; i < 6; i += 1) {
+      const news = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+      await client.post(`/api/admin/posts/${news.id}/publish`).expect(200);
+      posts.push(news);
+    }
+
+    // The oldest one is featured: it leads, then the three most recent follow.
+    await client.post(`/api/admin/posts/${posts[0]!.id}/feature`).expect(200);
+
+    const home = await agent().get('/api/home').expect(200);
+    const ids: string[] = home.body.data.highlights.map((post: { id: string }) => post.id);
+
+    expect(ids).toHaveLength(4);
+    expect(ids[0]).toBe(posts[0]!.id);
+    expect(new Set(ids).size).toBe(4);
+  });
+
+  it('shows more than four when the admin features more', async () => {
+    const { admin, writer, category, client } = await adminContext();
+
+    for (let i = 0; i < 5; i += 1) {
+      const news = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+      await client.post(`/api/admin/posts/${news.id}/publish`).expect(200);
+      await client.post(`/api/admin/posts/${news.id}/feature`).expect(200);
+    }
+
+    const home = await agent().get('/api/home').expect(200);
+    expect(home.body.data.highlights).toHaveLength(5);
+  });
+
+  it('takes a post out of the carousel, and unpublishing does it too', async () => {
+    const { admin, writer, category, client } = await adminContext();
+
+    const first = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+    const second = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+    for (const news of [first, second]) {
+      await client.post(`/api/admin/posts/${news.id}/publish`).expect(200);
+      await client.post(`/api/admin/posts/${news.id}/feature`).expect(200);
+    }
+
+    await client.delete(`/api/admin/posts/${first.id}/feature`).expect(200);
+    await client.post(`/api/admin/posts/${second.id}/unpublish`).expect(200);
+
+    const featured = await prisma.post.findMany({ where: { featured: true } });
+    expect(featured).toHaveLength(0);
+  });
+
+  it('only an admin chooses', async () => {
+    const { admin, writer, category, client } = await adminContext();
+    const news = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+    await client.post(`/api/admin/posts/${news.id}/publish`).expect(200);
+
+    const { user: columnistUser } = await makeColumnist();
+    const { client: columnist } = await loginAs(columnistUser.email);
+    const response = await columnist.post(`/api/admin/posts/${news.id}/feature`);
+    expect(response.status).toBe(403);
   });
 
   it('refuses to feature a draft', async () => {

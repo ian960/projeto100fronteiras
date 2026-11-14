@@ -1,10 +1,11 @@
 import { Alert, ButtonLink, EmptyState, Loading } from '../../components/ui';
 import { errorMessage } from '../../lib/api';
 import { useDocumentTitle, useMe } from '../../lib/hooks';
-import { LeadStory, OpinionPanel, SecondaryStory, SectionBlock, SectionHeading, StoryList } from '../parts';
+import { HighlightsCarousel } from '../HighlightsCarousel';
+import { OpinionPanel, SecondaryStory, SectionBlock, SectionHeading, StoryList } from '../parts';
 import { useHome } from '../queries';
 
-// How many stories stand beside the lead, and how many follow as a list.
+// How many stories sit in the row under the carousel, and how many follow as a list.
 const BESIDE_LEAD = 3;
 const LATEST_LIST = 6;
 
@@ -33,20 +34,23 @@ export default function HomePage() {
     );
   }
 
-  // The admin picks the lead story. Until they do, the most recent news leads.
-  const lead = data.featured ?? data.latestNews[0] ?? null;
-  const others = data.latestNews.filter((post) => post.id !== lead?.id);
+  // The carousel: what the admin featured, topped up with the latest news by
+  // the API. An API from before the carousel sends only one lead story.
+  const fallbackLead = data.featured ?? data.latestNews[0];
+  const highlights = data.highlights ?? (fallbackLead ? [fallbackLead] : []);
+  const inCarousel = new Set(highlights.map((post) => post.id));
+  const others = data.latestNews.filter((post) => !inCarousel.has(post.id));
   const beside = others.slice(0, BESIDE_LEAD);
   const latest = others.slice(BESIDE_LEAD, BESIDE_LEAD + LATEST_LIST);
 
   // A story appears once on the page: the category blocks skip what the top
   // already shows, and a block left with nothing is not drawn.
-  const shown = new Set([lead?.id, ...beside.map((post) => post.id), ...latest.map((post) => post.id)]);
+  const shown = new Set([...inCarousel, ...beside.map((post) => post.id), ...latest.map((post) => post.id)]);
   const sections = (data.sections ?? [])
     .map((section) => ({ ...section, posts: section.posts.filter((post) => !shown.has(post.id)) }))
     .filter((section) => section.posts.length > 0);
 
-  if (!lead && data.latestColumns.length === 0) {
+  if (highlights.length === 0 && data.latestColumns.length === 0) {
     return (
       <EmptyState
         title="Nenhuma notícia publicada ainda"
@@ -59,17 +63,15 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-14 sm:gap-20">
-      {lead && (
-        <div className="grid gap-8 lg:grid-cols-12 lg:gap-10">
-          <div className={beside.length > 0 ? 'min-w-0 lg:col-span-8' : 'min-w-0 lg:col-span-12'}>
-            <LeadStory post={lead} />
-          </div>
+      {highlights.length > 0 && (
+        <div className="flex flex-col gap-8 sm:gap-10">
+          <HighlightsCarousel posts={highlights} />
           {beside.length > 0 && (
-            <div className="flex min-w-0 flex-col gap-6 border-t border-linha pt-6 lg:col-span-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10">
-              {/* On a wide screen the third one goes without its photo, so the
-                  column ends where the lead does. */}
-              {beside.map((post, index) => (
-                <SecondaryStory key={post.id} post={post} photoOnWide={index < 2} />
+            <div className="grid gap-6 lg:grid-cols-3 lg:gap-10">
+              {beside.map((post) => (
+                <div key={post.id} className="min-w-0">
+                  <SecondaryStory post={post} />
+                </div>
               ))}
             </div>
           )}

@@ -30,6 +30,8 @@ import type {
 // The top of the home: lead + three beside it + the latest list.
 const HOME_NEWS_LIMIT = 10;
 const HOME_COLUMNS_LIMIT = 4;
+// The carousel always has at least this many slides when there is enough news.
+export const HOME_MIN_HIGHLIGHTS = 4;
 // Per category block further down the home.
 const HOME_SECTION_LIMIT = 4;
 
@@ -210,7 +212,14 @@ export class PostsService {
       )
     ).filter((section) => section.posts.length > 0);
 
-    return { featured, latestNews, latestColumns, sections };
+    // The admin's choices first; with fewer than four, the latest news fills in.
+    const chosen = new Set(featured.map((post) => post.id));
+    const fill = latestNews
+      .filter((post) => !chosen.has(post.id))
+      .slice(0, Math.max(0, HOME_MIN_HIGHLIGHTS - featured.length));
+    const highlights = [...featured, ...fill];
+
+    return { highlights, featured: highlights[0] ?? null, latestNews, latestColumns, sections };
   }
 
   // Reader bookmarks: the browser keeps the ids, this resolves them in one go.
@@ -442,11 +451,14 @@ export class PostsService {
       throw new Conflict('This post is not published.');
     }
 
-    return postsRepository.update(id, {
+    const updated = await postsRepository.update(id, {
       status: PostStatus.DRAFT,
-      // A post taken offline cannot stay the home page lead.
       publishedById: null,
     });
+
+    // A post taken offline leaves the home carousel too: published again
+    // later, it should not jump back to the top on its own.
+    return post.featured ? postsRepository.setFeatured(id, false) : updated;
   }
 
   async setFeatured(actor: SessionUser, id: string): Promise<IPostDetail> {
@@ -460,9 +472,16 @@ export class PostsService {
       throw new Conflict('Only a published post can be featured.');
     }
 
-    // The repository does this in a transaction: a partial unique index in the
-    // database allows exactly one featured row.
-    return postsRepository.setFeatured(id);
+    return postsRepository.setFeatured(id, true);
+  }
+
+  async unsetFeatured(actor: SessionUser, id: string): Promise<IPostDetail> {
+    if (!policy.canFeature(actor)) {
+      throw new Forbidden('Only an admin can set the featured post.');
+    }
+
+    await this.loadPost(id);
+    return postsRepository.setFeatured(id, false);
   }
 
   async remove(actor: SessionUser, id: string): Promise<void> {

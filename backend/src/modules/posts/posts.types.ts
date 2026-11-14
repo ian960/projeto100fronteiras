@@ -85,6 +85,10 @@ export type IHomeSection = {
 };
 
 export type IHomePayload = {
+  // The carousel: what the admin featured, topped up to HOME_MIN_HIGHLIGHTS
+  // with the latest news.
+  highlights: IPostListItem[];
+  // The first highlight. Kept for a site still running the previous version.
   featured: IPostListItem | null;
   latestNews: IPostListItem[];
   latestColumns: IPostListItem[];

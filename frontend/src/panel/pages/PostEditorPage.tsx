@@ -381,7 +381,7 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
         <span className="text-tinta-suave" aria-hidden="true">/</span>
         <h1 className="text-xl font-semibold">{isNew ? `Nova ${noun}` : `Editar ${noun}`}</h1>
         {!isNew && <StatusPill status={status} />}
-        {post?.featured && <span className="rounded-full bg-sol/20 px-2.5 text-xs font-semibold leading-6 text-aviso">Destaque da home</span>}
+        {post?.featured && <span className="rounded-full bg-sol/20 px-2.5 text-xs font-semibold leading-6 text-aviso">No carrossel da home</span>}
         {dirty && !locked && <span className="text-sm text-tinta-suave">Alterações não salvas</span>}
       </div>
 
@@ -567,9 +567,13 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
 
                 {!isNew && post?.status === 'published' && (
                   <div className="flex flex-col gap-2 border-t border-linha pt-4">
-                    {!post.featured && (
-                      <Button variant="secundario" small busy={busy === 'feature'} disabled={Boolean(busy)} onClick={() => simple('feature', () => actions.feature.mutateAsync(post.id), 'Agora é o destaque da home')}>
-                        Destacar na home
+                    {post.featured ? (
+                      <Button variant="secundario" small busy={busy === 'feature'} disabled={Boolean(busy)} onClick={() => simple('feature', () => actions.unfeature.mutateAsync(post.id), 'Saiu do carrossel da home')}>
+                        Tirar do carrossel
+                      </Button>
+                    ) : (
+                      <Button variant="secundario" small busy={busy === 'feature'} disabled={Boolean(busy)} onClick={() => simple('feature', () => actions.feature.mutateAsync(post.id), 'Agora está no carrossel da home, em primeiro')}>
+                        Pôr no carrossel da home
                       </Button>
                     )}
                     <Button variant="secundario" small busy={busy === 'unpublish'} disabled={Boolean(busy)} onClick={() => simple('unpublish', () => actions.unpublish.mutateAsync(post.id), 'Tirada do ar. Voltou para rascunho.')}>

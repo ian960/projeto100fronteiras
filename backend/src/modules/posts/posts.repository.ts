@@ -155,13 +155,14 @@ export class PostsRepository implements IPostsRepository {
     }
   }
 
-  async findFeatured(): Promise<IPostListItem | null> {
+  async findFeatured(): Promise<IPostListItem[]> {
     try {
-      const row = await prisma.post.findFirst({
+      const rows = await prisma.post.findMany({
         where: { featured: true, status: 'published' },
+        orderBy: [{ featuredAt: 'desc' }, { publishedAt: 'desc' }],
         select: this.listSelect,
       });
-      return row ? toListItem(row) : null;
+      return rows.map(toListItem);
     } catch (err) {
       logger.error('Failed to find featured post', err);
       throw err;
@@ -342,26 +343,15 @@ export class PostsRepository implements IPostsRepository {
     }
   }
 
-  // A partial unique index in the database guarantees at most one featured
-  // row, which means this cannot be a single UPDATE: the old flag has to be
-  // cleared and the new one set inside one transaction, in that order. Do it
-  // the other way round and Postgres rejects the write.
-  async setFeatured(id: string): Promise<IPostDetail> {
+  // In or out of the home carousel. Featuring again moves it to the front.
+  async setFeatured(id: string, featured: boolean): Promise<IPostDetail> {
     try {
-      return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        await tx.post.updateMany({
-          where: { featured: true },
-          data: { featured: false },
-        });
-
-        const row = await tx.post.update({
-          where: { id },
-          data: { featured: true },
-          include: this.detailInclude,
-        });
-
-        return toDetail(row);
+      const row = await prisma.post.update({
+        where: { id },
+        data: { featured, featuredAt: featured ? new Date() : null },
+        include: this.detailInclude,
       });
+      return toDetail(row);
     } catch (err) {
       logger.error('Failed to set featured post', err);
       throw err;
