@@ -2,6 +2,17 @@ import { afterAll, afterEach, beforeAll } from 'vitest';
 import { prisma, disconnectDatabase } from '../src/config/prisma';
 import { assertTestDatabase, resetTestDatabase } from './helpers/database';
 
+// Prisma's Postgres adapter queues the queries of a transaction on one
+// connection, and pg 8 warns (once per test file) that pg 9 will refuse it.
+// Harmless today, and Prisma's to change, not ours; in the test list it only
+// looks like a problem. Every other warning still shows.
+const emitWarning = process.emitWarning.bind(process) as (...args: unknown[]) => void;
+process.emitWarning = ((warning: string | Error, ...rest: unknown[]) => {
+  const message = typeof warning === 'string' ? warning : warning.message;
+  if (message.includes('client is already executing a query')) return;
+  emitWarning(warning, ...rest);
+}) as typeof process.emitWarning;
+
 beforeAll(async () => {
   const url = assertTestDatabase(process.env.DATABASE_URL);
 
