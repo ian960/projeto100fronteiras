@@ -4,12 +4,15 @@ import { prisma } from '../src/config/prisma';
 import { agent, loginAs } from './helpers/agent';
 import { FAKE_CLOUDINARY } from './helpers/cloudinaryTestEnv';
 import {
+  bmpFile,
+  gifFile,
   mp4File,
   pdfFile,
   pngFile,
   registration,
   sendToCloudinary,
   signUpload,
+  svgFile,
   uploadMedia,
 } from './helpers/upload';
 import { makeAdmin, makeCategory, makeColumnist, makeNews, makeUser, makeWriter } from './factories';
@@ -38,7 +41,7 @@ describe('signing an upload', () => {
       new RegExp(`^${FAKE_CLOUDINARY.folder}/covers/[0-9a-f-]{36}$`),
     );
     expect(upload.fields.asset_folder).toBe(`${FAKE_CLOUDINARY.folder}/covers`);
-    expect(upload.fields.allowed_formats).toBe('jpg,png,webp,avif,heic');
+    expect(upload.fields.allowed_formats).toBe('jpg,png,webp,avif,heic,heif,gif,bmp,tiff,tif');
     expect(upload.fields.overwrite).toBe('0');
     expect(upload.fields.signature).toMatch(/^[0-9a-f]{40}$/);
     // The secret never leaves the server.
@@ -79,6 +82,27 @@ describe('signing an upload', () => {
   });
 });
 
+describe('the rules the panel reads', () => {
+  it('serves accept, limits and widths per purpose', async () => {
+    const { client } = await asAdmin();
+
+    const response = await client.get('/api/media/rules').expect(200);
+    const { cover, video } = response.body.data.rules;
+
+    expect(cover.accept).toContain('image/gif');
+    expect(cover.accept).not.toContain('svg');
+    expect(cover.maxBytes).toBe(10 * 1024 * 1024);
+    expect(cover.maxSourceBytes).toBeGreaterThan(cover.maxBytes);
+    expect(cover.minWidth).toBe(400);
+    expect(cover.recommendedWidth).toBe(800);
+    expect(video.maxSourceBytes).toBeUndefined();
+  });
+
+  it('is for signed-in people only', async () => {
+    await agent().get('/api/media/rules').expect(401);
+  });
+});
+
 describe('uploading and registering', () => {
   it('registers a cover and serves it from the delivery URL', async () => {
     const { admin, client } = await asAdmin();
@@ -95,6 +119,22 @@ describe('uploading and registering', () => {
 
     const row = await prisma.media.findUniqueOrThrow({ where: { id: media.id } });
     expect(row.uploadedById).toBe(admin.id);
+  });
+
+  it('accepts a GIF, a BMP and a smallish cover', async () => {
+    const { client } = await asAdmin();
+
+    const gif = await uploadMedia(client, 'cover', gifFile(1200, 800));
+    const bmp = await uploadMedia(client, 'body', bmpFile(1024, 768));
+    // Under the recommended 800px: accepted, the panel only warns.
+    const small = await uploadMedia(client, 'cover', pngFile(700, 400));
+
+    expect(gif.format).toBe('gif');
+    expect(gif.width).toBe(1200);
+    expect(bmp.format).toBe('bmp');
+    expect(small.width).toBe(700);
+    // Whatever was sent, the site asks Cloudinary for the best web format.
+    expect(gif.url).toContain('f_auto,q_auto');
   });
 
   it('answers the same file when the panel retries', async () => {
@@ -189,9 +229,19 @@ describe('what a forged or tampered upload gets', () => {
     expect(cloud.body.error.message).toContain('not allowed');
   });
 
+  it('refuses an SVG, which could carry a script', async () => {
+    const { client } = await asAdmin();
+
+    const upload = await signUpload(client, 'cover');
+    const cloud = await sendToCloudinary(upload, svgFile());
+
+    expect(cloud.status).toBe(400);
+    expect(cloud.body.error.message).toContain('not allowed');
+  });
+
   it('removes from Cloudinary an image too small for a cover', async () => {
     const { client } = await asAdmin();
-    const file = pngFile(500, 300);
+    const file = pngFile(300, 200);
 
     const upload = await signUpload(client, 'cover');
     const cloud = await sendToCloudinary(upload, file);
@@ -200,7 +250,7 @@ describe('what a forged or tampered upload gets', () => {
       .send(registration('cover', cloud.body, file.name))
       .expect(422);
 
-    expect(response.body.error.fields.file).toBe('Use an image at least 800px wide.');
+    expect(response.body.error.fields.file).toBe('Use an image at least 400px wide.');
     expect(await fetchStatus(cloud.body.secure_url)).toBe(404);
     expect(await prisma.media.count()).toBe(0);
   });

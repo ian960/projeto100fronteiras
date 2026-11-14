@@ -1,8 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button, TextField, cx } from '../components/ui';
+import { get } from '../lib/api';
 import { useHealth } from '../lib/hooks';
-import type { Media, MediaPurpose } from '../lib/types';
+import type { Media, MediaPurpose, MediaRule, MediaRules } from '../lib/types';
 import { formatBytes, importMedia, uploadErrorMessage, uploadMedia } from './media';
 import { Modal } from './widgets';
 
@@ -13,6 +15,48 @@ import { Modal } from './widgets';
 export function useMediaEnabled(): boolean | undefined {
   const { data } = useHealth();
   return data ? data.uploads === 'cloudinary' : undefined;
+}
+
+// Formats, limits and widths per purpose come from the API (backend
+// media.purposes.ts), so they are written in one place only.
+function useMediaRules(): MediaRules | undefined {
+  const enabled = useMediaEnabled();
+  const { data } = useQuery({
+    queryKey: ['media-rules'],
+    queryFn: () => get<{ rules: MediaRules }>('/media/rules').then((body) => body.rules),
+    enabled: enabled === true,
+    staleTime: Infinity,
+  });
+  return data;
+}
+
+// While the rules load, a broad filter; the upload checks the real one anyway.
+const FALLBACK_ACCEPT: Record<MediaPurpose, string> = {
+  cover: 'image/*',
+  body: 'image/*',
+  author: 'image/*',
+  avatar: 'image/*',
+  video: 'video/*',
+  document: 'application/pdf',
+};
+
+function useAccept(purpose: MediaPurpose): string {
+  return useMediaRules()?.[purpose].accept ?? FALLBACK_ACCEPT[purpose];
+}
+
+function useRule(purpose: MediaPurpose): MediaRule | undefined {
+  return useMediaRules()?.[purpose];
+}
+
+// A small picture is accepted, but whoever sent it should know it may look blurry.
+function SmallImageWarning({ width, rule }: { width?: number | null; rule?: MediaRule }) {
+  if (!width || !rule?.recommendedWidth || width >= rule.recommendedWidth) return null;
+  return (
+    <p className="text-sm text-tinta-suave" role="status">
+      Imagem pequena ({width} px de largura): pode ficar borrada no destaque. O ideal é ter pelo menos{' '}
+      {rule.recommendedWidth} px.
+    </p>
+  );
 }
 
 function MediaOff() {
@@ -103,8 +147,6 @@ function useUpload() {
   return { progress, error, setError, run, cancel: () => controller.current?.abort() };
 }
 
-const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif';
-
 // "Paste a link" + Import, side by side. The input and the button share one
 // row and one height; the hint goes underneath both.
 function LinkImport({ label = 'Endereço da imagem', value, onChange, onImport, busy, disabled, hint }: {
@@ -149,9 +191,11 @@ function LinkImport({ label = 'Endereço da imagem', value, onChange, onImport, 
 
 // ── Image: cover, author photo ───────────────────────────────────────────────
 
-export type ImageValue = { id: string; previewUrl: string } | null;
+// width: known when the file was sent or loaded with the post; used only to
+// warn about a small picture.
+export type ImageValue = { id: string; previewUrl: string; width?: number | null } | null;
 
-export const imageValue = (media: Media): ImageValue => ({ id: media.id, previewUrl: media.thumbnailUrl });
+export const imageValue = (media: Media): ImageValue => ({ id: media.id, previewUrl: media.thumbnailUrl, width: media.width });
 
 export function ImageField({ label, purpose, value, onChange, error, hint, optional, round, disabled }: {
   label: string;
@@ -165,6 +209,8 @@ export function ImageField({ label, purpose, value, onChange, error, hint, optio
   disabled?: boolean;
 }) {
   const enabled = useMediaEnabled();
+  const accept = useAccept(purpose);
+  const rule = useRule(purpose);
   const upload = useUpload();
   const [linkOpen, setLinkOpen] = useState(false);
   const [link, setLink] = useState('');
@@ -227,7 +273,7 @@ export function ImageField({ label, purpose, value, onChange, error, hint, optio
       ) : (
         <>
           <div className="flex flex-wrap gap-2">
-            <FileButton accept={IMAGE_ACCEPT} disabled={busy || !enabled} onFiles={([file]) => onFile(file!)}>
+            <FileButton accept={accept} disabled={busy || !enabled} onFiles={([file]) => onFile(file!)}>
               {value ? 'Trocar imagem' : 'Enviar imagem'}
             </FileButton>
             {purpose !== 'avatar' && (
@@ -255,6 +301,8 @@ export function ImageField({ label, purpose, value, onChange, error, hint, optio
           {upload.progress !== null && <Progress fraction={upload.progress} label="Enviando" onCancel={upload.cancel} />}
         </>
       )}
+
+      {!shownError && !disabled && <SmallImageWarning width={value?.width} rule={rule} />}
 
       {shownError ? (
         <p className="text-sm text-alerta" role="alert">
@@ -293,6 +341,7 @@ export function VideoField({ value, onChange, error, disabled }: {
   disabled?: boolean;
 }) {
   const enabled = useMediaEnabled();
+  const videoAccept = useAccept('video');
   const upload = useUpload();
 
   async function onFile(file: File) {
@@ -375,7 +424,7 @@ export function VideoField({ value, onChange, error, disabled }: {
             <MediaOff />
           ) : (
             <div className="flex flex-wrap gap-2">
-              <FileButton accept="video/mp4,video/quicktime,video/webm,video/x-m4v" disabled={upload.progress !== null || !enabled} onFiles={([file]) => onFile(file!)}>
+              <FileButton accept={videoAccept} disabled={upload.progress !== null || !enabled} onFiles={([file]) => onFile(file!)}>
                 {value.media ? 'Trocar vídeo' : 'Escolher vídeo'}
               </FileButton>
             </div>
@@ -412,6 +461,7 @@ export function AttachmentsField({ value, onChange, error, disabled }: {
   disabled?: boolean;
 }) {
   const enabled = useMediaEnabled();
+  const pdfAccept = useAccept('document');
   const upload = useUpload();
   const [queue, setQueue] = useState<{ index: number; total: number } | null>(null);
 
@@ -473,7 +523,7 @@ export function AttachmentsField({ value, onChange, error, disabled }: {
         <MediaOff />
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <FileButton accept="application/pdf" multiple disabled={upload.progress !== null || !enabled || value.length >= 20} onFiles={onFiles}>
+          <FileButton accept={pdfAccept} multiple disabled={upload.progress !== null || !enabled || value.length >= 20} onFiles={onFiles}>
             Anexar PDF
           </FileButton>
           <span className="text-sm text-tinta-suave">Até 10 MB cada. Aparecem no fim da matéria, nesta ordem.</span>
@@ -552,6 +602,8 @@ export function BodyImageDialog({ open, onDone }: { open: boolean; onDone: (resu
 
   const busy = upload.progress !== null || importing;
   const enabled = useMediaEnabled();
+  const accept = useAccept('body');
+  const rule = useRule('body');
 
   return (
     <Modal open={open} onClose={() => onDone(null)} title="Foto no texto">
@@ -559,11 +611,14 @@ export function BodyImageDialog({ open, onDone }: { open: boolean; onDone: (resu
         {enabled === false ? (
           <MediaOff />
         ) : media ? (
-          <img src={media.thumbnailUrl} alt="" className="aspect-video w-full rounded-md border border-linha bg-superficie object-contain" />
+          <>
+            <img src={media.thumbnailUrl} alt="" className="aspect-video w-full rounded-md border border-linha bg-superficie object-contain" />
+            <SmallImageWarning width={media.width} rule={rule} />
+          </>
         ) : (
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
-              <FileButton accept={IMAGE_ACCEPT} variant="primario" disabled={busy} onFiles={([file]) => onFile(file!)}>
+              <FileButton accept={accept} variant="primario" disabled={busy} onFiles={([file]) => onFile(file!)}>
                 Escolher imagem
               </FileButton>
             </div>

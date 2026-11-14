@@ -16,19 +16,94 @@ export function signUpload(purpose: MediaPurpose): Promise<SignedUpload> {
 }
 
 const MB = 1024 * 1024;
+const mb = (bytes: number) => (bytes / MB).toFixed(1).replace('.', ',');
 
 // Checked here so a wrong file fails at once, instead of after a long upload.
 // Cloudinary and the API check again; this is a courtesy, not the guard.
 function checkFile(file: File, signed: SignedUpload): string | null {
-  if (file.size > signed.maxBytes) {
-    return `O arquivo tem ${(file.size / MB).toFixed(1).replace('.', ',')} MB. O limite é ${Math.round(signed.maxBytes / MB)} MB.`;
+  if (file.type === 'image/svg+xml') {
+    return 'Arquivos SVG não são aceitos, porque podem conter código. Exporte a imagem como PNG ou JPEG.';
   }
-  const accepted = signed.accept.split(',');
   // Some systems report HEIC or .mov with an empty type: let Cloudinary decide.
+  const accepted = signed.accept.split(',');
   if (file.type && !accepted.includes(file.type)) {
     return 'Este tipo de arquivo não é aceito aqui.';
   }
+  // A big photo is shrunk below (prepareImage); only past maxSourceBytes is it refused.
+  const limit = signed.maxSourceBytes ?? signed.maxBytes;
+  if (file.size > limit) {
+    return `O arquivo tem ${mb(file.size)} MB. O limite é ${Math.round(limit / MB)} MB.`;
+  }
   return null;
+}
+
+// ── Shrinking a big photo before it leaves the browser ──────────────────────
+// A camera or WhatsApp photo can be 15 MB and 6000 px wide. Cloudinary's free
+// plan takes at most 10 MB, and the site never shows more than ~2500 px, so
+// such a photo is redrawn at about 2560×2560 pixels as a JPEG (~1–2 MB): it
+// gets in, and it goes up much faster on a phone's 4G.
+
+const MAX_PIXELS = 2560 * 2560;
+// Under this, a file is sent as it is: decoding it would cost more than it saves.
+const SHRINK_FROM_BYTES = 3 * MB;
+
+function toJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+}
+
+async function prepareImage(file: File, maxBytes: number): Promise<File> {
+  const tooBig = file.size > maxBytes;
+  // An animated GIF redrawn on a canvas would lose its animation: only when it must.
+  if (!tooBig && (file.size <= SHRINK_FROM_BYTES || file.type === 'image/gif')) return file;
+
+  let bitmap: ImageBitmap;
+  try {
+    // Turns the photo upright from its EXIF orientation, like the site will.
+    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    // This browser cannot open the format (HEIC or TIFF outside Safari, say).
+    // Cloudinary can: send it as it is, unless it is over Cloudinary's limit.
+    if (!tooBig) return file;
+    throw new Error(
+      `A imagem tem ${mb(file.size)} MB, acima do limite de ${Math.round(maxBytes / MB)} MB, e este navegador não consegue reduzi-la. ` +
+        'Tente enviar pelo celular, ou salve a foto como JPEG antes.',
+    );
+  }
+
+  try {
+    const pixels = bitmap.width * bitmap.height;
+    if (!tooBig && pixels <= MAX_PIXELS) return file;
+
+    const scale = Math.min(1, Math.sqrt(MAX_PIXELS / pixels));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) {
+      if (tooBig) throw new Error('Não foi possível reduzir a imagem neste navegador.');
+      return file;
+    }
+
+    // JPEG has no transparency: a transparent PNG gets a white background, not black.
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    let blob = await toJpeg(canvas, 0.88);
+    if (blob && blob.size > maxBytes) blob = await toJpeg(canvas, 0.7);
+    if (!blob || blob.size > maxBytes) {
+      if (!tooBig) return file;
+      throw new Error(`Não foi possível reduzir a imagem para menos de ${Math.round(maxBytes / MB)} MB.`);
+    }
+    // Shrinking made it bigger (an already well-compressed photo): keep the original.
+    if (!tooBig && blob.size >= file.size) return file;
+
+    const name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], name, { type: 'image/jpeg', lastModified: file.lastModified });
+  } finally {
+    bitmap.close();
+  }
 }
 
 // Cloudinary's own error messages, in the reader's language.
@@ -109,7 +184,11 @@ export async function uploadMedia(
   const problem = checkFile(file, signed);
   if (problem) throw new Error(problem);
 
-  const answer = await sendToCloudinary(signed, file, onProgress, signal);
+  const ready = signed.kind === 'image' ? await prepareImage(file, signed.maxBytes) : file;
+  signal?.throwIfAborted();
+
+  const answer = await sendToCloudinary(signed, ready, onProgress, signal);
+  // The name the person knows, even when a shrunk .jpg was sent.
   return registerMedia(purpose, answer, file.name);
 }
 

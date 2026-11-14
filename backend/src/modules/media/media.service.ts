@@ -90,7 +90,9 @@ export class MediaService {
     return {
       uploadUrl: `${cloud.apiBase}/v1_1/${cloud.cloudName}/${rule.resourceType}/upload`,
       fields: { ...params, api_key: cloud.apiKey, signature },
+      kind: rule.kind,
       maxBytes: rule.maxBytes,
+      maxSourceBytes: rule.maxSourceBytes ?? null,
       accept: rule.accept,
     };
   }
@@ -162,7 +164,7 @@ export class MediaService {
       // image, or an unsupported format all end up here.
       logger.warn('Cloudinary could not import a link', err);
       throw new ValidationError('Could not import an image from this link.', {
-        url: 'Use a link that opens the image itself (JPEG, PNG or WebP).',
+        url: 'Use a link that opens the image itself (a photo, not a web page).',
       });
     }
 
@@ -302,7 +304,8 @@ export class MediaService {
   // from Cloudinary right away instead of lingering there unused.
   // Returns the format, normalized ("jpeg" is stored as "jpg").
   private async assertFitsPurpose(rule: PurposeRule, facts: UploadedFacts): Promise<string> {
-    const format = facts.format.toLowerCase() === 'jpeg' ? 'jpg' : facts.format.toLowerCase();
+    const reported = facts.format.toLowerCase();
+    const format = ['jpeg', 'jpe', 'jfif'].includes(reported) ? 'jpg' : reported;
     let problem: string | null = null;
 
     if (facts.resourceType !== rule.resourceType || !rule.formats.includes(format)) {

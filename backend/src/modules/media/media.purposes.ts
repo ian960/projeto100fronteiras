@@ -22,19 +22,35 @@ export type PurposeRule = {
   formats: readonly string[];
   // For the <input accept="…"> in the panel.
   accept: string;
+  // The largest file Cloudinary may receive (its free plan: 10 MB images and
+  // PDFs, 100 MB videos). Raising it only makes sense on a paid plan.
   maxBytes: number;
+  // Images only: the largest photo someone may *pick*. Above maxBytes the
+  // panel shrinks it in the browser before sending (panel/media.ts), so a
+  // 15 MB camera photo still gets in. Above this, it is refused outright.
+  maxSourceBytes?: number;
+  // Below this the file is refused: it would look broken on the site.
   minWidth?: number;
+  // Below this it is accepted, but the panel warns it may look blurry.
+  recommendedWidth?: number;
 };
 
 const MB = 1024 * 1024;
 
-// jpg covers .jpeg as well: Cloudinary reports both as "jpg".
-// HEIC is what an iPhone sends; Cloudinary converts it on delivery.
-const IMAGE_FORMATS = ['jpg', 'png', 'webp', 'avif', 'heic'] as const;
-const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif';
+// Every common picture format. Cloudinary converts all of them on delivery
+// (f_auto in media.urls.ts), so the reader always gets a light WebP/AVIF.
+// jpg covers .jpeg, .jpe and .jfif: Cloudinary reports them all as "jpg".
+// HEIC/HEIF is what an iPhone sends. GIF stays animated.
+// No SVG, on purpose: an SVG can carry a script.
+const IMAGE_FORMATS = ['jpg', 'png', 'webp', 'avif', 'heic', 'heif', 'gif', 'bmp', 'tiff', 'tif'] as const;
+// MIME types plus extensions: Windows often reports HEIC with an empty type,
+// and the extensions keep those files visible in the file picker.
+const IMAGE_ACCEPT = [
+  'image/jpeg', 'image/pjpeg', 'image/png', 'image/webp', 'image/avif', 'image/heic', 'image/heif',
+  'image/gif', 'image/bmp', 'image/x-ms-bmp', 'image/tiff',
+  '.jpg', '.jpeg', '.jfif', '.png', '.webp', '.avif', '.heic', '.heif', '.gif', '.bmp', '.tif', '.tiff',
+].join(',');
 
-// Limits match Cloudinary's free plan (10 MB images and PDFs, 100 MB videos).
-// Raising them only makes sense on a paid plan.
 export const PURPOSE_RULES: Record<MediaPurpose, PurposeRule> = {
   cover: {
     kind: MediaKind.IMAGE,
@@ -43,8 +59,11 @@ export const PURPOSE_RULES: Record<MediaPurpose, PurposeRule> = {
     formats: IMAGE_FORMATS,
     accept: IMAGE_ACCEPT,
     maxBytes: 10 * MB,
-    // The lead story is shown up to ~1200px wide on desktop.
-    minWidth: 800,
+    maxSourceBytes: 40 * MB,
+    // The lead story is shown up to ~1200px wide on desktop: under 800px it
+    // gets blurry, so the panel warns. Under 400px it would look broken.
+    minWidth: 400,
+    recommendedWidth: 800,
   },
   body: {
     kind: MediaKind.IMAGE,
@@ -53,7 +72,9 @@ export const PURPOSE_RULES: Record<MediaPurpose, PurposeRule> = {
     formats: IMAGE_FORMATS,
     accept: IMAGE_ACCEPT,
     maxBytes: 10 * MB,
-    minWidth: 400,
+    maxSourceBytes: 40 * MB,
+    minWidth: 200,
+    recommendedWidth: 400,
   },
   author: {
     kind: MediaKind.IMAGE,
@@ -62,7 +83,8 @@ export const PURPOSE_RULES: Record<MediaPurpose, PurposeRule> = {
     formats: IMAGE_FORMATS,
     accept: IMAGE_ACCEPT,
     maxBytes: 10 * MB,
-    minWidth: 200,
+    maxSourceBytes: 40 * MB,
+    minWidth: 100,
   },
   avatar: {
     kind: MediaKind.IMAGE,
@@ -70,8 +92,9 @@ export const PURPOSE_RULES: Record<MediaPurpose, PurposeRule> = {
     folder: 'avatars',
     formats: IMAGE_FORMATS,
     accept: IMAGE_ACCEPT,
-    // Readers upload these, so the limit is tighter than the newsroom's.
+    // Readers upload these, so the limits are tighter than the newsroom's.
     maxBytes: 5 * MB,
+    maxSourceBytes: 20 * MB,
     minWidth: 100,
   },
   video: {
@@ -92,6 +115,27 @@ export const PURPOSE_RULES: Record<MediaPurpose, PurposeRule> = {
     maxBytes: 10 * MB,
   },
 };
+
+// What the panel needs to know before a file is picked: the <input accept>,
+// the limits and the width warnings. Served by GET /api/media/rules, so the
+// panel never repeats them.
+export type PurposeLimits = Pick<PurposeRule, 'kind' | 'accept' | 'maxBytes' | 'maxSourceBytes' | 'minWidth' | 'recommendedWidth'>;
+
+export function purposeLimits(): Record<MediaPurpose, PurposeLimits> {
+  return Object.fromEntries(
+    Object.entries(PURPOSE_RULES).map(([purpose, rule]) => [
+      purpose,
+      {
+        kind: rule.kind,
+        accept: rule.accept,
+        maxBytes: rule.maxBytes,
+        maxSourceBytes: rule.maxSourceBytes,
+        minWidth: rule.minWidth,
+        recommendedWidth: rule.recommendedWidth,
+      },
+    ]),
+  ) as Record<MediaPurpose, PurposeLimits>;
+}
 
 // Purposes that accept an image link to import (covers, photos in the text,
 // author photos). Videos and PDFs are always sent as files.

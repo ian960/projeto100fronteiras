@@ -598,7 +598,7 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
                 error={errors.coverId}
                 optional={form.type !== 'news'}
                 disabled={locked}
-                hint={`${form.type === 'news' ? 'Obrigatória para publicar uma notícia. ' : ''}JPEG, PNG, WebP ou HEIC, até 10 MB, com pelo menos 800 px de largura.`}
+                hint={`${form.type === 'news' ? 'Obrigatória para publicar uma notícia. ' : ''}Qualquer foto: JPEG, PNG, HEIC (iPhone), WebP, GIF… Fotos grandes são reduzidas antes do envio. O ideal é ter pelo menos 800 px de largura.`}
               />
               <TextField
                 label="Descrição da imagem"

@@ -47,6 +47,10 @@ export type IMediaView = {
 export type ISignedUpload = {
   uploadUrl: string;
   fields: Record<string, string>;
+  kind: MediaKind;
   maxBytes: number;
+  // Images: the largest photo that may be picked; the panel shrinks anything
+  // over maxBytes before sending. null for videos and PDFs.
+  maxSourceBytes: number | null;
   accept: string;
 };
