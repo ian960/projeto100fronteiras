@@ -217,6 +217,8 @@ model Post {
   @@index([authorId, status, publishedAt(sort: Desc)])
   // Home carousel.
   @@index([featured, featuredAt(sort: Desc)])
+  // Latest of any kind: the "Leia também" fill and /api/posts without a type.
+  @@index([status, publishedAt(sort: Desc)])
   @@map("posts")
 }
 

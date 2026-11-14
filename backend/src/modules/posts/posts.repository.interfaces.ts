@@ -17,6 +17,7 @@ export interface IPostsRepository {
   findFeatured(): Promise<IPostListItem[]>;
   findLatest(type: FindPublishedFilters['type'], limit: number, categoryId?: string): Promise<IPostListItem[]>;
   findPublishedByIds(ids: string[]): Promise<IPostListItem[]>;
+  findRelated(post: Pick<IPost, 'id' | 'categoryId' | 'authorId'>, limit: number): Promise<IPostListItem[]>;
 
   // Panel
   findForPanel(

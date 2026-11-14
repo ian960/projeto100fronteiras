@@ -440,6 +440,33 @@ export function SectionBlock({ name, slug, posts }: { name: string; slug: string
   );
 }
 
+// A card of the "Leia também" grid: photo on top, headline under it. A column
+// without a photo shows its author instead, on the opinion green.
+export function RelatedCard({ post }: { post: PostListItem }) {
+  const isOpinion = post.type === 'column';
+  return (
+    <article className="group">
+      <Link to={postPath(post)} tabIndex={-1} aria-hidden="true" className="block overflow-hidden rounded-lg">
+        {post.cover ? (
+          <Cover post={post} className="transition-transform duration-300 group-hover:scale-[1.03]" sizes="(min-width: 768px) 210px, 50vw" />
+        ) : (
+          <div className={cx('flex aspect-[16/9] w-full items-center justify-center', isOpinion ? 'bg-mata-claro' : 'bg-superficie')}>
+            {post.author && <Avatar src={post.author.photoUrl} name={post.author.name} size={56} />}
+          </div>
+        )}
+      </Link>
+      <div className="mt-2.5">
+        <Kicker post={post} />
+        <h3 className="titulo mt-1 line-clamp-4 text-[1.0625rem] sm:text-lg">
+          <Link to={postPath(post)} className={isOpinion ? 'hover:text-mata' : 'hover:text-anil'}>
+            {post.title}
+          </Link>
+        </h3>
+      </div>
+    </article>
+  );
+}
+
 // Opinion is introduced by its author, not by an image.
 export function OpinionItem({ post }: { post: PostListItem }) {
   const author = post.author;

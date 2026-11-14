@@ -731,3 +731,75 @@ describe('dados da página inicial', () => {
     expect(response.body.data.sections).toEqual([]);
   });
 });
+
+describe('leia também', () => {
+  // Published straight in the database, with a date each, so the order is known.
+  async function publishedNews(
+    ctx: { admin: { id: string }; writer: { id: string } },
+    categoryId: string,
+    daysAgo: number,
+  ) {
+    return makeNews(
+      { authorId: ctx.writer.id, createdById: ctx.admin.id, categoryId },
+      { status: 'published', publishedAt: new Date(Date.now() - daysAgo * 86_400_000) },
+    );
+  }
+
+  it('traz a mesma editoria primeiro, sem a própria matéria e sem rascunho', async () => {
+    const ctx = await adminContext();
+    const other = await makeCategory();
+
+    const current = await publishedNews(ctx, ctx.category.id, 0);
+    const sameOld = await publishedNews(ctx, ctx.category.id, 5);
+    const sameNew = await publishedNews(ctx, ctx.category.id, 3);
+    // Newer than both, but from another category: it comes after them.
+    const otherNewest = await publishedNews(ctx, other.id, 1);
+    await makeNews({ authorId: ctx.writer.id, createdById: ctx.admin.id, categoryId: ctx.category.id });
+
+    const response = await agent().get(`/api/posts/${current.slug}/related`).expect(200);
+    const ids = (response.body.data.posts as { id: string }[]).map((post) => post.id);
+
+    expect(ids).toEqual([sameNew.id, sameOld.id, otherNewest.id]);
+    // List shape: no article body.
+    expect(response.body.data.posts[0]).not.toHaveProperty('content');
+  });
+
+  it('respeita o limite', async () => {
+    const ctx = await adminContext();
+    const current = await publishedNews(ctx, ctx.category.id, 0);
+    for (const days of [1, 2, 3, 4, 5]) await publishedNews(ctx, ctx.category.id, days);
+
+    const byDefault = await agent().get(`/api/posts/${current.slug}/related`).expect(200);
+    expect(byDefault.body.data.posts).toHaveLength(4);
+
+    const two = await agent().get(`/api/posts/${current.slug}/related?limit=2`).expect(200);
+    expect(two.body.data.posts).toHaveLength(2);
+
+    await agent().get(`/api/posts/${current.slug}/related?limit=50`).expect(422);
+  });
+
+  it('coluna traz primeiro o mesmo colunista', async () => {
+    const ctx = await adminContext();
+    const { user, author } = await makeColumnist();
+    const published = { status: 'published', publishedAt: new Date() };
+
+    const current = await makeColumn({ authorId: author.id, createdById: user.id }, published);
+    const mine = await makeColumn(
+      { authorId: author.id, createdById: user.id },
+      { status: 'published', publishedAt: new Date(Date.now() - 5 * 86_400_000) },
+    );
+    const news = await publishedNews(ctx, ctx.category.id, 1);
+
+    const response = await agent().get(`/api/posts/${current.slug}/related`).expect(200);
+    const ids = (response.body.data.posts as { id: string }[]).map((post) => post.id);
+
+    expect(ids).toEqual([mine.id, news.id]);
+  });
+
+  it('responde 404 para rascunho', async () => {
+    const ctx = await adminContext();
+    const draft = await makeNews({ authorId: ctx.writer.id, createdById: ctx.admin.id, categoryId: ctx.category.id });
+
+    await agent().get(`/api/posts/${draft.slug}/related`).expect(404);
+  });
+});

@@ -68,6 +68,16 @@ export function useColumnists() {
   });
 }
 
+// "Leia também": same category (or columnist) first, then the latest.
+export function useRelatedPosts(slug: string) {
+  return useQuery({
+    queryKey: ['site', 'related', slug],
+    queryFn: async () => (await get<{ posts: PostListItem[] }>(`/posts/${slug}/related`, { limit: 4 })).posts,
+    enabled: Boolean(slug),
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function usePostsByIds(ids: string[]) {
   return useQuery({
     queryKey: ['site', 'by-ids', ids],

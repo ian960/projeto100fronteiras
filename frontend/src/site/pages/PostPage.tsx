@@ -4,8 +4,8 @@ import { Alert, Avatar, Loading, cx } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
 import { useDocumentTitle } from '../../lib/hooks';
 import { readingMinutes } from '../../lib/format';
-import { Attachments, BookmarkButton, Byline, Cover, Kicker, ReadingProgress, SectionHeading, ShareActions, StoryList, VideoEmbed } from '../parts';
-import { useAuthor, usePost, usePublishedPosts } from '../queries';
+import { Attachments, BookmarkButton, Byline, Cover, Kicker, ReadingProgress, RelatedCard, SectionHeading, ShareActions, VideoEmbed } from '../parts';
+import { useAuthor, usePost, useRelatedPosts } from '../queries';
 import NotFoundPage from './NotFoundPage';
 import { Comments } from '../Comments';
 
@@ -90,9 +90,11 @@ export default function PostPage() {
 
       {post.author && <AuthorBox slug={post.author.slug} opinion={isOpinion} />}
 
-      <Comments postId={post.id} opinion={isOpinion} />
+      {/* Before the comments: whoever finished the text gets somewhere to
+          go next without scrolling past the whole discussion. */}
+      <ReadAlso slug={post.slug} opinion={isOpinion} />
 
-      <Related post={post} />
+      <Comments postId={post.id} opinion={isOpinion} />
     </article>
   );
 }
@@ -120,22 +122,20 @@ function AuthorBox({ slug, opinion }: { slug: string; opinion: boolean }) {
   );
 }
 
-function Related({ post }: { post: { id: string; type: string; category?: { slug: string; name: string } | null; author?: { slug: string; name: string } } }) {
-  const filters =
-    post.type === 'column'
-      ? { type: 'column' as const, author: post.author?.slug, limit: 4 }
-      : { type: 'news' as const, category: post.category?.slug, limit: 4 };
-
-  const { data } = usePublishedPosts(filters);
-  const others = data?.items.filter((item) => item.id !== post.id).slice(0, 3) ?? [];
-  if (others.length === 0) return null;
-
-  const heading = post.type === 'column' ? `Mais de ${post.author?.name ?? 'quem assina'}` : `Mais em ${post.category?.name ?? 'notícias'}`;
+// "Leia também": two columns on a phone, four on a wide screen. The API puts
+// the same category (or the same columnist) first and fills with the latest.
+function ReadAlso({ slug, opinion }: { slug: string; opinion: boolean }) {
+  const { data: posts } = useRelatedPosts(slug);
+  if (!posts || posts.length === 0) return null;
 
   return (
-    <section className="mx-auto mt-16 max-w-[38rem]" aria-label={heading}>
-      <SectionHeading tone={post.type === 'column' ? 'mata' : 'anil'}>{heading}</SectionHeading>
-      <StoryList posts={others} />
+    <section className="mx-auto mt-14 max-w-4xl" aria-label="Leia também">
+      <SectionHeading tone={opinion ? 'mata' : 'anil'}>Leia também</SectionHeading>
+      <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-7 md:grid-cols-4 md:gap-x-5">
+        {posts.map((item) => (
+          <RelatedCard key={item.id} post={item} />
+        ))}
+      </div>
     </section>
   );
 }
