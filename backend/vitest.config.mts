@@ -20,6 +20,10 @@ for (const key of Object.keys(FAKE_CLOUDINARY_ENV)) {
   process.env[key] ??= '';
 }
 
+// Never a real e-mail from the tests, whatever backend/.env says: the "log"
+// provider keeps what it would send in memory (shared/mail/mailer.ts outbox).
+process.env.MAIL_PROVIDER = 'log';
+
 // Two groups, run one after the other (groupOrder) because they share the
 // test database:
 //   api                 everything, against a fake Cloudinary on localhost

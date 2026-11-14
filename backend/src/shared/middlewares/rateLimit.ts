@@ -35,6 +35,18 @@ export const commentLimiter = rateLimit({
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many comments. Wait a few minutes.' } },
 });
 
+// "Esqueci minha senha" sends e-mail and guesses tokens: both deserve a
+// tight limit per address. The service also caps links per account.
+export const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip,
+  keyGenerator,
+  message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many attempts. Try again later.' } },
+});
+
 // A public sign-up endpoint with no limit becomes a fake-account dump.
 export const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,

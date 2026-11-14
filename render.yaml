@@ -45,6 +45,16 @@ services:
         sync: false
       - key: CLOUDINARY_FOLDER
         value: portal
+      # Password recovery e-mails: MAIL_PROVIDER=brevo now, resend once the
+      # portal has its own domain. MAIL_FROM is the sender address verified in
+      # that service. Set all three in the dashboard; until then nothing is
+      # sent (the API logs a warning on start).
+      - key: MAIL_PROVIDER
+        sync: false
+      - key: MAIL_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
 
 databases:
   - name: portal-db

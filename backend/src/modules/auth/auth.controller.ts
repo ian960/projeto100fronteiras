@@ -6,8 +6,10 @@ import { authService } from './auth.service';
 import {
   changePasswordSchema,
   deleteMeSchema,
+  forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  resetPasswordSchema,
   updateMeSchema,
 } from './auth.schemas';
 
@@ -73,6 +75,19 @@ export class AuthController {
     const parsed = updateMeSchema.parse({ body: req.body });
     const user = await usersService.updateMe(actor, parsed.body);
     return ok(res, { user });
+  };
+
+  // Always 204, account or not: see AuthService.forgotPassword.
+  forgotPassword = async (req: Request, res: Response) => {
+    const parsed = forgotPasswordSchema.parse({ body: req.body });
+    await authService.forgotPassword(parsed.body);
+    return noContent(res);
+  };
+
+  resetPassword = async (req: Request, res: Response) => {
+    const parsed = resetPasswordSchema.parse({ body: req.body });
+    await authService.resetPassword(parsed.body);
+    return noContent(res);
   };
 
   deleteMe = async (req: Request, res: Response) => {
