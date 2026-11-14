@@ -198,6 +198,43 @@ export class PostsRepository implements IPostsRepository {
     }
   }
 
+  // "Leia também": the same category first (the same columnist, for a column,
+  // which has no category), then the latest of any kind to fill the gap.
+  // Each query is a short indexed scan: (category_id | author_id, status,
+  // published_at DESC) for the first, (status, published_at DESC) for the fill.
+  async findRelated(
+    post: Pick<IPost, 'id' | 'categoryId' | 'authorId'>,
+    limit: number,
+  ): Promise<IPostListItem[]> {
+    try {
+      const sameGroup: Prisma.PostWhereInput = post.categoryId
+        ? { categoryId: post.categoryId }
+        : { authorId: post.authorId };
+
+      const first = await prisma.post.findMany({
+        where: { status: 'published', id: { not: post.id }, ...sameGroup },
+        select: this.listSelect,
+        orderBy: { publishedAt: 'desc' },
+        take: limit,
+      });
+
+      const missing = limit - first.length;
+      if (missing <= 0) return first.map(toListItem);
+
+      const fill = await prisma.post.findMany({
+        where: { status: 'published', id: { notIn: [post.id, ...first.map((row) => row.id)] } },
+        select: this.listSelect,
+        orderBy: { publishedAt: 'desc' },
+        take: missing,
+      });
+
+      return [...first, ...fill].map(toListItem);
+    } catch (err) {
+      logger.error('Failed to find related posts', err);
+      throw err;
+    }
+  }
+
   async findForPanel(
     filters: FindForPanelFilters,
     pagination: PaginationParams,

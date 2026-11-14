@@ -222,6 +222,14 @@ export class PostsService {
     return { highlights, featured: highlights[0] ?? null, latestNews, latestColumns, sections };
   }
 
+  // "Leia também" under an article. A draft's slug answers 404, like the
+  // article itself, so this cannot be used to discover unpublished titles.
+  async getRelated(slug: string, limit: number): Promise<IPostListItem[]> {
+    const post = await postsRepository.findBySlug(slug);
+    if (!post || post.status !== PostStatus.PUBLISHED) throw new NotFound('Post not found.');
+    return postsRepository.findRelated(post, limit);
+  }
+
   // Reader bookmarks: the browser keeps the ids, this resolves them in one go.
   findPublishedByIds(ids: string[]): Promise<IPostListItem[]> {
     return postsRepository.findPublishedByIds(ids);

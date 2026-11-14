@@ -76,6 +76,13 @@ export const postSlugParamSchema = z.object({
   params: z.object({ slug: z.string().trim().min(1).max(220) }),
 });
 
+export const relatedSchema = z.object({
+  params: z.object({ slug: z.string().trim().min(1).max(220) }),
+  query: z.object({
+    limit: z.coerce.number().int().min(1).max(8).default(4),
+  }),
+});
+
 export const listPublishedSchema = z.object({
   query: z.object({
     type: z.enum([PostType.NEWS, PostType.COLUMN]).optional(),

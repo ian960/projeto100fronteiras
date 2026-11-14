@@ -10,6 +10,7 @@ import {
   listPublishedSchema,
   postIdParamSchema,
   postSlugParamSchema,
+  relatedSchema,
   updatePostSchema,
 } from './posts.schemas';
 
@@ -43,6 +44,12 @@ export class PostsController {
     const parsed = postSlugParamSchema.parse({ params: req.params });
     const post = await postsService.getPublishedBySlug(parsed.params.slug);
     return ok(res, { post });
+  };
+
+  related = async (req: Request, res: Response) => {
+    const parsed = relatedSchema.parse({ params: req.params, query: req.query });
+    const posts = await postsService.getRelated(parsed.params.slug, parsed.query.limit);
+    return ok(res, { posts });
   };
 
   // ── panel (shared by admin and columnist) ─────────────────────────────────

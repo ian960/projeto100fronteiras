@@ -11,6 +11,7 @@ export function postsPublicRouter(): Router {
   router.get('/by-ids', postsController.findByIds);
   router.get('/', postsController.listPublished);
   router.get('/:slug', postsController.getBySlug);
+  router.get('/:slug/related', postsController.related);
 
   return router;
 }
