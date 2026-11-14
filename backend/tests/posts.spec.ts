@@ -259,6 +259,29 @@ describe('home carousel', () => {
   });
 });
 
+describe('panel list', () => {
+  it('shows how many comments each post has, not counting removed ones', async () => {
+    const { admin, writer, category, client } = await adminContext();
+
+    const news = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+    const quiet = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+
+    await prisma.comment.createMany({
+      data: [
+        { postId: news.id, userId: admin.id, content: 'Um' },
+        { postId: news.id, userId: admin.id, content: 'Dois' },
+        { postId: news.id, userId: admin.id, content: '', deletedAt: new Date() },
+      ],
+    });
+
+    const response = await client.get('/api/admin/posts').expect(200);
+    const byId = new Map(response.body.data.items.map((post: { id: string; commentCount: number }) => [post.id, post.commentCount]));
+
+    expect(byId.get(news.id)).toBe(2);
+    expect(byId.get(quiet.id)).toBe(0);
+  });
+});
+
 describe('html sanitizing', () => {
   it('strips script tags and event handlers from the body', async () => {
     const { writer, category, client } = await adminContext();

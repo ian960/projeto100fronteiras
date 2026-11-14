@@ -218,14 +218,20 @@ export class PostsRepository implements IPostsRepository {
       const [rows, total] = await Promise.all([
         prisma.post.findMany({
           where,
-          select: this.listSelect,
+          select: {
+            ...this.listSelect,
+            // How many comments each one has. Removed comments do not count,
+            // same as the "Comentários (N)" heading on the site.
+            _count: { select: { comments: { where: { deletedAt: null } } } },
+          },
           orderBy: { updatedAt: 'desc' },
           ...toSkipTake(pagination),
         }),
         prisma.post.count({ where }),
       ]);
 
-      return buildPaginated(rows.map(toListItem), total, pagination);
+      const items = rows.map(({ _count, ...row }) => ({ ...toListItem(row), commentCount: _count.comments }));
+      return buildPaginated(items, total, pagination);
     } catch (err) {
       logger.error('Failed to list posts for panel', err);
       throw err;
