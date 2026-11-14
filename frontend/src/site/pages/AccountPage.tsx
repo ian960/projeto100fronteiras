@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { Alert, Button, ButtonLink, Loading, TextArea, TextField } from '../../components/ui';
-import { ApiError, errorMessage } from '../../lib/api';
+import { ApiError, errorMessage, post } from '../../lib/api';
 import { roleLabel } from '../../lib/format';
 import { useChangePassword, useDeleteMe, useDocumentTitle, useLogout, useMe, useUpdateMe } from '../../lib/hooks';
 import type { User } from '../../lib/types';
@@ -41,7 +41,7 @@ export default function AccountPage() {
         {/* Keyed by id: saving refreshes `me`, and a remount would wipe the
             confirmation message. */}
         <ProfileForm key={me.id} me={me} />
-        <PasswordForm />
+        <PasswordForm email={me.email} />
         <section className="rounded-lg border border-linha bg-papel p-5">
           <h2 className="font-semibold">Sair</h2>
           <p className="mb-4 mt-1 text-sm text-tinta-suave">Desconecta a sua conta deste aparelho.</p>
@@ -180,10 +180,26 @@ function ProfileForm({ me }: { me: User }) {
   );
 }
 
-function PasswordForm() {
+function PasswordForm({ email }: { email: string }) {
   const changePassword = useChangePassword();
   const [form, setForm] = useState({ currentPassword: '', newPassword: '' });
   const [saved, setSaved] = useState(false);
+  // "Esqueci minha senha" from inside the account: the same link by e-mail as
+  // on the login page, sent to the address of this account.
+  const [linkState, setLinkState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [linkError, setLinkError] = useState<unknown>(null);
+
+  async function sendLink() {
+    setLinkState('sending');
+    setLinkError(null);
+    try {
+      await post('/auth/forgot-password', { email });
+      setLinkState('sent');
+    } catch (err) {
+      setLinkError(err);
+      setLinkState('idle');
+    }
+  }
   const errors = changePassword.error instanceof ApiError ? changePassword.error.fields : {};
 
   function submit(event: FormEvent) {
@@ -231,6 +247,28 @@ function PasswordForm() {
           </Button>
         </div>
       </form>
+      <div className="mt-5 border-t border-linha pt-4 text-sm">
+        {linkState === 'sent' ? (
+          <Alert tone="ok">
+            Enviamos um link para <strong>{email}</strong>. Ele vale por 1 hora. Não chegou? Olhe a caixa de spam.
+          </Alert>
+        ) : (
+          <>
+            {linkError != null && <Alert>{errorMessage(linkError)}</Alert>}
+            <p className="text-tinta-suave">
+              Esqueceu a senha atual?{' '}
+              <button
+                type="button"
+                onClick={sendLink}
+                disabled={linkState === 'sending'}
+                className="font-medium text-anil hover:underline underline-offset-4 disabled:opacity-60"
+              >
+                {linkState === 'sending' ? 'Enviando...' : 'Receber um link por e-mail'}
+              </button>
+            </p>
+          </>
+        )}
+      </div>
     </section>
   );
 }
