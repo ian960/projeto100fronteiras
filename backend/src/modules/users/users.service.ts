@@ -170,9 +170,8 @@ export class UsersService {
     return this.deleteAccount(id);
   }
 
-  // There is no email-based reset flow: readers who forget a password matter
-  // little today, and a columnist has the admin. Adding SMTP would mean a
-  // provider, domain verification and templates, none of which is in scope.
+  // The admin's reset, for someone who cannot receive e-mail. Everyone else
+  // uses "Esqueci minha senha" (AuthService.forgotPassword).
   async resetPassword(id: string, newPassword: string): Promise<void> {
     await this.ensureExists(id);
 

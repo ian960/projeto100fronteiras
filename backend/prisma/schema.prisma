@@ -90,6 +90,7 @@ model User {
 
   createdPosts   Post[]  @relation("PostCreatedBy")
   comments       Comment[] @relation("CommentAuthor")
+  resetTokens    PasswordResetToken[]
   publishedPosts Post[]  @relation("PostPublishedBy")
   uploadedMedia  Media[] @relation("MediaUploadedBy")
 
@@ -332,4 +333,24 @@ model Comment {
   @@index([postId, createdAt])
   @@index([parentId, createdAt])
   @@map("comments")
+}
+
+// "Esqueci minha senha": one row per link sent by e-mail.
+model PasswordResetToken {
+  id String @id @default(uuid(7))
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // SHA-256 of the token in the link, never the token itself: someone who
+  // reads the database still cannot reset anybody's password.
+  tokenHash String @unique @map("token_hash")
+
+  expiresAt DateTime  @map("expires_at") // one hour after it was sent
+  usedAt    DateTime? @map("used_at") // single use
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // "How many links did this account get in the last hour?"
+  @@index([userId, createdAt])
+  @@map("password_reset_tokens")
 }

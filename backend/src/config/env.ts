@@ -70,6 +70,18 @@ const schema = z
       z.string().min(32, 'PROXY_SECRET needs at least 32 characters').optional(),
     ),
 
+    // E-mail (password recovery). "log" sends nothing: the message is written
+    // to the API log instead, which is all development and tests need.
+    // "brevo" works without a domain of our own (a verified sender address);
+    // "resend" needs a verified domain. Switching is only these variables.
+    // "mailpit" is the fake inbox of docker compose (http://localhost:8025):
+    // every e-mail lands there, nothing reaches a real address.
+    MAIL_PROVIDER: z.preprocess(emptyToUndefined, z.enum(['log', 'mailpit', 'brevo', 'resend']).default('log')),
+    MAILPIT_URL: z.preprocess(emptyToUndefined, z.url().default('http://mailpit:8025')),
+    MAIL_API_KEY: optionalString,
+    MAIL_FROM: z.preprocess(emptyToUndefined, z.email().optional()),
+    MAIL_FROM_NAME: z.preprocess(emptyToUndefined, z.string().default('Portal100Fronteiras')),
+
     // First admin, created by `npm run db:seed`.
     SEED_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().default('Admin')),
     SEED_ADMIN_EMAIL: z.preprocess(emptyToUndefined, z.email().default('admin@portal.local')),
@@ -91,6 +103,14 @@ const schema = z
         code: 'custom',
         path: ['PROXY_SECRET'],
         message: 'PROXY_SECRET is required in production (the same value as in the Cloudflare Worker).',
+      });
+    }
+
+    if ((value.MAIL_PROVIDER === 'brevo' || value.MAIL_PROVIDER === 'resend') && (!value.MAIL_API_KEY || !value.MAIL_FROM)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MAIL_API_KEY'],
+        message: `MAIL_API_KEY and MAIL_FROM are required to send e-mail with ${value.MAIL_PROVIDER}.`,
       });
     }
 

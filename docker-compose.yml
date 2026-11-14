@@ -5,6 +5,7 @@
 #   site and panel   http://localhost:5173
 #   API              http://localhost:3333/api/health   (Insomnia)
 #   Postgres         localhost:5433                      (DBeaver, Prisma Studio)
+#   E-mails          http://localhost:8025               (Mailpit, fake inbox)
 #
 # The code is not copied into the containers: backend/ and frontend/ are
 # mounted, so saving a file in VS Code reloads the API or the page.
@@ -46,6 +47,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     # Everything else (SESSION_SECRET, CLOUDINARY_URL...) still comes from
     # backend/.env. These are the values that are different inside Docker,
     # and they win: dotenv never overrides a variable that is already set.
@@ -59,12 +62,26 @@ services:
       # container. Polling checks the files every 300 ms instead.
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "300"
+      # Links in e-mails point to the local site.
+      SITE_URL: http://localhost:5173
+      # E-mails (password recovery) go to Mailpit, never to real addresses.
+      # To try Brevo locally: MAIL_PROVIDER=brevo in the root .env.
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-mailpit}
+      MAILPIT_URL: http://mailpit:8025
     ports: ["127.0.0.1:${API_PORT:-3333}:3333"]
     volumes:
       - ./backend:/app
       # node_modules stays in the container (Linux builds). Without this line
       # the mount above would hide it behind the Windows one.
       - /app/node_modules
+
+  # Catches every e-mail the API sends in development. Inbox:
+  # http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    container_name: portal_mailpit
+    restart: unless-stopped
+    ports: ["127.0.0.1:${MAILPIT_PORT:-8025}:8025"]
 
   web:
     build:

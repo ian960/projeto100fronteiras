@@ -21,6 +21,14 @@ export type IAuthSessionRow = {
   author: { id: string } | null;
 };
 
+// A password recovery link, as found by the hash of its token.
+export type IResetTokenRow = {
+  id: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  user: { id: string; name: string; email: string; active: boolean };
+};
+
 // Only the login flow ever sees the hash.
 export type IAuthCredentialsRow = {
   id: string;

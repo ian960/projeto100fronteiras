@@ -1,7 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { logger } from '../../shared/utils/logger';
 import type { IAuthRepository } from './auth.repository.interfaces';
-import type { IAuthCredentialsRow, IAuthSessionRow } from './auth.types';
+import type { IAuthCredentialsRow, IAuthSessionRow, IResetTokenRow } from './auth.types';
 
 export class AuthRepository implements IAuthRepository {
   private readonly sessionSelect = {
@@ -53,6 +53,59 @@ export class AuthRepository implements IAuthRepository {
       throw err;
     }
   }
+
+  // ── password recovery ───────────────────────────────────────────────────
+
+  async countResetTokensSince(userId: string, since: Date): Promise<number> {
+    try {
+      return await prisma.passwordResetToken.count({ where: { userId, createdAt: { gte: since } } });
+    } catch (err) {
+      logger.error('Failed to count reset tokens', err);
+      throw err;
+    }
+  }
+
+  async createResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    try {
+      await prisma.passwordResetToken.create({ data: { userId, tokenHash, expiresAt } });
+    } catch (err) {
+      logger.error('Failed to create reset token', err);
+      throw err;
+    }
+  }
+
+  async findResetToken(tokenHash: string): Promise<IResetTokenRow | null> {
+    try {
+      return await prisma.passwordResetToken.findUnique({
+        where: { tokenHash },
+        select: {
+          id: true,
+          expiresAt: true,
+          usedAt: true,
+          user: { select: { id: true, name: true, email: true, active: true } },
+        },
+      });
+    } catch (err) {
+      logger.error('Failed to find reset token', err);
+      throw err;
+    }
+  }
+
+  // One transaction: the new password, this link spent, every other link of
+  // the account thrown away. A half-done reset would leave a usable link.
+  async resetPassword(tokenId: string, userId: string, passwordHash: string): Promise<void> {
+    try {
+      await prisma.$transaction([
+        prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+        prisma.passwordResetToken.update({ where: { id: tokenId }, data: { usedAt: new Date() } }),
+        prisma.passwordResetToken.deleteMany({ where: { userId, id: { not: tokenId } } }),
+      ]);
+    } catch (err) {
+      logger.error('Failed to reset password', err);
+      throw err;
+    }
+  }
 }
 
 export const authRepository = new AuthRepository();
+

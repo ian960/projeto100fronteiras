@@ -3,6 +3,7 @@ import { createApp } from './app';
 import { disconnectDatabase } from './config/prisma';
 import { isMediaConfigured } from './config/cloudinary';
 import { logger } from './shared/utils/logger';
+import { isMailConfigured } from './shared/mail/mailer';
 
 const app = createApp();
 
@@ -15,6 +16,10 @@ const server = app.listen(env.PORT, () => {
     logger.warn(
       'Cloudinary is not configured: uploads answer 503 and news cannot be published without a cover. Everything else works.',
     );
+  }
+
+  if (!isMailConfigured()) {
+    logger.warn('MAIL_PROVIDER is log: e-mails (password recovery) are written to this log instead of being sent.');
   }
 
   if (usingDevSessionSecret) {

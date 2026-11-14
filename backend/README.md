@@ -167,6 +167,8 @@ GET    /api/posts/by-ids?ids=a,b,c
 GET    /api/posts/:slug
 POST   /api/auth/register              POST /api/auth/login
 POST   /api/auth/logout
+POST   /api/auth/forgot-password  {email}               (always 204; e-mails a 1-hour link)
+POST   /api/auth/reset-password   {token, newPassword}  (single use; logs out everywhere)
 ```
 
 ### Authenticated

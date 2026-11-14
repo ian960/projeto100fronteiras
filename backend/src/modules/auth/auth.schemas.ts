@@ -48,6 +48,19 @@ export const deleteMeSchema = z.object({
   }),
 });
 
+export const forgotPasswordSchema = z.object({
+  body: z.object({
+    email: z.email().trim().toLowerCase(),
+  }),
+});
+
+export const resetPasswordSchema = z.object({
+  body: z.object({
+    token: z.string().trim().min(20).max(200),
+    newPassword: z.string().min(8).max(200),
+  }),
+});
+
 export const changePasswordSchema = z.object({
   body: z.object({
     currentPassword: z.string().min(1).max(200),

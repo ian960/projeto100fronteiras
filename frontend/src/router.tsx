@@ -5,7 +5,7 @@ import HomePage from './site/pages/HomePage';
 import PostPage from './site/pages/PostPage';
 import NotFoundPage from './site/pages/NotFoundPage';
 import { AuthorPage, CategoryPage, ColumnistsPage, NewsPage, SavedPage, SearchPage } from './site/pages/ListingPages';
-import { LoginPage, RegisterPage } from './site/pages/AuthPages';
+import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage } from './site/pages/AuthPages';
 
 function CrashPage() {
   const error = useRouteError();
@@ -43,6 +43,8 @@ export const router = createBrowserRouter([
       { path: 'salvos', element: <SavedPage /> },
       { path: 'entrar', element: <LoginPage /> },
       { path: 'cadastro', element: <RegisterPage /> },
+      { path: 'esqueci-senha', element: <ForgotPasswordPage /> },
+      { path: 'redefinir-senha', element: <ResetPasswordPage /> },
       // Loaded on demand: it brings the photo upload, which a reader on a news
       // page never needs.
       { path: 'minha-conta', lazy: async () => ({ Component: (await import('./site/pages/AccountPage')).default }) },
