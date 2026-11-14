@@ -314,12 +314,10 @@ export default function HelpPage() {
 
   return (
     <div className="mx-auto max-w-3xl py-4 sm:py-8">
-      <h1 className="titulo text-4xl text-anil">Ajuda</h1>
-      <p className="mt-3 text-lg leading-relaxed text-tinta-suave">
-        Tudo o que dá para fazer no Portal100Fronteiras, com as telas de cada coisa.
-      </p>
+      {/* Not shown, but screen readers still announce the page's name. */}
+      <h1 className="sr-only">Ajuda</h1>
 
-      <nav aria-label="Assuntos" className="mt-6 flex flex-wrap gap-2">
+      <nav aria-label="Assuntos" className="flex flex-wrap gap-2">
         {topics.map((topic) => (
           <a key={topic.id} href={`#${topic.id}`} className={cx(pill, 'border-linha text-tinta hover:border-tinta-suave')}>
             {topic.title}
