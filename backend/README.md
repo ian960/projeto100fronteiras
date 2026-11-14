@@ -85,6 +85,46 @@ In Docker: `docker compose exec api npm run db:test:setup`, then
 `docker compose exec api npm test`. There the address comes from
 `TEST_DATABASE_URL` (set in `docker-compose.yml`) and no `.env.test` is written.
 
+Every test is listed as it runs, grouped by file and by what it checks:
+
+```
+ ✓ |api| tests/password-reset.spec.ts (8 tests)
+   ✓ pedir um link (4)
+     ✓ manda o link por e-mail para uma conta que existe
+     ✓ responde igual para um e-mail sem conta, e não manda nada
+```
+
+Test names are in Portuguese, so the list reads as what the portal does; the
+code inside them stays in English like the rest of the project. A failure shows
+up as `×` in the same place, with the details at the end. To run one file, or
+the tests whose name contains a word:
+
+```bash
+docker compose exec api npm test -- tests/comments.spec.ts
+docker compose exec api npm test -- -t "senha"
+```
+
+`npm run test:watch` stays open and reruns the tests a saved file touches.
+
+### Against the real Cloudinary
+
+```bash
+docker compose exec api npm run test:cloudinary
+```
+
+The fake Cloudinary of `npm test` behaves the way we *think* Cloudinary does;
+this checks that it really does, with the account in `backend/.env`: a photo in
+every size, a video and the versions prepared after the upload, a PDF, a
+tampered signature, an import by link and a deletion. It takes about a minute,
+needs the internet and spends a few transformations, so it is never part of
+`npm test`: run it after touching anything in `modules/media`, and before a
+release. Files go to the `portal-testes` folder and are deleted at the end of
+every test, passed or failed.
+
+A failure here and not in `npm test` means the fake is wrong: fix the fake in
+`tests/fake-cloudinary/server.ts` too, so the fast suite catches it next time.
+That is how `"pages": 0` (every real video upload) was found.
+
 The suite rebuilds the test database on every run by replaying the files in
 `prisma/migrations`, so the hand-written SQL (CHECK constraints, the partial
 unique index) is tested too. It refuses to run unless the database name ends in
@@ -96,8 +136,11 @@ It never talks to the real Cloudinary. Two groups run one after the other:
   (`tests/fake-cloudinary/server.ts`). It checks signatures the same way
   Cloudinary does, enforces `allowed_formats` and `overwrite`, and serves files
   back under the same URL layout.
-- **without-cloudinary** — `tests/runtime.spec.ts`, with `CLOUDINARY_URL`
+- **sem-cloudinary** — `tests/runtime.spec.ts`, with `CLOUDINARY_URL`
   empty, proving the API runs without keys.
+
+A third group, **cloudinary-real**, runs only with `npm run test:cloudinary`
+(below).
 
 `npm run typecheck` checks `src/`, `tests/` and `scripts/` — vitest does not
 type-check, so this is the only place test types are verified.

@@ -21,8 +21,8 @@ async function adminContext() {
   return { admin, writer, category, client };
 }
 
-describe('news and categories', () => {
-  it('refuses news without a category', async () => {
+describe('notícias e editorias', () => {
+  it('recusa notícia sem editoria', async () => {
     const { writer, client } = await adminContext();
 
     const response = await client
@@ -33,7 +33,7 @@ describe('news and categories', () => {
     expect(response.body.error.fields).toHaveProperty('categoryId');
   });
 
-  it('refuses a column that carries a category', async () => {
+  it('recusa coluna com editoria', async () => {
     const { category, client } = await adminContext();
     const { author } = await makeColumnist();
 
@@ -48,7 +48,7 @@ describe('news and categories', () => {
       .expect(422);
   });
 
-  it('enforces the rule in the database too', async () => {
+  it('garante a regra no banco também', async () => {
     const admin = await makeAdmin();
     const writer = await makeWriter();
 
@@ -69,8 +69,8 @@ describe('news and categories', () => {
   });
 });
 
-describe('publishing', () => {
-  it('refuses to publish an incomplete post', async () => {
+describe('publicar', () => {
+  it('recusa publicar matéria incompleta', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     const draft = await makeNews(
@@ -85,7 +85,7 @@ describe('publishing', () => {
     expect(response.body.error.fields).toHaveProperty('coverId');
   });
 
-  it('treats an empty Quill body as empty', async () => {
+  it('trata como vazio o texto vazio do editor', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     const draft = await makeNews(
@@ -98,7 +98,7 @@ describe('publishing', () => {
     expect(response.body.error.fields).toHaveProperty('content');
   });
 
-  it('records who published and when', async () => {
+  it('registra quem publicou e quando', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     const draft = await makeNews({
@@ -116,7 +116,7 @@ describe('publishing', () => {
     expect(stored?.publishedById).toBe(admin.id);
   });
 
-  it('hides drafts from the public listing', async () => {
+  it('esconde rascunhos da lista pública', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
@@ -136,7 +136,7 @@ describe('publishing', () => {
     expect(items[0]?.id).toBe(published.id);
   });
 
-  it('returns 404 for a draft fetched by slug', async () => {
+  it('responde 404 para rascunho buscado pelo endereço', async () => {
     const { admin, writer, category } = await adminContext();
 
     const draft = await makeNews({
@@ -149,8 +149,8 @@ describe('publishing', () => {
   });
 });
 
-describe('home carousel', () => {
-  it('keeps every featured post, the most recently featured first', async () => {
+describe('carrossel da página inicial', () => {
+  it('mostra todos os destaques, o mais recente primeiro', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     const first = await makeNews({
@@ -184,7 +184,7 @@ describe('home carousel', () => {
     expect(again.body.data.highlights[0].id).toBe(first.id);
   });
 
-  it('tops up to four slides with the latest news, without repeating', async () => {
+  it('completa até quatro com as últimas notícias, sem repetir', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     const posts = [];
@@ -205,7 +205,7 @@ describe('home carousel', () => {
     expect(new Set(ids).size).toBe(4);
   });
 
-  it('shows more than four when the admin features more', async () => {
+  it('mostra mais de quatro quando o admin destaca mais', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     for (let i = 0; i < 5; i += 1) {
@@ -218,7 +218,7 @@ describe('home carousel', () => {
     expect(home.body.data.highlights).toHaveLength(5);
   });
 
-  it('takes a post out of the carousel, and unpublishing does it too', async () => {
+  it('tira uma matéria do carrossel, e despublicar também tira', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     const first = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
@@ -235,7 +235,7 @@ describe('home carousel', () => {
     expect(featured).toHaveLength(0);
   });
 
-  it('only an admin chooses', async () => {
+  it('só o admin escolhe', async () => {
     const { admin, writer, category, client } = await adminContext();
     const news = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
     await client.post(`/api/admin/posts/${news.id}/publish`).expect(200);
@@ -246,7 +246,7 @@ describe('home carousel', () => {
     expect(response.status).toBe(403);
   });
 
-  it('refuses to feature a draft', async () => {
+  it('recusa destacar rascunho', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     const draft = await makeNews({
@@ -259,8 +259,8 @@ describe('home carousel', () => {
   });
 });
 
-describe('panel list', () => {
-  it('shows how many comments each post has, not counting removed ones', async () => {
+describe('lista do painel', () => {
+  it('mostra quantos comentários cada matéria tem, sem contar os apagados', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     const news = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
@@ -282,8 +282,8 @@ describe('panel list', () => {
   });
 });
 
-describe('html sanitizing', () => {
-  it('strips script tags and event handlers from the body', async () => {
+describe('limpeza do HTML', () => {
+  it('tira scripts e eventos do texto', async () => {
     const { writer, category, client } = await adminContext();
 
     const response = await client
@@ -309,7 +309,7 @@ describe('html sanitizing', () => {
     expect(content).toContain('Real text');
   });
 
-  it('keeps the formatting the editor is allowed to produce', async () => {
+  it('mantém a formatação que o editor pode produzir', async () => {
     const { writer, category, client } = await adminContext();
 
     const response = await client
@@ -329,7 +329,7 @@ describe('html sanitizing', () => {
     expect(content).toContain('<li>Item</li>');
   });
 
-  it('adds rel=noopener to links', async () => {
+  it('põe rel=noopener nos links', async () => {
     const { writer, category, client } = await adminContext();
 
     const response = await client
@@ -347,8 +347,8 @@ describe('html sanitizing', () => {
   });
 });
 
-describe('video', () => {
-  it('stores only the id from a YouTube url', async () => {
+describe('vídeo', () => {
+  it('guarda só o id do link do YouTube', async () => {
     const { writer, category, client } = await adminContext();
 
     const response = await client
@@ -368,7 +368,7 @@ describe('video', () => {
     expect(response.body.data.post.video).toBeNull();
   });
 
-  it('rejects a link that is not YouTube', async () => {
+  it('recusa link que não é do YouTube', async () => {
     const { writer, category, client } = await adminContext();
 
     const response = await client
@@ -385,7 +385,7 @@ describe('video', () => {
     expect(response.body.error.fields).toHaveProperty('video');
   });
 
-  it('switches from an uploaded video to YouTube, clearing the file', async () => {
+  it('troca vídeo enviado por YouTube e solta o arquivo', async () => {
     const { admin, writer, category, client } = await adminContext();
     const clip = await makeMedia(admin.id, 'video');
 
@@ -413,7 +413,7 @@ describe('video', () => {
     expect(switched.body.data.post.videoId).toBeNull();
   });
 
-  it('refuses a file that is not a video', async () => {
+  it('recusa arquivo que não é vídeo', async () => {
     const { admin, writer, category, client } = await adminContext();
     const pdf = await makeMedia(admin.id, 'document');
 
@@ -431,7 +431,7 @@ describe('video', () => {
     expect(response.body.error.fields).toHaveProperty('video');
   });
 
-  it('never keeps both kinds at once, even past the service', async () => {
+  it('nunca guarda os dois tipos juntos, nem passando por fora do serviço', async () => {
     const { admin, writer, category } = await adminContext();
     const clip = await makeMedia(admin.id, 'video');
     const post = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
@@ -446,8 +446,8 @@ describe('video', () => {
   });
 });
 
-describe('media in posts', () => {
-  it('only takes an image as cover', async () => {
+describe('arquivos nas matérias', () => {
+  it('só aceita imagem como capa', async () => {
     const { admin, writer, category, client } = await adminContext();
     const pdf = await makeMedia(admin.id, 'document');
 
@@ -465,7 +465,7 @@ describe('media in posts', () => {
     expect(response.body.error.fields).toHaveProperty('coverId');
   });
 
-  it('returns the cover with ready-made responsive URLs', async () => {
+  it('devolve a capa com os endereços prontos para cada tamanho', async () => {
     const { admin, writer, category, client } = await adminContext();
     const post = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
     await client.post(`/api/admin/posts/${post.id}/publish`).expect(200);
@@ -485,7 +485,7 @@ describe('media in posts', () => {
     expect(list.body.data.items[0].cover.thumbnailUrl).toContain('w_480');
   });
 
-  it('lets a columnist use only files they uploaded', async () => {
+  it('deixa o colunista usar só os arquivos que ele enviou', async () => {
     const admin = await makeAdmin();
     const { user, author } = await makeColumnist();
     const adminsPhoto = await makeMedia(admin.id);
@@ -506,7 +506,7 @@ describe('media in posts', () => {
     expect(created.body.data.post.cover.id).toBe(ownPhoto.id);
   });
 
-  it('lets a columnist keep a cover the admin picked', async () => {
+  it('deixa o colunista manter uma capa escolhida pelo admin', async () => {
     const admin = await makeAdmin();
     const { user, author } = await makeColumnist();
     const adminsPhoto = await makeMedia(admin.id);
@@ -523,7 +523,7 @@ describe('media in posts', () => {
       .expect(200);
   });
 
-  it('keeps PDF attachments in the order and with the titles given', async () => {
+  it('mantém os PDFs na ordem e com os títulos dados', async () => {
     const { admin, writer, category, client } = await adminContext();
     const notice = await makeMedia(admin.id, 'document');
     const results = await makeMedia(admin.id, 'document', { pages: 12 });
@@ -561,7 +561,7 @@ describe('media in posts', () => {
     expect(updated.body.data.post.attachments[0].title).toBe('Edital (retificado)');
   });
 
-  it('attaches PDFs only', async () => {
+  it('só anexa PDF', async () => {
     const { admin, writer, category, client } = await adminContext();
     const photo = await makeMedia(admin.id, 'image');
 
@@ -579,7 +579,7 @@ describe('media in posts', () => {
     expect(response.body.error.fields).toHaveProperty('attachments');
   });
 
-  it('keeps the files when a post is deleted', async () => {
+  it('mantém os arquivos quando a matéria é excluída', async () => {
     const { admin, writer, category, client } = await adminContext();
     const pdf = await makeMedia(admin.id, 'document');
 
@@ -601,7 +601,7 @@ describe('media in posts', () => {
     expect(await prisma.media.findUnique({ where: { id: pdf.id } })).not.toBeNull();
   });
 
-  it('keeps our photos inside the text and drops everyone else\'s', async () => {
+  it('mantém nossas fotos dentro do texto e descarta as de outros sites', async () => {
     const { writer, category, client } = await adminContext();
     const ours = `${process.env.CLOUDINARY_DELIVERY_BASE}/${FAKE_CLOUDINARY.cloudName}/image/upload/v1760000000/${FAKE_CLOUDINARY.folder}/body/0b3e1c0e-0000-4000-8000-000000000001.jpg`;
 
@@ -627,8 +627,8 @@ describe('media in posts', () => {
   });
 });
 
-describe('author photo', () => {
-  it('turns the photo into a face-centred avatar', async () => {
+describe('foto do autor', () => {
+  it('transforma a foto num avatar centrado no rosto', async () => {
     const { user, author } = await makeColumnist();
     const photo = await makeMedia(user.id);
     const { client } = await loginAs(user.email);
@@ -641,8 +641,8 @@ describe('author photo', () => {
   });
 });
 
-describe('slug collisions', () => {
-  it('suffixes a repeated headline instead of failing', async () => {
+describe('endereços repetidos', () => {
+  it('acrescenta um número a um título repetido em vez de falhar', async () => {
     const { writer, category, client } = await adminContext();
 
     const first = await client
@@ -662,8 +662,8 @@ describe('slug collisions', () => {
   });
 });
 
-describe('reader bookmarks', () => {
-  it('resolves saved ids in one request, published only', async () => {
+describe('salvos do leitor', () => {
+  it('resolve os salvos numa requisição só, apenas os publicados', async () => {
     const { admin, writer, category, client } = await adminContext();
 
     const published = await makeNews({
@@ -693,8 +693,8 @@ describe('reader bookmarks', () => {
   });
 });
 
-describe('home payload', () => {
-  it('returns the lead story and the latest of each type', async () => {
+describe('dados da página inicial', () => {
+  it('devolve a manchete e as últimas de cada tipo', async () => {
     const { admin, writer, category, client } = await adminContext();
     const { user: columnistUser, author } = await makeColumnist();
 
@@ -721,7 +721,7 @@ describe('home payload', () => {
     ]);
   });
 
-  it('leaves out categories with no published news', async () => {
+  it('deixa de fora editorias sem notícia publicada', async () => {
     const { admin, writer, category } = await adminContext();
     await makeCategory();
     await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });

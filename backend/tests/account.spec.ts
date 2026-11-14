@@ -14,8 +14,8 @@ async function asReader() {
   return { reader, client };
 }
 
-describe('own account', () => {
-  it('lets a reader change their name and bio', async () => {
+describe('minha conta', () => {
+  it('deixa o leitor mudar o nome e a bio', async () => {
     const { reader, client } = await asReader();
 
     const response = await client
@@ -32,7 +32,7 @@ describe('own account', () => {
     expect(stored.name).toBe('Novo Nome');
   });
 
-  it('never lets anyone change their own role or email this way', async () => {
+  it('nunca deixa ninguém mudar o próprio papel ou e-mail por aqui', async () => {
     const { reader, client } = await asReader();
 
     await client
@@ -45,7 +45,7 @@ describe('own account', () => {
     expect(stored.email).toBe(reader.email);
   });
 
-  it('clears the bio when it is sent empty', async () => {
+  it('apaga a bio quando ela vem vazia', async () => {
     const { client } = await asReader();
 
     await client.patch('/api/auth/me').send({ bio: 'Algo' }).expect(200);
@@ -54,7 +54,7 @@ describe('own account', () => {
     expect(response.body.data.user.bio).toBeNull();
   });
 
-  it('refuses an empty change and a visitor', async () => {
+  it('recusa uma alteração vazia e quem não está logado', async () => {
     const { client } = await asReader();
 
     const empty = await client.patch('/api/auth/me').send({}).expect(422);
@@ -63,7 +63,7 @@ describe('own account', () => {
     await agent().patch('/api/auth/me').send({ name: 'Ninguém' }).expect(401);
   });
 
-  it('lets a reader upload an account photo and use it', async () => {
+  it('deixa o leitor enviar uma foto de perfil e usá-la', async () => {
     const { client } = await asReader();
 
     const media = await uploadMedia(client, 'avatar', pngFile(400, 400));
@@ -76,7 +76,7 @@ describe('own account', () => {
     expect(removed.body.data.user.avatarUrl).toBeNull();
   });
 
-  it('keeps readers to the account photo when uploading', async () => {
+  it('só deixa o leitor enviar a foto de perfil, nada mais', async () => {
     const { client } = await asReader();
 
     await client.post('/api/media/signature').send({ purpose: 'avatar' }).expect(200);
@@ -88,7 +88,7 @@ describe('own account', () => {
       .expect(403);
   });
 
-  it("refuses someone else's picture as a photo", async () => {
+  it('recusa como foto uma imagem enviada por outra pessoa', async () => {
     const { client } = await asReader();
     const other = await makeUser();
     const theirs = await makeMedia(other.id, 'image');
@@ -96,7 +96,7 @@ describe('own account', () => {
     await client.patch('/api/auth/me').send({ avatarId: theirs.id }).expect(403);
   });
 
-  it('refuses a file that is not an image', async () => {
+  it('recusa um arquivo que não é imagem', async () => {
     const { reader, client } = await asReader();
     const pdf = await makeMedia(reader.id, 'document');
 
@@ -105,8 +105,8 @@ describe('own account', () => {
   });
 });
 
-describe('deleting an account', () => {
-  it('lets a reader delete their own account, photo included', async () => {
+describe('excluir a conta', () => {
+  it('deixa o leitor excluir a própria conta, com a foto', async () => {
     const { reader, client } = await asReader();
     const media = await uploadMedia(client, 'avatar', pngFile(400, 400));
     await client.patch('/api/auth/me').send({ avatarId: media.id }).expect(200);
@@ -119,7 +119,7 @@ describe('deleting an account', () => {
     await client.get('/api/auth/me').expect(401);
   });
 
-  it('asks for the password first', async () => {
+  it('pede a senha antes', async () => {
     const { reader, client } = await asReader();
 
     const response = await client.delete('/api/auth/me').send({ password: 'not-the-password' }).expect(422);
@@ -128,7 +128,7 @@ describe('deleting an account', () => {
     expect(await prisma.user.findUnique({ where: { id: reader.id } })).not.toBeNull();
   });
 
-  it('keeps the posts of a columnist and wipes the person', async () => {
+  it('mantém as colunas do colunista e apaga os dados da pessoa', async () => {
     const columnist = await makeColumnist();
     const column = await makeColumn({ authorId: columnist.author.id, createdById: columnist.user.id });
     const { client } = await loginAs(columnist.user.email);
@@ -144,7 +144,7 @@ describe('deleting an account', () => {
     await agent().post('/api/auth/login').send({ email: columnist.user.email, password: TEST_PASSWORD }).expect(401);
   });
 
-  it('lets the admin delete any account but their own', async () => {
+  it('deixa o admin excluir qualquer conta, menos a dele', async () => {
     const admin = await makeAdmin();
     const reader = await makeUser();
     const { client } = await loginAs(admin.email);
@@ -155,7 +155,7 @@ describe('deleting an account', () => {
     await client.delete(`/api/admin/users/${admin.id}`).expect(403);
   });
 
-  it('never deletes the last active admin', async () => {
+  it('nunca exclui o último admin ativo', async () => {
     await prisma.user.updateMany({ where: { role: 'admin' }, data: { active: false } });
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
@@ -164,7 +164,7 @@ describe('deleting an account', () => {
     expect(await prisma.user.findUnique({ where: { id: admin.id } })).not.toBeNull();
   });
 
-  it('keeps readers away from the admin route', async () => {
+  it('não deixa leitor usar a rota do admin', async () => {
     const { client } = await asReader();
     const other = await makeUser();
 

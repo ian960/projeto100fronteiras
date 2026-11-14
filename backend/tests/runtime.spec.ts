@@ -5,23 +5,23 @@ import { makeAdmin, makeCategory, makeColumnist, makeWriter } from './factories'
 
 // How the API behaves with Cloudinary switched off.
 //
-// This file runs in its own group ("without-cloudinary", see
+// This file runs in its own group ("sem-cloudinary", see
 // vitest.config.mts) with CLOUDINARY_URL empty, so it proves the API is usable
 // before anyone has Cloudinary keys.
 
-describe('without Cloudinary', () => {
-  it('runs in the right group', () => {
+describe('sem Cloudinary', () => {
+  it('roda no grupo certo', () => {
     expect(isMediaConfigured()).toBe(false);
   });
 
-  it('reports uploads as disabled', async () => {
+  it('informa que os envios estão desligados', async () => {
     const response = await agent().get('/api/health').expect(200);
 
     expect(response.body.data.ok).toBe(true);
     expect(response.body.data.uploads).toBe('disabled');
   });
 
-  it('answers 503 on every media endpoint instead of crashing', async () => {
+  it('responde 503 em toda rota de arquivos em vez de quebrar', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
@@ -37,13 +37,13 @@ describe('without Cloudinary', () => {
       .expect(503);
   });
 
-  it('still checks authentication first', async () => {
+  it('continua checando o login antes', async () => {
     // 401, not 503: an anonymous visitor learns nothing about the server's
     // configuration.
     await agent().post('/api/media/signature').send({ purpose: 'cover' }).expect(401);
   });
 
-  it('publishes a column, which needs no cover', async () => {
+  it('publica coluna, que não precisa de capa', async () => {
     const admin = await makeAdmin();
     const { author } = await makeColumnist();
     const { client } = await loginAs(admin.email);
@@ -66,7 +66,7 @@ describe('without Cloudinary', () => {
     expect(published.body.data.post.status).toBe('published');
   });
 
-  it('explains why news cannot be published yet', async () => {
+  it('explica por que notícia ainda não pode ser publicada', async () => {
     const admin = await makeAdmin();
     const writer = await makeWriter();
     const category = await makeCategory();

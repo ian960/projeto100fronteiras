@@ -20,8 +20,8 @@ async function newsDraft(title: string, extra: Record<string, unknown> = {}) {
   return { admin, client, post: created.body.data.post };
 }
 
-describe('post slugs', () => {
-  it('follow the headline while the post was never published', async () => {
+describe('endereço das matérias', () => {
+  it('acompanha o título enquanto a matéria nunca foi publicada', async () => {
     const { client, post } = await newsDraft('Teste');
     expect(post.slug).toBe('teste');
 
@@ -33,7 +33,7 @@ describe('post slugs', () => {
     expect(updated.body.data.post.slug).toBe('feira-da-praca-ganha-cobertura');
   });
 
-  it('get a suffix when the new headline is already taken', async () => {
+  it('ganha um número quando o título novo já está em uso', async () => {
     const first = await newsDraft('Chuva forte');
     const { client, post } = await newsDraft('Rascunho');
     expect(first.post.slug).toBe('chuva-forte');
@@ -43,7 +43,7 @@ describe('post slugs', () => {
     expect(updated.body.data.post.slug).toBe('chuva-forte-2');
   });
 
-  it('stay when typed by hand', async () => {
+  it('fica fixo quando digitado à mão', async () => {
     const { client, post } = await newsDraft('Teste', { slug: 'feira-2026' });
 
     const updated = await client.patch(`/api/admin/posts/${post.id}`).send({ title: 'Outro título' }).expect(200);
@@ -51,7 +51,7 @@ describe('post slugs', () => {
     expect(updated.body.data.post.slug).toBe('feira-2026');
   });
 
-  it('stop following once published, even after going offline', async () => {
+  it('para de acompanhar depois de publicada, mesmo saindo do ar', async () => {
     const { admin, client, post } = await newsDraft('Título publicado');
     const cover = await makeMedia(admin.id);
 
@@ -69,7 +69,7 @@ describe('post slugs', () => {
     expect(offline.body.data.post.slug).toBe('titulo-publicado');
   });
 
-  it('still change when the admin types a new one after publishing', async () => {
+  it('ainda muda quando o admin digita outro depois de publicar', async () => {
     const { admin, client, post } = await newsDraft('Antes');
     const cover = await makeMedia(admin.id);
     await client
@@ -83,7 +83,7 @@ describe('post slugs', () => {
     expect(updated.body.data.post.slug).toBe('depois');
   });
 
-  it('follow the headline of a columnist draft too', async () => {
+  it('acompanha o título do rascunho do colunista também', async () => {
     const { user } = await makeColumnist();
     const { client } = await loginAs(user.email);
 
@@ -97,8 +97,8 @@ describe('post slugs', () => {
   });
 });
 
-describe('author slugs', () => {
-  it('follow the name when the admin renames', async () => {
+describe('endereço dos autores', () => {
+  it('acompanha o nome quando o admin renomeia', async () => {
     const admin = await makeAdmin();
     const writer = await makeWriter({ name: 'Maria Souza', slug: 'maria-souza' });
     const { client } = await loginAs(admin.email);
@@ -108,7 +108,7 @@ describe('author slugs', () => {
     expect(updated.body.data.author.slug).toBe('maria-souza-lima');
   });
 
-  it('follow the name when columnists rename themselves', async () => {
+  it('acompanha o nome quando o colunista muda o próprio nome', async () => {
     const { user } = await makeColumnist({ name: 'Joana Lima', slug: 'joana-lima' });
     const { client } = await loginAs(user.email);
 
@@ -117,7 +117,7 @@ describe('author slugs', () => {
     expect(updated.body.data.author.slug).toBe('joana-lima-prado');
   });
 
-  it('stay when typed by hand, or when the new one belongs to someone else', async () => {
+  it('fica fixo quando digitado à mão, ou quando o novo já é de outra pessoa', async () => {
     const admin = await makeAdmin();
     const custom = await makeWriter({ name: 'Pedro Alves', slug: 'pedrinho' });
     await makeWriter({ name: 'Ana Costa', slug: 'ana-costa' });

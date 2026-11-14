@@ -3,8 +3,8 @@ import { prisma } from '../src/config/prisma';
 import { agent, loginAs } from './helpers/agent';
 import { makeAdmin, makeUser, TEST_PASSWORD } from './factories';
 
-describe('registration', () => {
-  it('always creates a reader, whatever role is sent', async () => {
+describe('cadastro', () => {
+  it('sempre cria um leitor, qualquer que seja o papel enviado', async () => {
     const client = agent();
 
     const response = await client
@@ -25,7 +25,7 @@ describe('registration', () => {
     expect(stored?.role).toBe('reader');
   });
 
-  it('rejects a duplicate email', async () => {
+  it('recusa e-mail repetido', async () => {
     const user = await makeUser();
     const client = agent();
 
@@ -37,7 +37,7 @@ describe('registration', () => {
     expect(response.body.error.code).toBe('CONFLICT');
   });
 
-  it('rejects a short password', async () => {
+  it('recusa senha curta', async () => {
     const client = agent();
 
     const response = await client
@@ -51,7 +51,7 @@ describe('registration', () => {
 });
 
 describe('login', () => {
-  it('gives the same error for a wrong password and an unknown email', async () => {
+  it('dá o mesmo erro para senha errada e para e-mail que não existe', async () => {
     const user = await makeUser();
     const client = agent();
 
@@ -70,7 +70,7 @@ describe('login', () => {
     expect(wrongPassword.body.error.message).toBe(unknownEmail.body.error.message);
   });
 
-  it('refuses a deactivated account', async () => {
+  it('recusa conta desativada', async () => {
     const user = await makeUser({ active: false });
     const client = agent();
 
@@ -80,7 +80,7 @@ describe('login', () => {
       .expect(401);
   });
 
-  it('returns the session user on /me', async () => {
+  it('devolve o usuário da sessão em /me', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
@@ -93,8 +93,8 @@ describe('login', () => {
   });
 });
 
-describe('session lifecycle', () => {
-  it('drops access after logout', async () => {
+describe('ciclo da sessão', () => {
+  it('corta o acesso depois de sair', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
@@ -103,7 +103,7 @@ describe('session lifecycle', () => {
     await client.get('/api/admin/posts').expect(401);
   });
 
-  it('invalidates a live session when the admin resets the password', async () => {
+  it('derruba a sessão aberta quando o admin redefine a senha', async () => {
     const admin = await makeAdmin();
     const columnist = await makeUser({ role: 'columnist' });
 
@@ -122,7 +122,7 @@ describe('session lifecycle', () => {
     await victim.get('/api/auth/me').expect(401);
   });
 
-  it('invalidates the session when the user is deactivated', async () => {
+  it('derruba a sessão quando o usuário é desativado', async () => {
     const admin = await makeAdmin();
     const columnist = await makeUser({ role: 'columnist' });
 
@@ -137,7 +137,7 @@ describe('session lifecycle', () => {
     await victim.get('/api/auth/me').expect(401);
   });
 
-  it('stops an admin from locking themselves out', async () => {
+  it('impede o admin de trancar a si mesmo para fora', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
@@ -146,8 +146,8 @@ describe('session lifecycle', () => {
   });
 });
 
-describe('promotion to columnist', () => {
-  it('creates the byline and flips the role together', async () => {
+describe('promoção a colunista', () => {
+  it('cria a assinatura e muda o papel juntos', async () => {
     const admin = await makeAdmin();
     const reader = await makeUser();
 
@@ -166,7 +166,7 @@ describe('promotion to columnist', () => {
     await promoted.get('/api/columnist/posts').expect(200);
   });
 
-  it('refuses to promote the same user twice', async () => {
+  it('recusa promover a mesma pessoa duas vezes', async () => {
     const admin = await makeAdmin();
     const reader = await makeUser();
 

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { agent, loginAs } from './helpers/agent';
 import { makeAdmin, makeCategory, makeNews, makeWriter } from './factories';
 
-describe('categories', () => {
-  it('builds a slug without accents', async () => {
+describe('editorias', () => {
+  it('monta o endereço sem acentos', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
@@ -16,7 +16,7 @@ describe('categories', () => {
     expect(response.body.data.category.slug).toBe('politica');
   });
 
-  it('rejects a duplicate slug', async () => {
+  it('recusa endereço repetido', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
@@ -30,7 +30,7 @@ describe('categories', () => {
     expect(response.body.error.code).toBe('CONFLICT');
   });
 
-  it('moves a slug made from the name when the name changes', async () => {
+  it('muda o endereço gerado pelo nome quando o nome muda', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
@@ -49,7 +49,7 @@ describe('categories', () => {
     expect(updated.body.data.category.slug).toBe('politica-e-poder');
   });
 
-  it('keeps a slug typed by hand when the name changes', async () => {
+  it('mantém o endereço digitado à mão quando o nome muda', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
@@ -68,7 +68,7 @@ describe('categories', () => {
     expect(updated.body.data.category.slug).toBe('nossa-cidade');
   });
 
-  it('renames anyway when the new slug is taken, keeping the old one', async () => {
+  it('renomeia mesmo com o endereço novo ocupado, mantendo o antigo', async () => {
     const admin = await makeAdmin();
     const { client } = await loginAs(admin.email);
 
@@ -84,7 +84,7 @@ describe('categories', () => {
     expect(updated.body.data.category).toMatchObject({ name: 'Saude', slug: 'bem-estar' });
   });
 
-  it('refuses to delete a category that has posts, and says how many', async () => {
+  it('recusa excluir editoria com matérias e diz quantas', async () => {
     const admin = await makeAdmin();
     const writer = await makeWriter();
     const category = await makeCategory();
@@ -100,7 +100,7 @@ describe('categories', () => {
     expect(response.body.error.message).toContain('1 post');
   });
 
-  it('rejects an empty patch body', async () => {
+  it('recusa uma edição vazia', async () => {
     const admin = await makeAdmin();
     const category = await makeCategory();
     const { client } = await loginAs(admin.email);
@@ -108,7 +108,7 @@ describe('categories', () => {
     await client.patch(`/api/admin/categories/${category.id}`).send({}).expect(422);
   });
 
-  it('hides inactive categories from the public list', async () => {
+  it('esconde editorias inativas da lista pública', async () => {
     await makeCategory({ name: 'Visible', slug: 'visible' });
     await makeCategory({ name: 'Hidden', slug: 'hidden', active: false });
 
@@ -120,8 +120,8 @@ describe('categories', () => {
   });
 });
 
-describe('error shape', () => {
-  it('returns JSON, not HTML, for an unknown route', async () => {
+describe('formato dos erros', () => {
+  it('responde JSON, não HTML, para rota que não existe', async () => {
     const response = await agent().get('/api/does-not-exist').expect(404);
 
     expect(response.body.error.code).toBe('NOT_FOUND');

@@ -26,8 +26,8 @@ beforeEach(() => {
   outbox.length = 0;
 });
 
-describe('asking for a link', () => {
-  it('e-mails a link to an existing account', async () => {
+describe('pedir um link', () => {
+  it('manda o link por e-mail para uma conta que existe', async () => {
     const user = await makeUser();
 
     const token = await askForLink(user.email);
@@ -39,13 +39,13 @@ describe('asking for a link', () => {
     expect(stored.tokenHash).not.toBe(token);
   });
 
-  it('answers the same for an address without an account, and sends nothing', async () => {
+  it('responde igual para um e-mail sem conta, e não manda nada', async () => {
     await agent().post('/api/auth/forgot-password').send({ email: 'ninguem@test.local' }).expect(204);
     await settle();
     expect(outbox).toHaveLength(0);
   });
 
-  it('sends at most three links per hour to the same account', async () => {
+  it('manda no máximo três links por hora para a mesma conta', async () => {
     const user = await makeUser();
 
     for (let i = 0; i < 5; i += 1) await askForLink(user.email);
@@ -53,14 +53,14 @@ describe('asking for a link', () => {
     expect(await prisma.passwordResetToken.count({ where: { userId: user.id } })).toBe(3);
   });
 
-  it('sends nothing to a disabled account', async () => {
+  it('não manda nada para conta desativada', async () => {
     const user = await makeUser({ active: false });
     expect(await askForLink(user.email)).toBeNull();
   });
 });
 
-describe('choosing the new password', () => {
-  it('changes the password, logs out everywhere and warns by e-mail', async () => {
+describe('escolher a senha nova', () => {
+  it('troca a senha, derruba todas as sessões e avisa por e-mail', async () => {
     const user = await makeUser();
     const { client: oldSession } = await loginAs(user.email);
     const token = await askForLink(user.email);
@@ -74,7 +74,7 @@ describe('choosing the new password', () => {
     expect(outbox.some((m) => m.subject === 'Sua senha foi alterada')).toBe(true);
   });
 
-  it('works only once, and kills the other links', async () => {
+  it('funciona uma vez só e invalida os outros links', async () => {
     const user = await makeUser();
     const first = await askForLink(user.email);
     const second = await askForLink(user.email);
@@ -85,7 +85,7 @@ describe('choosing the new password', () => {
     await agent().post('/api/auth/reset-password').send({ token: first, newPassword: 'outra-senha-123' }).expect(422);
   });
 
-  it('refuses an expired link and an invented one', async () => {
+  it('recusa link vencido e link inventado', async () => {
     const user = await makeUser();
     const token = await askForLink(user.email);
     await prisma.passwordResetToken.updateMany({
@@ -105,7 +105,7 @@ describe('choosing the new password', () => {
       .expect(422);
   });
 
-  it('refuses a short password', async () => {
+  it('recusa senha curta', async () => {
     const user = await makeUser();
     const token = await askForLink(user.email);
 
