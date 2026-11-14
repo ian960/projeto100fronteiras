@@ -61,8 +61,8 @@ export const PURPOSE_RULES: Record<MediaPurpose, PurposeRule> = {
     maxBytes: 10 * MB,
     maxSourceBytes: 40 * MB,
     // The lead story is shown up to ~1200px wide on desktop: under 800px it
-    // gets blurry, so the panel warns. Under 400px it would look broken.
-    minWidth: 400,
+    // gets blurry, so the panel warns. Only a tiny icon (under 100px) is refused.
+    minWidth: 100,
     recommendedWidth: 800,
   },
   body: {
@@ -73,7 +73,7 @@ export const PURPOSE_RULES: Record<MediaPurpose, PurposeRule> = {
     accept: IMAGE_ACCEPT,
     maxBytes: 10 * MB,
     maxSourceBytes: 40 * MB,
-    minWidth: 200,
+    minWidth: 100,
     recommendedWidth: 400,
   },
   author: {
