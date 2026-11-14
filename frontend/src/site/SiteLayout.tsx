@@ -192,6 +192,9 @@ function Footer() {
           <Link to="/minha-conta" className="hover:underline underline-offset-4">
             Minha conta
           </Link>
+          <Link to="/ajuda" className="hover:underline underline-offset-4">
+            Ajuda
+          </Link>
           <Link to="/painel" className="hover:underline underline-offset-4">
             Área da redação
           </Link>
