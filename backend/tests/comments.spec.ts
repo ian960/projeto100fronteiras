@@ -24,8 +24,8 @@ async function asReader(name = 'Leitora') {
 const list = async (postId: string) =>
   (await agent().get('/api/comments').query({ postId }).expect(200)).body.data;
 
-describe('writing comments', () => {
-  it('lets a reader comment and anyone read it', async () => {
+describe('escrever comentários', () => {
+  it('deixa o leitor comentar e qualquer um ler', async () => {
     const { post } = await publishedColumn();
     const { reader, client } = await asReader();
 
@@ -45,7 +45,7 @@ describe('writing comments', () => {
     expect(data.comments[0].content).toBe('Ótimo texto!');
   });
 
-  it('keeps the text as typed: no HTML is interpreted', async () => {
+  it('guarda o texto como foi digitado: nenhum HTML é interpretado', async () => {
     const { post } = await publishedColumn();
     const { client } = await asReader();
 
@@ -58,7 +58,7 @@ describe('writing comments', () => {
     expect(response.body.data.comment.content).toBe('<b>oi</b><script>x()</script>');
   });
 
-  it('refuses a visitor, an empty comment and a draft post', async () => {
+  it('recusa visitante sem login, comentário vazio e matéria em rascunho', async () => {
     const { post, columnist } = await publishedColumn();
     const draft = await makeColumn({ authorId: columnist.author.id, createdById: columnist.user.id });
     const { client } = await asReader();
@@ -70,7 +70,7 @@ describe('writing comments', () => {
     await agent().get('/api/comments').query({ postId: draft.id }).expect(404);
   });
 
-  it('labels the post author and the admin, nobody else', async () => {
+  it('marca o autor da matéria e o admin, e mais ninguém', async () => {
     const { post, columnist } = await publishedColumn();
     const admin = await makeAdmin();
     const other = await makeColumnist();
@@ -85,8 +85,8 @@ describe('writing comments', () => {
   });
 });
 
-describe('replies', () => {
-  it('nests a reply under its comment, and a reply to a reply under the same one', async () => {
+describe('respostas', () => {
+  it('põe a resposta embaixo do comentário, e a resposta da resposta no mesmo lugar', async () => {
     const { post } = await publishedColumn();
     const { client } = await asReader();
 
@@ -107,7 +107,7 @@ describe('replies', () => {
     expect(data.comments[0].replies.map((r: any) => r.content)).toEqual(['Resposta', 'Tréplica']);
   });
 
-  it('refuses a reply to a comment of another post', async () => {
+  it('recusa resposta a comentário de outra matéria', async () => {
     const first = await publishedColumn();
     const second = await publishedColumn();
     const { client } = await asReader();
@@ -122,8 +122,8 @@ describe('replies', () => {
   });
 });
 
-describe('editing and deleting', () => {
-  it('lets the writer edit, and marks when', async () => {
+describe('editar e apagar', () => {
+  it('deixa quem escreveu editar e marca quando', async () => {
     const { post } = await publishedColumn();
     const { client } = await asReader();
     const comment = (await client.post('/api/comments').send({ postId: post.id, content: 'Erro' }).expect(201)).body
@@ -136,7 +136,7 @@ describe('editing and deleting', () => {
     expect(edited.editedAt).not.toBeNull();
   });
 
-  it('never lets someone else edit, not even the admin', async () => {
+  it('nunca deixa outra pessoa editar, nem o admin', async () => {
     const { post } = await publishedColumn();
     const { client } = await asReader();
     const comment = (await client.post('/api/comments').send({ postId: post.id, content: 'Meu' }).expect(201)).body
@@ -148,7 +148,7 @@ describe('editing and deleting', () => {
     await adminClient.patch(`/api/comments/${comment.id}`).send({ content: 'Outro' }).expect(403);
   });
 
-  it('lets the writer, the post author and the admin delete; nobody else', async () => {
+  it('deixa apagar quem escreveu, o autor da matéria e o admin; mais ninguém', async () => {
     const { post, columnist } = await publishedColumn();
     const admin = await makeAdmin();
     const { client } = await asReader();
@@ -172,7 +172,7 @@ describe('editing and deleting', () => {
     expect(await prisma.comment.count({ where: { postId: post.id } })).toBe(0);
   });
 
-  it('keeps the replies of a deleted comment, then tidies up', async () => {
+  it('mantém as respostas de um comentário apagado e depois faz a limpeza', async () => {
     const { post } = await publishedColumn();
     const { client } = await asReader();
     const { client: other } = await asReader('Outra');
@@ -196,7 +196,7 @@ describe('editing and deleting', () => {
     expect(data.comments).toHaveLength(0);
   });
 
-  it('keeps the comments of a deleted account, unsigned', async () => {
+  it('mantém os comentários de uma conta excluída, sem assinatura', async () => {
     const { post } = await publishedColumn();
     const { client } = await asReader();
     await client.post('/api/comments').send({ postId: post.id, content: 'Fica' }).expect(201);

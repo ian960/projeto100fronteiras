@@ -30,8 +30,8 @@ async function asAdmin() {
 // What a reader's browser would get for a delivery URL.
 const fetchStatus = async (url: string) => (await fetch(url)).status;
 
-describe('signing an upload', () => {
-  it('locks folder, id, formats and overwrite into the signature', async () => {
+describe('assinar um envio', () => {
+  it('trava pasta, id, formatos e sobrescrita na assinatura', async () => {
     const { client } = await asAdmin();
 
     const upload = await signUpload(client, 'cover');
@@ -48,7 +48,7 @@ describe('signing an upload', () => {
     expect(JSON.stringify(upload)).not.toContain(FAKE_CLOUDINARY.apiSecret);
   });
 
-  it('gives every upload its own id', async () => {
+  it('dá um id próprio a cada envio', async () => {
     const { client } = await asAdmin();
 
     const first = await signUpload(client, 'document');
@@ -59,7 +59,7 @@ describe('signing an upload', () => {
     expect(first.fields.allowed_formats).toBe('pdf');
   });
 
-  it('has Cloudinary prepare a video right after the upload', async () => {
+  it('pede ao Cloudinary para preparar o vídeo logo depois do envio', async () => {
     const { client } = await asAdmin();
 
     const video = await signUpload(client, 'video');
@@ -73,7 +73,7 @@ describe('signing an upload', () => {
     expect(cover.fields.eager).toBeUndefined();
   });
 
-  it('is for the panel only', async () => {
+  it('só a redação assina capa: leitor e visitante são recusados', async () => {
     const reader = await makeUser();
     const { client } = await loginAs(reader.email);
 
@@ -82,8 +82,8 @@ describe('signing an upload', () => {
   });
 });
 
-describe('the rules the panel reads', () => {
-  it('serves accept, limits and widths per purpose', async () => {
+describe('as regras que o painel lê', () => {
+  it('entrega tipos aceitos, limites e larguras de cada finalidade', async () => {
     const { client } = await asAdmin();
 
     const response = await client.get('/api/media/rules').expect(200);
@@ -98,13 +98,13 @@ describe('the rules the panel reads', () => {
     expect(video.maxSourceBytes).toBeUndefined();
   });
 
-  it('is for signed-in people only', async () => {
+  it('é só para quem está logado', async () => {
     await agent().get('/api/media/rules').expect(401);
   });
 });
 
-describe('uploading and registering', () => {
-  it('registers a cover and serves it from the delivery URL', async () => {
+describe('enviar e registrar', () => {
+  it('registra uma capa e entrega pelo endereço do Cloudinary', async () => {
     const { admin, client } = await asAdmin();
 
     const media = await uploadMedia(client, 'cover', pngFile(1600, 900, 'praça.png'));
@@ -121,7 +121,7 @@ describe('uploading and registering', () => {
     expect(row.uploadedById).toBe(admin.id);
   });
 
-  it('accepts a GIF, a BMP and a smallish cover', async () => {
+  it('aceita GIF, BMP e uma capa pequena', async () => {
     const { client } = await asAdmin();
 
     const gif = await uploadMedia(client, 'cover', gifFile(1200, 800));
@@ -137,7 +137,7 @@ describe('uploading and registering', () => {
     expect(gif.url).toContain('f_auto,q_auto');
   });
 
-  it('answers the same file when the panel retries', async () => {
+  it('devolve o mesmo arquivo quando o painel tenta de novo', async () => {
     const { client } = await asAdmin();
     const file = pngFile(1600, 900);
 
@@ -152,7 +152,7 @@ describe('uploading and registering', () => {
     expect(await prisma.media.count()).toBe(1);
   });
 
-  it('registers a video and a PDF with their own URLs', async () => {
+  it('registra um vídeo e um PDF com os endereços certos', async () => {
     const { client } = await asAdmin();
 
     const video = await uploadMedia(client, 'video', mp4File());
@@ -180,8 +180,8 @@ describe('uploading and registering', () => {
   });
 });
 
-describe('what a forged or tampered upload gets', () => {
-  it('refuses an answer whose signature was not made by Cloudinary', async () => {
+describe('o que acontece com um envio falsificado ou adulterado', () => {
+  it('recusa uma resposta que não foi assinada pelo Cloudinary', async () => {
     const { client } = await asAdmin();
     const file = pngFile(1600, 900);
 
@@ -194,7 +194,7 @@ describe('what a forged or tampered upload gets', () => {
     expect(response.body.error.message).toBe('This upload could not be verified.');
   });
 
-  it('refuses a real upload registered for another purpose', async () => {
+  it('recusa um envio verdadeiro registrado para outra finalidade', async () => {
     const { client } = await asAdmin();
     const file = pngFile(1600, 900);
 
@@ -205,7 +205,7 @@ describe('what a forged or tampered upload gets', () => {
     await client.post('/api/media').send(registration('cover', cloud.body, file.name)).expect(422);
   });
 
-  it('cannot change a signed field on the way to Cloudinary', async () => {
+  it('não deixa mudar um campo assinado no caminho até o Cloudinary', async () => {
     const { client } = await asAdmin();
     const upload = await signUpload(client, 'cover');
 
@@ -219,7 +219,7 @@ describe('what a forged or tampered upload gets', () => {
     expect(overwriting.status).toBe(401);
   });
 
-  it('cannot send a PDF where an image is expected', async () => {
+  it('não deixa mandar PDF onde se espera imagem', async () => {
     const { client } = await asAdmin();
     const upload = await signUpload(client, 'cover');
 
@@ -229,7 +229,7 @@ describe('what a forged or tampered upload gets', () => {
     expect(cloud.body.error.message).toContain('not allowed');
   });
 
-  it('refuses an SVG, which could carry a script', async () => {
+  it('recusa SVG, que pode carregar código', async () => {
     const { client } = await asAdmin();
 
     const upload = await signUpload(client, 'cover');
@@ -239,7 +239,7 @@ describe('what a forged or tampered upload gets', () => {
     expect(cloud.body.error.message).toContain('not allowed');
   });
 
-  it('removes from Cloudinary an image too small for a cover', async () => {
+  it('apaga do Cloudinary uma imagem pequena demais para capa', async () => {
     const { client } = await asAdmin();
     const file = pngFile(80, 60);
 
@@ -256,7 +256,7 @@ describe('what a forged or tampered upload gets', () => {
   });
 });
 
-describe('importing an image from a link', () => {
+describe('importar imagem por link', () => {
   // Stands in for "some other website" hosting a photo.
   let site: Server;
   let siteUrl: string;
@@ -276,7 +276,7 @@ describe('importing an image from a link', () => {
 
   afterAll(() => new Promise<void>((resolve) => site.close(() => resolve())));
 
-  it('copies the picture into Cloudinary', async () => {
+  it('copia a imagem para o Cloudinary', async () => {
     const { client } = await asAdmin();
 
     const response = await client
@@ -292,7 +292,7 @@ describe('importing an image from a link', () => {
     expect(await fetchStatus(media.url)).toBe(200);
   });
 
-  it('explains a link that does not lead to an image', async () => {
+  it('explica quando o link não leva a uma imagem', async () => {
     const { client } = await asAdmin();
 
     const response = await client
@@ -304,8 +304,8 @@ describe('importing an image from a link', () => {
   });
 });
 
-describe('deleting a file', () => {
-  it('removes an unused file from Cloudinary too', async () => {
+describe('apagar um arquivo', () => {
+  it('apaga do Cloudinary também um arquivo sem uso', async () => {
     const { client } = await asAdmin();
     const media = await uploadMedia(client, 'cover', pngFile(1600, 900));
 
@@ -315,7 +315,7 @@ describe('deleting a file', () => {
     expect(await fetchStatus(media.url)).toBe(404);
   });
 
-  it('refuses while a post uses it', async () => {
+  it('recusa enquanto uma matéria usa o arquivo', async () => {
     const { admin, client } = await asAdmin();
     const writer = await makeWriter();
     const category = await makeCategory();
@@ -326,7 +326,7 @@ describe('deleting a file', () => {
     expect(response.body.error.message).toContain('still in use');
   });
 
-  it('is for the admin only', async () => {
+  it('é só para o admin', async () => {
     const { user } = await makeColumnist();
     const { client } = await loginAs(user.email);
     const media = await uploadMedia(client, 'cover', pngFile(1600, 900));

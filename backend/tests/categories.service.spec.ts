@@ -8,13 +8,13 @@ import { makeAdmin, makeCategory, makeNews, makeWriter } from './factories';
 // the categories module on their own, which is why they are the fastest place
 // to look when something in that module breaks.
 
-describe('categories service: create', () => {
-  it('builds a slug without accents', async () => {
+describe('serviço de editorias: criar', () => {
+  it('monta o endereço sem acentos', async () => {
     const category = await categoriesService.create({ name: 'Política' });
     expect(category.slug).toBe('politica');
   });
 
-  it('accepts an explicit slug', async () => {
+  it('aceita um endereço digitado', async () => {
     const category = await categoriesService.create({
       name: 'Política e Poder',
       slug: 'politica-poder',
@@ -22,24 +22,24 @@ describe('categories service: create', () => {
     expect(category.slug).toBe('politica-poder');
   });
 
-  it('refuses a duplicate slug', async () => {
+  it('recusa endereço repetido', async () => {
     await categoriesService.create({ name: 'Esportes' });
 
     await expect(categoriesService.create({ name: 'esportes' })).rejects.toBeInstanceOf(Conflict);
   });
 
-  it('refuses a name that produces no slug', async () => {
+  it('recusa um nome que não gera endereço', async () => {
     await expect(categoriesService.create({ name: '!!!' })).rejects.toBeInstanceOf(ValidationError);
   });
 
-  it('defaults sortOrder to zero', async () => {
+  it('usa a ordem zero por padrão', async () => {
     const category = await categoriesService.create({ name: 'Cultura' });
     expect(category.sortOrder).toBe(0);
   });
 });
 
-describe('categories service: update', () => {
-  it('moves a slug made from the name along with the name', async () => {
+describe('serviço de editorias: editar', () => {
+  it('muda o endereço gerado pelo nome junto com o nome', async () => {
     const created = await categoriesService.create({ name: 'Politica' });
     const updated = await categoriesService.update(created.id, { name: 'Política e Poder' });
 
@@ -47,21 +47,21 @@ describe('categories service: update', () => {
     expect(updated.name).toBe('Política e Poder');
   });
 
-  it('keeps a slug typed by hand when only the name changes', async () => {
+  it('mantém o endereço digitado à mão quando só o nome muda', async () => {
     const created = await categoriesService.create({ name: 'Politica', slug: 'poder' });
     const updated = await categoriesService.update(created.id, { name: 'Política e Poder' });
 
     expect(updated.slug).toBe('poder');
   });
 
-  it('moves the slug when asked explicitly', async () => {
+  it('muda o endereço quando isso é pedido', async () => {
     const created = await categoriesService.create({ name: 'Politica' });
     const updated = await categoriesService.update(created.id, { slug: 'poder' });
 
     expect(updated.slug).toBe('poder');
   });
 
-  it('refuses a slug that belongs to another category', async () => {
+  it('recusa um endereço que é de outra editoria', async () => {
     await categoriesService.create({ name: 'Esportes' });
     const other = await categoriesService.create({ name: 'Cultura' });
 
@@ -70,7 +70,7 @@ describe('categories service: update', () => {
     );
   });
 
-  it('lets a category keep its own slug', async () => {
+  it('deixa a editoria manter o próprio endereço', async () => {
     const created = await categoriesService.create({ name: 'Esportes' });
 
     // Same slug, same row: this must not be read as a collision.
@@ -78,15 +78,15 @@ describe('categories service: update', () => {
     expect(updated.slug).toBe('esportes');
   });
 
-  it('fails on an unknown id', async () => {
+  it('falha com um id que não existe', async () => {
     await expect(
       categoriesService.update('00000000-0000-7000-8000-000000000000', { name: 'Ghost' }),
     ).rejects.toBeInstanceOf(NotFound);
   });
 });
 
-describe('categories service: listing', () => {
-  it('hides inactive categories from the public list', async () => {
+describe('serviço de editorias: listagem', () => {
+  it('esconde editorias inativas da lista pública', async () => {
     await makeCategory({ name: 'Visible', slug: 'visible' });
     await makeCategory({ name: 'Hidden', slug: 'hidden', active: false });
 
@@ -96,7 +96,7 @@ describe('categories service: listing', () => {
     expect(slugs).not.toContain('hidden');
   });
 
-  it('shows everything in the panel, with counts', async () => {
+  it('mostra tudo no painel, com as contagens', async () => {
     await makeCategory({ name: 'Hidden', slug: 'hidden', active: false });
 
     const all = await categoriesService.listAll();
@@ -105,7 +105,7 @@ describe('categories service: listing', () => {
     expect(all[0]?._count?.posts).toBe(0);
   });
 
-  it('orders by sortOrder, then by name', async () => {
+  it('ordena pela ordem e depois pelo nome', async () => {
     await makeCategory({ name: 'Zebra', slug: 'zebra', sortOrder: 0 });
     await makeCategory({ name: 'Alfa', slug: 'alfa', sortOrder: 5 });
     await makeCategory({ name: 'Beta', slug: 'beta', sortOrder: 0 });
@@ -116,15 +116,15 @@ describe('categories service: listing', () => {
     expect(names).toEqual(['Beta', 'Zebra', 'Alfa']);
   });
 
-  it('refuses to return an inactive category by slug', async () => {
+  it('não devolve editoria inativa pelo endereço', async () => {
     await makeCategory({ name: 'Hidden', slug: 'hidden', active: false });
 
     await expect(categoriesService.getBySlug('hidden')).rejects.toBeInstanceOf(NotFound);
   });
 });
 
-describe('categories service: delete', () => {
-  it('deletes a category with no posts', async () => {
+describe('serviço de editorias: excluir', () => {
+  it('exclui uma editoria sem matérias', async () => {
     const created = await categoriesService.create({ name: 'Temporary' });
 
     await categoriesService.remove(created.id);
@@ -132,7 +132,7 @@ describe('categories service: delete', () => {
     expect(await categoriesRepository.findById(created.id)).toBeNull();
   });
 
-  it('refuses to delete a category in use, and says how many', async () => {
+  it('recusa excluir editoria em uso e diz quantas matérias ela tem', async () => {
     const admin = await makeAdmin();
     const writer = await makeWriter();
     const category = await makeCategory();

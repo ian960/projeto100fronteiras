@@ -7,8 +7,8 @@ import { logger } from '../src/shared/utils/logger';
 
 // What only shows up once the API is behind Render and the Cloudflare Worker.
 
-describe('requests the client got wrong', () => {
-  it('answers malformed JSON with 400, not 500', async () => {
+describe('pedidos errados do cliente', () => {
+  it('responde 400, não 500, a JSON malformado', async () => {
     const response = await agent()
       .post('/api/auth/login')
       .set('content-type', 'application/json')
@@ -18,7 +18,7 @@ describe('requests the client got wrong', () => {
     expect(response.body.error).toEqual({ code: 'BAD_REQUEST', message: 'Malformed request.' });
   });
 
-  it('answers a body over the limit with 413', async () => {
+  it('responde 413 a corpo acima do limite', async () => {
     const response = await agent()
       .post('/api/auth/login')
       .set('content-type', 'application/json')
@@ -29,7 +29,7 @@ describe('requests the client got wrong', () => {
   });
 });
 
-describe('proxy guard', () => {
+describe('proteção do Worker (PROXY_SECRET)', () => {
   const secret = 's'.repeat(40);
 
   function app(withSecret: string | undefined) {
@@ -41,23 +41,23 @@ describe('proxy guard', () => {
     return server;
   }
 
-  it('does nothing without PROXY_SECRET (development, Docker)', async () => {
+  it('não faz nada sem PROXY_SECRET (desenvolvimento, Docker)', async () => {
     const response = await request(app(undefined)).get('/api/who').set('x-client-ip', '203.0.113.9').expect(200);
     // Without the secret a forged x-client-ip is ignored.
     expect(response.body.ip).not.toBe('203.0.113.9');
   });
 
-  it('refuses requests that skip the Worker', async () => {
+  it('recusa pedidos que pulam o Worker', async () => {
     await request(app(secret)).get('/api/who').expect(403);
     await request(app(secret)).get('/api/who').set('x-proxy-secret', 'wrong').expect(403);
     await request(app(secret)).get('/api/who').set('x-proxy-secret', `${secret}x`).expect(403);
   });
 
-  it("lets Render's health check in without the secret", async () => {
+  it('deixa o health check do Render entrar sem o segredo', async () => {
     await request(app(secret)).get('/api/health').expect(200);
   });
 
-  it("uses the Worker's x-client-ip for rate limits", async () => {
+  it('usa o x-client-ip do Worker nos limites de tentativas', async () => {
     const response = await request(app(secret))
       .get('/api/who')
       .set('x-proxy-secret', secret)
@@ -68,10 +68,10 @@ describe('proxy guard', () => {
   });
 });
 
-describe('logger', () => {
+describe('registro de logs', () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it('keeps the message and stack of an error nested in the details', () => {
+  it('mantém mensagem e pilha de um erro dentro dos detalhes', () => {
     const lines: string[] = [];
     vi.spyOn(console, 'error').mockImplementation((line: string) => lines.push(line));
 

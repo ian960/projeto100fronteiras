@@ -18,8 +18,8 @@ import {
 // They run against a real Postgres on purpose. With a mocked repository the
 // assertion would pass even with a broken WHERE clause, because the mock
 // returns whatever it was told to.
-describe('column permissions', () => {
-  it('refuses to let a columnist publish their own column', async () => {
+describe('permissões das colunas', () => {
+  it('não deixa o colunista publicar a própria coluna', async () => {
     const { user, author } = await makeColumnist();
     const column = await makeColumn({ authorId: author.id, createdById: user.id });
 
@@ -40,7 +40,7 @@ describe('column permissions', () => {
     expect(submitted.body.data.post.status).toBe('pending');
   });
 
-  it('refuses to let a columnist edit a published column', async () => {
+  it('não deixa o colunista editar uma coluna publicada', async () => {
     const admin = await makeAdmin();
     const { user, author } = await makeColumnist();
 
@@ -68,7 +68,7 @@ describe('column permissions', () => {
       .expect(200);
   });
 
-  it('refuses to let a columnist touch another columnist column', async () => {
+  it('não deixa o colunista mexer na coluna de outro', async () => {
     const first = await makeColumnist();
     const second = await makeColumnist();
 
@@ -91,8 +91,8 @@ describe('column permissions', () => {
   });
 });
 
-describe('columnist scoping', () => {
-  it('never lists posts that belong to someone else', async () => {
+describe('o que o colunista enxerga', () => {
+  it('nunca lista matérias de outra pessoa', async () => {
     const first = await makeColumnist();
     const second = await makeColumnist();
 
@@ -107,7 +107,7 @@ describe('columnist scoping', () => {
     expect(items).toHaveLength(1);
   });
 
-  it('ignores an authorId passed in the query string', async () => {
+  it('ignora um authorId passado no endereço', async () => {
     const first = await makeColumnist();
     const second = await makeColumnist();
 
@@ -124,7 +124,7 @@ describe('columnist scoping', () => {
     expect(response.body.data.items).toHaveLength(0);
   });
 
-  it('forces type=column and its own byline on creation', async () => {
+  it('ao criar, força o tipo coluna e a assinatura do próprio colunista', async () => {
     const { user, author } = await makeColumnist();
     const other = await makeWriter();
     const category = await makeCategory();
@@ -152,8 +152,8 @@ describe('columnist scoping', () => {
   });
 });
 
-describe('panel access', () => {
-  it('keeps readers out of both panels', async () => {
+describe('acesso ao painel', () => {
+  it('não deixa leitor entrar em nenhum dos painéis', async () => {
     const admin = await makeAdmin();
     const writer = await makeWriter();
     const category = await makeCategory();
@@ -172,7 +172,7 @@ describe('panel access', () => {
     await client.post(`/api/admin/posts/${news.id}/publish`).expect(403);
   });
 
-  it('rejects anonymous access to the panel', async () => {
+  it('recusa acesso ao painel sem login', async () => {
     const client = agent();
 
     const response = await client.get('/api/admin/posts').expect(401);
