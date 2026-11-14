@@ -18,12 +18,15 @@ import {
 import { mediaRouter } from '../modules/media/media.routes';
 import { commentsRouter } from '../modules/comments/comments.routes';
 import { postsController } from '../modules/posts/posts.controller';
+import { seoController } from '../modules/seo/seo.controller';
 
 export function buildRouter(): Router {
   const router = Router();
 
   // ── public ──────────────────────────────────────────────────────────────
   router.get('/home', postsController.home);
+  // Addresses and dates of everything public, for sitemap.xml (worker/seo.ts).
+  router.get('/sitemap', seoController.sitemap);
   router.use('/auth', authRouter());
   router.use('/categories', categoriesPublicRouter());
   router.use('/columnists', authorsPublicRouter());

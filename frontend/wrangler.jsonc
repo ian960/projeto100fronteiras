@@ -15,13 +15,27 @@
     "not_found_handling": "single-page-application",
     // Only these reach the Worker. Everything else is a plain file, which
     // Cloudflare serves without counting it against the Worker's free quota.
-    "run_worker_first": ["/api/*", "/noticia/*", "/coluna/*"]
+    "run_worker_first": [
+      "/api/*",
+      "/noticia/*",
+      "/coluna/*",
+      "/categoria/*",
+      "/autor/*",
+      "/sitemap.xml",
+      "/sitemap-news.xml",
+      "/robots.txt"
+    ]
   },
 
   "vars": {
     // The API's address on Render. If Render gave the service another name
     // (it adds a suffix when the name is taken), change it here and push.
-    "API_ORIGIN": "https://portal-api-o5v4.onrender.com"
+    "API_ORIGIN": "https://portal-api-o5v4.onrender.com",
+    // The site's public address, used in canonical links, sitemaps and
+    // robots.txt. Empty: the address the page was opened at (today the
+    // workers.dev one). When the domain is ready, put it here without the
+    // final slash, e.g. "https://portal100fronteiras.com.br", and push.
+    "SITE_URL": ""
   },
   // PROXY_SECRET is a secret, not a var: set it in the dashboard (Settings →
   // Variables and Secrets) with the same value as on Render.
@@ -31,7 +45,9 @@
   // whatever you do on a preview changes the real data.
   "previews": {
     "vars": {
-      "API_ORIGIN": "https://portal-api-o5v4.onrender.com"
+      "API_ORIGIN": "https://portal-api-o5v4.onrender.com",
+      // Previews keep their own address, so links on them stay on them.
+      "SITE_URL": ""
     }
   },
 

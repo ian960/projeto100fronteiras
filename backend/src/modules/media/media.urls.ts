@@ -73,6 +73,9 @@ export function avatarUrl(config: CloudinaryConfig, ref: Ref): string {
   return `${base(config, 'image')}/c_thumb,g_face,w_256,h_256,${WEB}/${asset(ref)}`;
 }
 
+// Heights for a 1200px width: 16:9, 4:3 and 1:1 (see structuredDataUrls).
+const STRUCTURED_DATA_SHAPES = [675, 900, 1200] as const;
+
 export function presentMedia(media: IMedia): IMediaView {
   const facts = {
     id: media.id,
@@ -92,7 +95,15 @@ export function presentMedia(media: IMedia): IMediaView {
   // If it has since been switched off, say so with empty URLs instead of
   // crashing every page that shows a picture.
   if (!config) {
-    return { ...facts, url: '', thumbnailUrl: '', srcset: null, posterUrl: null, shareUrl: null };
+    return {
+      ...facts,
+      url: '',
+      thumbnailUrl: '',
+      srcset: null,
+      posterUrl: null,
+      shareUrl: null,
+      structuredDataUrls: null,
+    };
   }
 
   if (media.kind === MediaKind.VIDEO) {
@@ -107,6 +118,7 @@ export function presentMedia(media: IMedia): IMediaView {
       posterUrl: video('poster'),
       srcset: null,
       shareUrl: null,
+      structuredDataUrls: null,
     };
   }
 
@@ -121,6 +133,7 @@ export function presentMedia(media: IMedia): IMediaView {
       srcset: null,
       posterUrl: null,
       shareUrl: null,
+      structuredDataUrls: null,
     };
   }
 
@@ -131,6 +144,9 @@ export function presentMedia(media: IMedia): IMediaView {
     srcset: imageSrcset(config, media, media.width),
     posterUrl: null,
     shareUrl: `${base(config, 'image')}/c_fill,w_1200,h_630,q_auto/${asset(media, 'jpg')}`,
+    structuredDataUrls: STRUCTURED_DATA_SHAPES.map(
+      (height) => `${base(config, 'image')}/c_fill,w_1200,h_${height},q_auto/${asset(media, 'jpg')}`,
+    ),
   };
 }
 
