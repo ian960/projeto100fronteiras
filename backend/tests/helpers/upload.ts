@@ -22,6 +22,32 @@ export function pngFile(width: number, height: number, name = 'photo.png'): Test
   return { name, bytes: header };
 }
 
+export function gifFile(width: number, height: number, name = 'animation.gif'): TestFile {
+  const header = Buffer.alloc(13);
+  header.write('GIF89a', 0, 'latin1');
+  header.writeUInt16LE(width, 6);
+  header.writeUInt16LE(height, 8);
+  return { name, bytes: header };
+}
+
+export function bmpFile(width: number, height: number, name = 'scan.bmp'): TestFile {
+  const header = Buffer.alloc(54);
+  header.write('BM', 0, 'latin1');
+  header.writeUInt32LE(54, 2);
+  header.writeUInt32LE(40, 14);
+  header.writeInt32LE(width, 18);
+  header.writeInt32LE(height, 22);
+  return { name, bytes: header };
+}
+
+// An SVG can carry a script, so the portal never accepts one.
+export function svgFile(name = 'logo.svg'): TestFile {
+  return {
+    name,
+    bytes: Buffer.from('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', 'utf8'),
+  };
+}
+
 export function pdfFile(pages: number, name = 'edital.pdf'): TestFile {
   const body = `%PDF-1.4\n${'<< /Type /Page >>\n'.repeat(pages)}<< /Type /Pages >>\n%%EOF`;
   return { name, bytes: Buffer.from(body, 'latin1') };
@@ -41,7 +67,9 @@ export async function signUpload(client: Agent, purpose: Purpose) {
   return response.body.data.upload as {
     uploadUrl: string;
     fields: Record<string, string>;
+    kind: string;
     maxBytes: number;
+    maxSourceBytes: number | null;
     accept: string;
   };
 }

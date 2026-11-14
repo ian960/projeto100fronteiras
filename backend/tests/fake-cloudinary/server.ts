@@ -65,6 +65,10 @@ const CONTENT_TYPES: Record<string, string> = {
   webp: 'image/webp',
   avif: 'image/avif',
   heic: 'image/heic',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+  tiff: 'image/tiff',
+  svg: 'image/svg+xml',
   pdf: 'application/pdf',
   mp4: 'video/mp4',
   mov: 'video/quicktime',
@@ -79,6 +83,10 @@ function sniff(bytes: Buffer): string | null {
   if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'jpg';
   if (ascii(1, 4) === 'PNG') return 'png';
   if (ascii(0, 4) === '%PDF') return 'pdf';
+  if (ascii(0, 6) === 'GIF87a' || ascii(0, 6) === 'GIF89a') return 'gif';
+  if (ascii(0, 2) === 'BM') return 'bmp';
+  if (ascii(0, 4) === 'II*\0' || ascii(0, 4) === 'MM\0*') return 'tiff';
+  if (/^\s*(<\?xml[^>]*>\s*)?<svg[\s>]/.test(ascii(0, 200))) return 'svg';
   if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return 'webp';
   if (bytes.readUInt32BE(0) === 0x1a45dfa3) return 'webm';
   if (ascii(4, 8) === 'ftyp') {
@@ -94,6 +102,8 @@ function sniff(bytes: Buffer): string | null {
 
 function imageSize(bytes: Buffer, format: string): { width: number; height: number } | null {
   if (format === 'png') return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+  if (format === 'gif') return { width: bytes.readUInt16LE(6), height: bytes.readUInt16LE(8) };
+  if (format === 'bmp') return { width: bytes.readInt32LE(18), height: Math.abs(bytes.readInt32LE(22)) };
 
   if (format === 'jpg') {
     // Walk the JPEG segments until a Start Of Frame marker.

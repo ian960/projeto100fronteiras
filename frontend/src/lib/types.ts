@@ -164,6 +164,22 @@ export type Health = {
 export type SignedUpload = {
   uploadUrl: string;
   fields: Record<string, string>;
+  kind: MediaKind;
   maxBytes: number;
+  // Images: the largest photo that may be picked. Anything over maxBytes is
+  // shrunk in the browser before sending (panel/media.ts). null otherwise.
+  maxSourceBytes: number | null;
   accept: string;
 };
+
+// What GET /api/media/rules returns for each purpose: the <input accept> and
+// the limits, decided by the API (backend media.purposes.ts).
+export type MediaRule = {
+  kind: MediaKind;
+  accept: string;
+  maxBytes: number;
+  maxSourceBytes?: number;
+  minWidth?: number;
+  recommendedWidth?: number;
+};
+export type MediaRules = Record<MediaPurpose, MediaRule>;

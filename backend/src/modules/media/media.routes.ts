@@ -21,6 +21,7 @@ export function mediaRouter(): Router {
 
   router.use(authenticate, authorize(Role.ADMIN, Role.COLUMNIST, Role.READER), requireMedia);
 
+  router.get('/rules', mediaController.rules);
   router.post('/signature', mediaController.sign);
   router.post('/import', mediaController.importFromUrl);
   router.post('/', mediaController.register);

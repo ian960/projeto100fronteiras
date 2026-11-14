@@ -248,16 +248,22 @@ post never depends on someone else's site keeping the picture online.
 
 ### Purposes
 
-| purpose | kind | formats | max | min width |
+| purpose | kind | formats | max sent (picked) | min width (warns under) |
 |---|---|---|---|---|
-| `cover` | image | jpg png webp avif heic | 10 MB | 800 px |
-| `body` (photo in the text) | image | same | 10 MB | 400 px |
-| `author` | image | same | 10 MB | 200 px |
+| `cover` | image | jpg png webp avif heic heif gif bmp tiff | 10 MB (40 MB) | 400 px (800 px) |
+| `body` (photo in the text) | image | same | 10 MB (40 MB) | 200 px (400 px) |
+| `author` | image | same | 10 MB (40 MB) | 100 px |
+| `avatar` | image | same | 5 MB (20 MB) | 100 px |
 | `video` | video | mp4 mov webm m4v | 100 MB | — |
 | `document` | PDF | pdf | 10 MB | — |
 
-Limits match Cloudinary's free plan. `.mov` from a phone is fine: delivery
-URLs ask for mp4 (`q_auto/….mp4`), and Cloudinary converts it.
+"Max sent" matches Cloudinary's free plan. A bigger photo, up to "picked", is
+shrunk in the browser to about 2560×2560 px JPEG before it is sent
+(`frontend/src/panel/media.ts`). SVG is never accepted: it can carry a script.
+The panel reads these rules from `GET /api/media/rules`, so they live only in
+`media.purposes.ts`. `.mov` from a phone is fine: delivery URLs ask for mp4
+(`q_auto/….mp4`), and Cloudinary converts it. Images are delivered with
+`f_auto,q_auto`, so a HEIC, BMP or TIFF reaches the reader as WebP/AVIF.
 
 ### URLs
 

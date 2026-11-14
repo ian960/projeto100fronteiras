@@ -88,8 +88,8 @@ const exact: Record<string, string> = {
   'Send the file again.': 'Envie o arquivo de novo.',
   'This file does not fit here.': 'Este arquivo não serve aqui.',
   'Could not import an image from this link.': 'Não foi possível importar uma imagem deste link.',
-  'Use a link that opens the image itself (JPEG, PNG or WebP).':
-    'Use um link que abra a própria imagem (JPEG, PNG ou WebP), não a página onde ela aparece.',
+  'Use a link that opens the image itself (a photo, not a web page).':
+    'Use um link que abra a própria imagem, não a página onde ela aparece.',
   'File not found.': 'Arquivo não encontrado.',
   'Upload the file again.': 'Envie o arquivo de novo.',
   'This file cannot be used here.': 'Este arquivo não pode ser usado aqui.',

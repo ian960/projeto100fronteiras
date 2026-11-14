@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { created, noContent, ok } from '../../shared/http/response';
 import { Unauthenticated } from '../../shared/errors/AppError';
 import { mediaService } from './media.service';
+import { purposeLimits } from './media.purposes';
 import {
   importMediaSchema,
   mediaIdParamSchema,
@@ -15,6 +16,10 @@ function requireUser(req: Request) {
 }
 
 export class MediaController {
+  rules = async (_req: Request, res: Response) => {
+    return ok(res, { rules: purposeLimits() });
+  };
+
   sign = async (req: Request, res: Response) => {
     const actor = requireUser(req);
     const parsed = signUploadSchema.parse({ body: req.body });
