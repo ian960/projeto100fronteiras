@@ -112,6 +112,13 @@ const exact: Record<string, string> = {
   'The end must come after the start.': 'O fim precisa ser depois do início.',
   'Use a link starting with http:// or https://.': 'Use um link que comece com http:// ou https://.',
   'Too many requests.': 'Muitos pedidos. Aguarde alguns minutos.',
+
+  // contact form
+  'Write your name.': 'Escreva o seu nome.',
+  'Write at least a few words.': 'Escreva um pouco mais (pelo menos 10 caracteres).',
+  'Too many messages. Try again later.': 'Você já mandou várias mensagens. Tente de novo daqui a uma hora ou escreva para o e-mail da página.',
+  'The message could not be sent. Try again later or write to the e-mail on the page.':
+    'Não foi possível enviar agora. Tente de novo mais tarde ou escreva para o e-mail desta página.',
   'Only an admin can delete files.': 'Só o administrador pode apagar arquivos.',
   'Cloudinary did not delete the file. Try again in a moment.': 'O Cloudinary não apagou o arquivo. Tente de novo em instantes.',
   'The same file is attached twice.': 'O mesmo arquivo foi anexado duas vezes.',

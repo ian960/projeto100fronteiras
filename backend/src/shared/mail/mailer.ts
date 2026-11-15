@@ -10,6 +10,9 @@ export type Mail = {
   subject: string;
   text: string;
   html: string;
+  // Where "Responder" goes. The contact form uses it: the newsroom answers
+  // the reader directly, while the message still comes from MAIL_FROM.
+  replyTo?: { email: string; name?: string };
 };
 
 // What the "log" provider "sent". The tests read the links from here.
@@ -26,6 +29,7 @@ async function brevo(mail: Mail): Promise<void> {
     body: JSON.stringify({
       sender: { name: env.MAIL_FROM_NAME, email: env.MAIL_FROM },
       to: [{ email: mail.to.email, ...(mail.to.name ? { name: mail.to.name } : {}) }],
+      ...(mail.replyTo ? { replyTo: { email: mail.replyTo.email, ...(mail.replyTo.name ? { name: mail.replyTo.name } : {}) } } : {}),
       subject: mail.subject,
       textContent: mail.text,
       htmlContent: mail.html,
@@ -42,6 +46,7 @@ async function mailpit(mail: Mail): Promise<void> {
     body: JSON.stringify({
       From: { Email: env.MAIL_FROM ?? 'nao-responda@portal.local', Name: env.MAIL_FROM_NAME },
       To: [{ Email: mail.to.email, Name: mail.to.name ?? '' }],
+      ...(mail.replyTo ? { ReplyTo: [{ Email: mail.replyTo.email, Name: mail.replyTo.name ?? '' }] } : {}),
       Subject: mail.subject,
       Text: mail.text,
       HTML: mail.html,
@@ -57,6 +62,7 @@ async function resend(mail: Mail): Promise<void> {
     body: JSON.stringify({
       from: `${env.MAIL_FROM_NAME} <${env.MAIL_FROM}>`,
       to: [mail.to.email],
+      ...(mail.replyTo ? { reply_to: mail.replyTo.email } : {}),
       subject: mail.subject,
       text: mail.text,
       html: mail.html,
@@ -67,11 +73,22 @@ async function resend(mail: Mail): Promise<void> {
 
 // Never throws: a mail service hiccup must not turn "esqueci minha senha"
 // into an error page that also tells a stranger the address has an account.
-export async function sendMail(mail: Mail): Promise<void> {
+// Answers whether the message left; the contact form tells the reader when
+// it did not.
+export async function sendMail(mail: Mail): Promise<boolean> {
   try {
-    if (env.MAIL_PROVIDER === 'brevo') return await brevo(mail);
-    if (env.MAIL_PROVIDER === 'resend') return await resend(mail);
-    if (env.MAIL_PROVIDER === 'mailpit') return await mailpit(mail);
+    if (env.MAIL_PROVIDER === 'brevo') {
+      await brevo(mail);
+      return true;
+    }
+    if (env.MAIL_PROVIDER === 'resend') {
+      await resend(mail);
+      return true;
+    }
+    if (env.MAIL_PROVIDER === 'mailpit') {
+      await mailpit(mail);
+      return true;
+    }
 
     outbox.push(mail);
     if (outbox.length > 50) outbox.shift();
@@ -80,8 +97,10 @@ export async function sendMail(mail: Mail): Promise<void> {
       logger.info(`E-mail not sent (MAIL_PROVIDER=log) to ${mail.to.email}: ${mail.subject}`, { text: mail.text });
     }
     if (isProduction) logger.warn('MAIL_PROVIDER is not set in production: this e-mail never left the server.');
+    return true;
   } catch (err) {
     logger.error('Could not send an e-mail', { err, to: mail.to.email, subject: mail.subject });
+    return false;
   }
 }
 

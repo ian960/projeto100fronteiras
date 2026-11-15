@@ -9,13 +9,27 @@
 //   /coluna/:slug     card, structured data and text already inside, for
 //   /categoria/:slug  Google and for WhatsApp's preview (seo.ts).
 //   /autor/:slug
+//   /privacidade      the same, with the page's whole text (Google reads
+//   /termos           these before approving AdSense)
+//   /contato
 //   /sitemap.xml      built from the published articles (seo.ts).
 //   /sitemap-news.xml
 //   /robots.txt
 //   every 10 minutes  a request to the API, so Render's free plan does not
 //                     put it to sleep (waking up takes about a minute).
 
-import { articlePage, authorPage, categoryPage, newsSitemap, robots, sitemap, type ApiFetch, type SeoEnv } from './seo';
+import {
+  STATIC_PATHS,
+  articlePage,
+  authorPage,
+  categoryPage,
+  newsSitemap,
+  robots,
+  sitemap,
+  staticPage,
+  type ApiFetch,
+  type SeoEnv,
+} from './seo';
 
 interface Env extends SeoEnv {
   ASSETS: Fetcher;
@@ -40,6 +54,9 @@ export default {
       if (url.pathname === '/robots.txt') return robots(request, env);
       if (url.pathname === '/sitemap.xml') return sitemap(request, env, api);
       if (url.pathname === '/sitemap-news.xml') return newsSitemap(request, env, api);
+
+      const staticPath = STATIC_PATHS.find((path) => url.pathname.replace(/\/$/, '') === path);
+      if (staticPath) return staticPage(request, env, staticPath);
 
       const page = url.pathname.match(/^\/(noticia|coluna|categoria|autor)\/([a-z0-9-]+)\/?$/);
       if (page) {

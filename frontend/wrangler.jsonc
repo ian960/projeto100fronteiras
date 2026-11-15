@@ -21,6 +21,9 @@
       "/coluna/*",
       "/categoria/*",
       "/autor/*",
+      "/privacidade",
+      "/termos",
+      "/contato",
       "/sitemap.xml",
       "/sitemap-news.xml",
       "/robots.txt"

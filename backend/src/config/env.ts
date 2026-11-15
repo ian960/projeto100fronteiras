@@ -81,6 +81,8 @@ const schema = z
     MAIL_API_KEY: optionalString,
     MAIL_FROM: z.preprocess(emptyToUndefined, z.email().optional()),
     MAIL_FROM_NAME: z.preprocess(emptyToUndefined, z.string().default('Portal100Fronteiras')),
+    // Where the site's contact form (/contato) delivers. Empty: MAIL_FROM.
+    CONTACT_EMAIL: z.preprocess(emptyToUndefined, z.email().optional()),
 
     // First admin, created by `npm run db:seed`.
     SEED_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().default('Admin')),

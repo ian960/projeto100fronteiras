@@ -5,6 +5,7 @@ import HomePage from './site/pages/HomePage';
 import PostPage from './site/pages/PostPage';
 import NotFoundPage from './site/pages/NotFoundPage';
 import HelpPage from './site/pages/HelpPage';
+import { ContactPage, PrivacyPage, TermsPage } from './site/pages/LegalPages';
 import { AuthorPage, CategoryPage, ColumnistsPage, NewsPage, SavedPage, SearchPage } from './site/pages/ListingPages';
 import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage } from './site/pages/AuthPages';
 
@@ -43,6 +44,9 @@ export const router = createBrowserRouter([
       { path: 'autor/:slug', element: <AuthorPage /> },
       { path: 'salvos', element: <SavedPage /> },
       { path: 'ajuda', element: <HelpPage /> },
+      { path: 'privacidade', element: <PrivacyPage /> },
+      { path: 'termos', element: <TermsPage /> },
+      { path: 'contato', element: <ContactPage /> },
       { path: 'entrar', element: <LoginPage /> },
       { path: 'cadastro', element: <RegisterPage /> },
       { path: 'esqueci-senha', element: <ForgotPasswordPage /> },
