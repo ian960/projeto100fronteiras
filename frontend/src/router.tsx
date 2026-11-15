@@ -5,6 +5,7 @@ import HomePage from './site/pages/HomePage';
 import PostPage from './site/pages/PostPage';
 import NotFoundPage from './site/pages/NotFoundPage';
 import HelpPage from './site/pages/HelpPage';
+import { NewsletterConfirmPage, NewsletterLeavePage } from './site/Newsletter';
 import { ContactPage, PrivacyPage, TermsPage } from './site/pages/LegalPages';
 import { AuthorPage, CategoryPage, ColumnistsPage, NewsPage, SavedPage, SearchPage } from './site/pages/ListingPages';
 import { CreatePasswordPage, ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage } from './site/pages/AuthPages';
@@ -52,6 +53,9 @@ export const router = createBrowserRouter([
       { path: 'esqueci-senha', element: <ForgotPasswordPage /> },
       { path: 'redefinir-senha', element: <ResetPasswordPage /> },
       { path: 'criar-senha', element: <CreatePasswordPage /> },
+      // The links in the newsletter e-mails. No login needed.
+      { path: 'newsletter/confirmar', element: <NewsletterConfirmPage /> },
+      { path: 'newsletter/sair', element: <NewsletterLeavePage /> },
       // Loaded on demand: it brings the photo upload, which a reader on a news
       // page never needs.
       { path: 'minha-conta', lazy: async () => ({ Component: (await import('./site/pages/AccountPage')).default }) },
@@ -72,6 +76,7 @@ export const router = createBrowserRouter([
       { path: 'autores', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.Authors }))) },
       { path: 'usuarios', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.Users }))) },
       { path: 'anunciantes', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.Banners }))) },
+      { path: 'newsletter', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.Newsletter }))) },
       { path: 'colunas', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.MyColumns }))) },
       { path: 'colunas/nova', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.ColumnistNewPost }))) },
       { path: 'colunas/:id', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.ColumnistEditPost }))) },

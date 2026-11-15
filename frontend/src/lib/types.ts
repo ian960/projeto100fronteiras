@@ -223,3 +223,37 @@ export type BannerAdmin = {
   createdAt: string;
   updatedAt: string;
 };
+
+// Newsletter (backend: modules/newsletter/newsletter.types.ts).
+// "none": never asked. Nobody is subscribed without asking.
+export type NewsletterStatus = 'none' | 'pending' | 'active' | 'unsubscribed';
+
+export type NewsletterIssueSummary = {
+  id: string;
+  subject: string;
+  createdAt: string;
+  createdBy: string | null;
+  total: number;
+  sent: number;
+  pending: number;
+  failed: number;
+  cancelled: number;
+};
+
+export type NewsletterOverview = {
+  subscribers: { active: number; pending: number; unsubscribed: number };
+  dailyLimit: number;
+  sentLast24h: number;
+  queued: number;
+  sending: boolean;
+  issues: NewsletterIssueSummary[];
+};
+
+export type NewsletterPostOption = {
+  id: string;
+  type: 'news' | 'column';
+  title: string;
+  slug: string;
+  publishedAt: string | null;
+  category: string | null;
+};

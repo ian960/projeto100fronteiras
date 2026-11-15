@@ -8,6 +8,7 @@ import { useTheme } from '../lib/theme';
 import CookieBanner, { CookieSettingsButton } from './CookieBanner';
 import { useCategories } from './queries';
 import { BannerSlot } from './banners';
+import { NewsletterBox } from './Newsletter';
 
 // "quarta-feira, 11 de novembro": a news site says what day it is.
 const today = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -206,6 +207,7 @@ function Footer() {
             Portal100Fronteiras
           </p>
           <p className="mt-2 max-w-sm text-[0.9375rem] leading-relaxed text-white/75">Notícias e opinião, publicadas pela nossa própria redação.</p>
+          <NewsletterBox tone="escuro" className="mt-8 max-w-md" />
         </div>
         <nav aria-label="Rodapé" className="flex flex-wrap content-start gap-x-6 gap-y-3 text-[0.9375rem] sm:justify-end">
           <Link to="/noticias" className="hover:underline underline-offset-4">
@@ -246,7 +248,7 @@ function Footer() {
 // Pages someone logged in with Google and no password yet may still open.
 // Everywhere else they are sent to create one first (ian's rule; the API
 // enforces it too, with 403 PASSWORD_REQUIRED).
-const OPEN_WITHOUT_PASSWORD = ['/criar-senha', '/privacidade', '/termos', '/contato', '/ajuda'];
+const OPEN_WITHOUT_PASSWORD = ['/criar-senha', '/privacidade', '/termos', '/contato', '/ajuda', '/newsletter/confirmar', '/newsletter/sair'];
 
 function PasswordGate() {
   const { data: me } = useMe();

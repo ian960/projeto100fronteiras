@@ -91,6 +91,10 @@ const schema = z
     MAIL_FROM_NAME: z.preprocess(emptyToUndefined, z.string().default('Portal100Fronteiras')),
     // Where the site's contact form (/contato) delivers. Empty: MAIL_FROM.
     CONTACT_EMAIL: z.preprocess(emptyToUndefined, z.email().optional()),
+    // Newsletter e-mails per rolling 24 hours (modules/newsletter). Brevo's
+    // free plan sends 300 a day in total; the 50 left over are for password
+    // links, confirmations and the contact form. On a paid plan, raise it.
+    NEWSLETTER_DAILY_LIMIT: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(100_000).default(250)),
 
     // "Entrar com Google" (modules/auth/auth.google.ts). Both from the OAuth
     // client in the Google Cloud Console; without them the button is hidden

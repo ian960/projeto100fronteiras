@@ -81,3 +81,15 @@ export const registerLimiter = rateLimit({
   keyGenerator,
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many sign-ups from this address.' } },
 });
+
+// The newsletter box sends a confirmation e-mail, and the links carry tokens.
+// A reader uses it once; a script would use it to send e-mail to strangers.
+export const newsletterLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip,
+  keyGenerator,
+  message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many attempts. Try again later.' } },
+});

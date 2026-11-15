@@ -21,6 +21,7 @@ import { postsController } from '../modules/posts/posts.controller';
 import { seoController } from '../modules/seo/seo.controller';
 import { bannersAdminRouter, bannersPublicRouter } from '../modules/banners/banners.routes';
 import { contactRouter } from '../modules/contact/contact.routes';
+import { newsletterAdminRouter, newsletterRouter } from '../modules/newsletter/newsletter.routes';
 
 export function buildRouter(): Router {
   const router = Router();
@@ -39,6 +40,8 @@ export function buildRouter(): Router {
   router.use('/banners', bannersPublicRouter());
   // The form on /contato: an e-mail to the newsroom, no account needed.
   router.use('/contact', contactRouter());
+  // Opt-in newsletter: subscribe, confirm, leave; "Minha conta" switch.
+  router.use('/newsletter', newsletterRouter());
 
   // ── admin ───────────────────────────────────────────────────────────────
   // Each of these routers applies authenticate + authorize(ADMIN) on itself,
@@ -49,6 +52,7 @@ export function buildRouter(): Router {
   router.use('/admin/authors', authorsAdminRouter());
   router.use('/admin/posts', postsAdminRouter());
   router.use('/admin/banners', bannersAdminRouter());
+  router.use('/admin/newsletter', newsletterAdminRouter());
 
   // ── columnist ───────────────────────────────────────────────────────────
   router.use('/columnist/posts', postsColumnistRouter());

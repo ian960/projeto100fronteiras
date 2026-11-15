@@ -13,6 +13,9 @@ export type Mail = {
   // Where "Responder" goes. The contact form uses it: the newsroom answers
   // the reader directly, while the message still comes from MAIL_FROM.
   replyTo?: { email: string; name?: string };
+  // Extra headers. The newsletter sends List-Unsubscribe, which puts a
+  // "Cancelar inscrição" button next to the sender in Gmail and Outlook.
+  headers?: Record<string, string>;
 };
 
 // What the "log" provider "sent". The tests read the links from here.
@@ -33,6 +36,7 @@ async function brevo(mail: Mail): Promise<void> {
       subject: mail.subject,
       textContent: mail.text,
       htmlContent: mail.html,
+      ...(mail.headers ? { headers: mail.headers } : {}),
     }),
   });
   if (!response.ok) throw new Error(`Brevo answered ${response.status}: ${await response.text()}`);
@@ -50,6 +54,7 @@ async function mailpit(mail: Mail): Promise<void> {
       Subject: mail.subject,
       Text: mail.text,
       HTML: mail.html,
+      ...(mail.headers ? { Headers: mail.headers } : {}),
     }),
   });
   if (!response.ok) throw new Error(`Mailpit answered ${response.status}: ${await response.text()}`);
@@ -66,6 +71,7 @@ async function resend(mail: Mail): Promise<void> {
       subject: mail.subject,
       text: mail.text,
       html: mail.html,
+      ...(mail.headers ? { headers: mail.headers } : {}),
     }),
   });
   if (!response.ok) throw new Error(`Resend answered ${response.status}: ${await response.text()}`);

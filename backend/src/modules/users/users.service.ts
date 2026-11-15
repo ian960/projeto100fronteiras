@@ -10,6 +10,7 @@ import { authorsRepository } from '../authors/authors.repository';
 import { mediaService } from '../media/media.service';
 import { usersRepository } from './users.repository';
 import type { IUserMe, IUserPublic, IUserWithAuthor } from './users.types';
+import { newsletterRepository } from '../newsletter/newsletter.repository';
 import type {
   ListUsersInput,
   PromoteUserInput,
@@ -151,6 +152,9 @@ export class UsersService {
 
     // Sessions are not tied to the row by a foreign key: wipe them by hand.
     await authRepository.deleteSessionsOfUser(id);
+
+    // The newsletter is tied to the address, not to the row: it goes too.
+    await newsletterRepository.deleteByEmail(target.email);
 
     if (posts === 0 && filesKept === 0) {
       await usersRepository.delete(id);

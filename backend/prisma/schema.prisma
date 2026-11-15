@@ -109,6 +109,7 @@ model User {
   resetTokens    PasswordResetToken[]
   publishedPosts Post[]  @relation("PostPublishedBy")
   uploadedMedia  Media[] @relation("MediaUploadedBy")
+  newsletterIssues NewsletterIssue[]
 
   @@map("users")
 }
@@ -418,4 +419,99 @@ model Banner {
   @@index([imageId])
   @@index([mobileImageId])
   @@map("banners")
+}
+
+// ---------------------------------------------------------------------------
+// Newsletter — opt-in only, sent by the admin from the panel
+//
+// A subscriber is an e-mail address, with or without an account (the account
+// page finds its row by the account's e-mail). Nobody is ever subscribed
+// without asking: the site form and an account without a verified e-mail go
+// through a confirmation link first (double opt-in).
+// ---------------------------------------------------------------------------
+
+enum NewsletterStatus {
+  pending // asked, has not clicked the confirmation link yet
+  active // receives the newsletter
+  unsubscribed // left; kept so nothing is ever sent again without a new opt-in
+}
+
+enum NewsletterDeliveryStatus {
+  pending // waiting for its turn (the daily limit, see newsletter.service.ts)
+  sent
+  failed // three attempts and the mail service refused it
+  cancelled // the admin stopped the send, or the reader left before their turn
+}
+
+model NewsletterSubscriber {
+  id String @id @default(uuid(7))
+
+  email  String           @unique // lowercase
+  status NewsletterStatus @default(pending)
+  // Where the request came from: "site" (the form), "conta" (Minha conta),
+  // "cadastro" (the sign-up box).
+  source String
+
+  // In every e-mail's "Descadastrar" link. Stored as is (it has to go into
+  // each e-mail); all it can do is unsubscribe this one address.
+  unsubscribeToken String @unique @map("unsubscribe_token")
+
+  // The confirmation link: SHA-256 of the token, like the password links.
+  confirmTokenHash String?   @unique @map("confirm_token_hash")
+  confirmSentAt    DateTime? @map("confirm_sent_at")
+
+  confirmedAt    DateTime? @map("confirmed_at")
+  unsubscribedAt DateTime? @map("unsubscribed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  deliveries NewsletterDelivery[]
+
+  @@index([status])
+  @@map("newsletter_subscribers")
+}
+
+// One newsletter the admin sent: the e-mail is built once, when it is created,
+// so editing a story afterwards does not change what is still waiting to go.
+model NewsletterIssue {
+  id      String  @id @default(uuid(7))
+  subject String
+  intro   String?
+  // Ready to send, with UNSUBSCRIBE_PLACEHOLDER where each reader's own link goes.
+  html    String
+  text    String
+
+  // SetNull: deleting the admin's account keeps the history.
+  createdById String?  @map("created_by_id")
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  deliveries NewsletterDelivery[]
+
+  @@index([createdAt(sort: Desc)])
+  @@map("newsletter_issues")
+}
+
+// One e-mail of one issue to one subscriber. The queue: whatever is pending
+// goes out as the daily limit allows, oldest issue first.
+model NewsletterDelivery {
+  id String @id @default(uuid(7))
+
+  issueId String          @map("issue_id")
+  issue   NewsletterIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  subscriberId String               @map("subscriber_id")
+  subscriber   NewsletterSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  status    NewsletterDeliveryStatus @default(pending)
+  attempts  Int                      @default(0)
+  sentAt    DateTime?                @map("sent_at")
+  createdAt DateTime                 @default(now()) @map("created_at")
+
+  @@unique([issueId, subscriberId])
+  // The queue, in order.
+  @@index([status, createdAt])
+  // "How many went out in the last 24 hours?"
+  @@index([sentAt])
+  @@map("newsletter_deliveries")
 }

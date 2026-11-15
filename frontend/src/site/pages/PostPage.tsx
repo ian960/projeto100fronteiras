@@ -10,6 +10,7 @@ import { useAuthor, usePost, useRelatedPosts } from '../queries';
 import NotFoundPage from './NotFoundPage';
 import { Comments } from '../Comments';
 import { BannerAd, BannerSlot, splitInHalf, useBannersReady, useSlotBanner } from '../banners';
+import { NewsletterBox } from '../Newsletter';
 
 export default function PostPage() {
   const { slug = '' } = useParams();
@@ -97,6 +98,9 @@ export default function PostPage() {
       {/* Before the comments: whoever finished the text gets somewhere to
           go next without scrolling past the whole discussion. */}
       <ReadAlso slug={post.slug} opinion={isOpinion} />
+
+      {/* Whoever read to the end is the reader most likely to want more. */}
+      <NewsletterBox className="mx-auto mt-14 max-w-[38rem]" />
 
       <Comments postId={post.id} opinion={isOpinion} />
     </article>

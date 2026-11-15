@@ -4,6 +4,7 @@ import { Conflict, Unauthenticated } from '../../shared/errors/AppError';
 import { logger } from '../../shared/utils/logger';
 import { Role } from '../../shared/types/enums';
 import { usersService } from '../users/users.service';
+import { newsletterService } from '../newsletter/newsletter.service';
 import { authService } from './auth.service';
 import {
   GOOGLE_LOGIN_TTL_MS,
@@ -50,6 +51,8 @@ export class AuthController {
     await regenerateSession(req);
     req.session.userId = user.id;
     await saveSession(req);
+
+    if (parsed.body.newsletter) await newsletterService.subscribe(parsed.body.email, 'cadastro');
 
     return created(res, { user });
   };

@@ -118,6 +118,11 @@ export async function patch<T>(path: string, body: unknown): Promise<T> {
   return res.data;
 }
 
+export async function put<T>(path: string, body: unknown): Promise<T> {
+  const res = await request<{ data: T }>('PUT', path, { body });
+  return res.data;
+}
+
 export async function del(path: string, body?: unknown): Promise<void> {
   await request<void>('DELETE', path, { body });
 }

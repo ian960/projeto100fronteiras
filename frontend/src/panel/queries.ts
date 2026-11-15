@@ -5,6 +5,8 @@ import type {
   BannerAdmin,
   BannerSlot,
   CategoryWithCount,
+  NewsletterOverview,
+  NewsletterPostOption,
   PostDetail,
   PostListItem,
   PostStatus,
@@ -269,5 +271,41 @@ export function useBannerActions() {
       onSuccess,
     }),
     remove: useMutation({ mutationFn: (id: string) => del(`/admin/banners/${id}`), onSuccess }),
+  };
+}
+
+// ── Newsletter (admin only) ──────────────────────────────────────────────────
+
+export function useNewsletterOverview() {
+  return useQuery({
+    queryKey: ['panel', 'newsletter'],
+    queryFn: () => get<NewsletterOverview>('/admin/newsletter'),
+    // While something is going out, the numbers move: look again every few
+    // seconds. Otherwise only when the page is opened.
+    refetchInterval: (query) => (query.state.data?.sending ? 4000 : false),
+  });
+}
+
+export function useNewsletterPosts() {
+  return useQuery({
+    queryKey: ['panel', 'newsletter', 'posts'],
+    queryFn: () => get<NewsletterPostOption[]>('/admin/newsletter/posts'),
+  });
+}
+
+export type NewsletterIssueInput = { subject: string; intro: string | null; postIds: string[] };
+
+export function useNewsletterActions() {
+  const client = useQueryClient();
+  const refresh = () => client.invalidateQueries({ queryKey: ['panel', 'newsletter'] });
+  return {
+    preview: useMutation({ mutationFn: (input: NewsletterIssueInput) => post<{ subject: string; html: string }>('/admin/newsletter/preview', input) }),
+    test: useMutation({ mutationFn: (input: NewsletterIssueInput) => post<{ email: string }>('/admin/newsletter/test', input) }),
+    send: useMutation({
+      mutationFn: (input: NewsletterIssueInput) => post<{ id: string; recipients: number }>('/admin/newsletter/issues', input),
+      onSuccess: refresh,
+    }),
+    cancel: useMutation({ mutationFn: (id: string) => post<{ cancelled: number }>(`/admin/newsletter/issues/${id}/cancel`), onSuccess: refresh }),
+    runQueue: useMutation({ mutationFn: () => post<NewsletterOverview>('/admin/newsletter/queue/run'), onSuccess: refresh }),
   };
 }
