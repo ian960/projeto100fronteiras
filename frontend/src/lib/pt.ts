@@ -133,6 +133,20 @@ const exact: Record<string, string> = {
     'O serviço de e-mail recusou o teste. Confira o MAIL_PROVIDER e os logs da API.',
   'Newsletter not found.': 'Envio não encontrado.',
 
+  // push notifications
+  'Push notifications are not configured on this server.':
+    'As notificações ainda não estão configuradas no servidor (faltam as chaves VAPID no Render).',
+  'This is not the address of a browser push service.': 'Este navegador não é compatível com as notificações do portal.',
+  'Invalid key.': 'Chave inválida.',
+  'Write a title.': 'Escreva o título da notificação.',
+  'This story already had a notification in the last 24 hours.': 'Esta matéria já teve notificação nas últimas 24 horas.',
+  'Nobody has turned on notifications yet.': 'Ninguém ativou as notificações ainda.',
+  'Story not found or not published.': 'Matéria não encontrada ou não publicada.',
+  'Turn on notifications in this browser first.': 'Ative as notificações neste navegador primeiro (no rodapé do site).',
+  'This browser is no longer subscribed. Turn notifications on again.':
+    'Este navegador não está mais inscrito. Ative as notificações de novo pelo rodapé do site.',
+  'The push service did not accept the test. Try again in a minute.': 'O serviço de notificações recusou o teste. Tente de novo em um minuto.',
+
   'Only an admin can delete files.': 'Só o administrador pode apagar arquivos.',
   'Cloudinary did not delete the file. Try again in a moment.': 'O Cloudinary não apagou o arquivo. Tente de novo em instantes.',
   'The same file is attached twice.': 'O mesmo arquivo foi anexado duas vezes.',
@@ -151,6 +165,7 @@ const patterns: [RegExp, (...groups: string[]) => string][] = [
   [/^Choose a file of type: (\w+)\.$/, (kind) => `Escolha um arquivo do tipo ${KIND_PT[kind] ?? kind}.`],
   [/^This file is still in use \((\d+)\)\. Remove it from the posts first\.$/, () => 'Este arquivo ainda está em uso. Tire-o das matérias antes de apagar.'],
   [/^Route .+ does not exist\.$/, () => 'Endereço da API não encontrado.'],
+  [/^The limit of (\d+) notifications in 24 hours has been reached\.$/, (n) => `O limite de ${n} notificações em 24 horas já foi atingido. Tente mais tarde.`],
 
   // Zod's own messages, from field validation.
   [/^Too small: expected string to have >=(\d+) characters?$/, (n) => `Use pelo menos ${n} caracteres.`],

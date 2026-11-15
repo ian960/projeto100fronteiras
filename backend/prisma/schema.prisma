@@ -110,6 +110,7 @@ model User {
   publishedPosts Post[]  @relation("PostPublishedBy")
   uploadedMedia  Media[] @relation("MediaUploadedBy")
   newsletterIssues NewsletterIssue[]
+  pushNotifications PushNotification[]
 
   @@map("users")
 }
@@ -225,6 +226,7 @@ model Post {
   attachments PostAttachment[]
 
   comments Comment[]
+  pushNotifications PushNotification[]
 
   // Home feed and columnists tab.
   @@index([type, status, publishedAt(sort: Desc)])
@@ -514,4 +516,63 @@ model NewsletterDelivery {
   // "How many went out in the last 24 hours?"
   @@index([sentAt])
   @@map("newsletter_deliveries")
+}
+
+// ── Push notifications (modules/push) ─────────────────────────────────────────
+
+// One browser that asked for notifications, by clicking "Ativar
+// notificações". Not tied to an account: the endpoint is an address at the
+// browser's push service (Google, Mozilla, Apple, Microsoft), and the keys
+// encrypt the message so that only that browser can read it. Nothing else
+// about the reader is stored.
+model PushSubscription {
+  id       String @id @default(uuid(7))
+  endpoint String @unique
+  p256dh   String
+  auth     String
+
+  // Refusals in a row that were not "gone" (404/410, deleted at once). After
+  // a few, the subscription is dropped too.
+  failures   Int       @default(0)
+  lastSentAt DateTime? @map("last_sent_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@map("push_subscriptions")
+}
+
+enum PushNotificationStatus {
+  sending
+  done
+}
+
+// One notification the admin sent, about one story. It goes out in batches
+// (cursor = the last subscription reached), so a restart of the server
+// picks it up where it stopped.
+model PushNotification {
+  id    String  @id @default(uuid(7))
+  title String
+  body  String
+  url   String
+  image String?
+
+  // SetNull: deleting the story keeps the history.
+  postId String? @map("post_id")
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  status  PushNotificationStatus @default(sending)
+  cursor  String?
+  total   Int                    @default(0)
+  sent    Int                    @default(0)
+  failed  Int                    @default(0)
+  removed Int                    @default(0)
+
+  createdById String?   @map("created_by_id")
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  finishedAt  DateTime? @map("finished_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@map("push_notifications")
 }

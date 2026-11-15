@@ -23,6 +23,7 @@ function Sidebar({ me }: { me: User }) {
         { to: '/painel/usuarios', label: 'Usuários' },
         { to: '/painel/anunciantes', label: 'Anunciantes' },
         { to: '/painel/newsletter', label: 'Newsletter' },
+        { to: '/painel/notificacoes', label: 'Notificações' },
         { to: '/painel/perfil', label: 'Minha conta' },
       ]
     : [

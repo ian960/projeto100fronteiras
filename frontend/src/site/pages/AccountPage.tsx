@@ -8,6 +8,7 @@ import { useChangePassword, useDeleteMe, useDocumentTitle, useLogout, useMe, use
 import type { User } from '../../lib/types';
 import { ImageField } from '../../panel/mediaFields';
 import { NewsletterAccountSection } from '../Newsletter';
+import { PushSettings } from '../Notifications';
 import type { ImageValue } from '../../panel/mediaFields';
 
 // "Minha conta": any logged-in person (readers included) changes their own
@@ -45,6 +46,7 @@ export default function AccountPage() {
         <ProfileForm key={me.id} me={me} />
         <PasswordForm email={me.email} />
         <NewsletterAccountSection email={me.email} />
+        <PushSettings id="notificacoes" />
         <section className="rounded-lg border border-linha bg-papel p-5">
           <h2 className="font-semibold">Sair</h2>
           <p className="mb-4 mt-1 text-sm text-tinta-suave">Desconecta a sua conta deste aparelho.</p>

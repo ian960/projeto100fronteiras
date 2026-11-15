@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
+import webpush from 'web-push';
 import { config, parse } from 'dotenv';
 import { FAKE_CLOUDINARY_ENV } from './tests/helpers/cloudinaryTestEnv';
 
@@ -24,6 +25,14 @@ for (const key of Object.keys(FAKE_CLOUDINARY_ENV)) {
 // Never a real e-mail from the tests, whatever backend/.env says: the "log"
 // provider keeps what it would send in memory (shared/mail/mailer.ts outbox).
 process.env.MAIL_PROVIDER = 'log';
+
+// Push notifications on, with a pair of keys made for this run only. The
+// tests swap the sender (modules/push/push.sender.ts), so nothing reaches a
+// real push service.
+const testVapid = webpush.generateVAPIDKeys();
+process.env.VAPID_PUBLIC_KEY = testVapid.publicKey;
+process.env.VAPID_PRIVATE_KEY = testVapid.privateKey;
+process.env.VAPID_SUBJECT = 'mailto:testes@example.com';
 
 // The real account, for the cloudinary-real group only: REAL_CLOUDINARY_URL,
 // or the CLOUDINARY_URL in backend/.env (which the line above keeps away from

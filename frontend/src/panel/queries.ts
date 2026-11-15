@@ -7,6 +7,7 @@ import type {
   CategoryWithCount,
   NewsletterOverview,
   NewsletterPostOption,
+  PushOverview,
   PostDetail,
   PostListItem,
   PostStatus,
@@ -307,5 +308,30 @@ export function useNewsletterActions() {
     }),
     cancel: useMutation({ mutationFn: (id: string) => post<{ cancelled: number }>(`/admin/newsletter/issues/${id}/cancel`), onSuccess: refresh }),
     runQueue: useMutation({ mutationFn: () => post<NewsletterOverview>('/admin/newsletter/queue/run'), onSuccess: refresh }),
+  };
+}
+
+// ── Push notifications (admin only) ─────────────────────────────────────────
+
+export function usePushOverview() {
+  return useQuery({
+    queryKey: ['panel', 'push'],
+    queryFn: () => get<PushOverview>('/admin/push'),
+    refetchInterval: (query) => (query.state.data?.sending ? 3000 : false),
+  });
+}
+
+export type PushNotificationInput = { postId: string; title: string; body: string };
+
+export function usePushActions() {
+  const client = useQueryClient();
+  return {
+    send: useMutation({
+      mutationFn: (input: PushNotificationInput) => post<{ id: string; total: number }>('/admin/push/notifications', input),
+      onSuccess: () => client.invalidateQueries({ queryKey: ['panel', 'push'] }),
+    }),
+    test: useMutation({
+      mutationFn: (input: PushNotificationInput & { endpoint: string }) => post<void>('/admin/push/test', input),
+    }),
   };
 }

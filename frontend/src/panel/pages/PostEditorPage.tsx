@@ -587,6 +587,11 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
                         Enviar por newsletter
                       </Link>
                     )}
+                    {isAdmin && (
+                      <Link to={`/painel/notificacoes?materia=${post.id}`} className="text-center text-sm font-medium text-anil hover:underline underline-offset-4">
+                        Enviar notificação
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>

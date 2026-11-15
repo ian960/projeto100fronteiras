@@ -254,6 +254,33 @@ export type NewsletterPostOption = {
   type: 'news' | 'column';
   title: string;
   slug: string;
+  excerpt: string;
   publishedAt: string | null;
   category: string | null;
+};
+
+// Push notifications (backend: modules/push/push.types.ts).
+export type PushNotificationSummary = {
+  id: string;
+  title: string;
+  body: string;
+  url: string;
+  postTitle: string | null;
+  status: 'sending' | 'done';
+  total: number;
+  sent: number;
+  failed: number;
+  removed: number;
+  createdAt: string;
+  finishedAt: string | null;
+  createdBy: string | null;
+};
+
+export type PushOverview = {
+  configured: boolean;
+  subscriptions: number;
+  dailyLimit: number;
+  sentLast24h: number;
+  sending: boolean;
+  notifications: PushNotificationSummary[];
 };
