@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError, del, get, patch, post } from './api';
-import type { Health, User } from './types';
+import { ApiError, del, get, patch, post, put } from './api';
+import type { Health, NewsletterStatus, User } from './types';
 
 const SITE = 'Portal100Fronteiras';
 
@@ -42,7 +42,7 @@ export function useLogout() {
     mutationFn: () => post('/auth/logout'),
     onSuccess: () => {
       // Drop everything the previous user could see.
-      client.removeQueries({ predicate: (query) => query.queryKey[0] === 'panel' });
+      client.removeQueries({ predicate: (query) => query.queryKey[0] === 'panel' || query.queryKey[0] === 'newsletter' });
       client.setQueryData(['me'], null);
     },
   });
@@ -66,7 +66,7 @@ export function useDeleteMe() {
   return useMutation({
     mutationFn: (password: string | undefined) => del('/auth/me', password ? { password } : {}),
     onSuccess: () => {
-      client.removeQueries({ predicate: (query) => query.queryKey[0] === 'panel' });
+      client.removeQueries({ predicate: (query) => query.queryKey[0] === 'panel' || query.queryKey[0] === 'newsletter' });
       client.setQueryData(['me'], null);
     },
   });
@@ -87,5 +87,24 @@ export function useHealth() {
     queryKey: ['health'],
     queryFn: () => get<Health>('/health'),
     staleTime: 5 * 60_000,
+  });
+}
+
+// The newsletter switch of the logged-in reader ("Minha conta" and the boxes
+// on the site). Only asked when someone is logged in.
+export function useNewsletterMine(enabled: boolean) {
+  return useQuery({
+    queryKey: ['newsletter', 'me'],
+    queryFn: async () => (await get<{ status: NewsletterStatus }>('/newsletter/me')).status,
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useSetNewsletterMine() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (subscribed: boolean) => (await put<{ status: NewsletterStatus }>('/newsletter/me', { subscribed })).status,
+    onSuccess: (status) => client.setQueryData(['newsletter', 'me'], status),
   });
 }

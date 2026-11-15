@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, TextField } from '../../components/ui';
+import { Alert, Button, Checkbox, TextField } from '../../components/ui';
 import { ApiError, post } from '../../lib/api';
 import { useChangePassword, useDeleteMe, useDocumentTitle, useHealth, useLogin, useLogout, useMe } from '../../lib/hooks';
 import type { User } from '../../lib/types';
@@ -140,6 +140,8 @@ export function RegisterPage() {
   const client = useQueryClient();
   const { data: me } = useMe();
   const [form, setForm] = useState({ name: '', email: '', password: '' });
+  // Unticked: the newsletter is always the reader's own choice.
+  const [newsletter, setNewsletter] = useState(false);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
@@ -151,7 +153,7 @@ export function RegisterPage() {
     setBusy(true);
     setError(null);
     try {
-      await post('/auth/register', form);
+      await post('/auth/register', { ...form, newsletter });
       // Mark done before the session refresh lands, or the redirect for
       // logged-in visitors would fire first.
       setDone(true);
@@ -169,6 +171,11 @@ export function RegisterPage() {
         <p className="text-lg leading-relaxed">
           Sua conta foi criada com sucesso. Seja bem-vindo!
         </p>
+        {newsletter && (
+          <p className="mt-3 text-tinta-suave">
+            Para começar a receber a newsletter, confirme pelo link que enviamos para {form.email.trim()}.
+          </p>
+        )}
       </AuthCard>
     );
   }
@@ -199,6 +206,12 @@ export function RegisterPage() {
         <TextField label="Nome" autoComplete="name" {...field('name')} required />
         <TextField label="E-mail" type="email" autoComplete="email" {...field('email')} required />
         <TextField label="Senha" type="password" autoComplete="new-password" hint="Pelo menos 8 caracteres." {...field('password')} required />
+        <Checkbox
+          label="Quero receber a newsletter por e-mail"
+          hint="Opcional. Enviamos um link para confirmar, e você desliga quando quiser em Minha conta."
+          checked={newsletter}
+          onChange={setNewsletter}
+        />
         <p className="text-sm text-tinta-suave">
           Ao criar a conta, você concorda com os{' '}
           <Link to="/termos" className="font-medium text-anil hover:underline underline-offset-4">

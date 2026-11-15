@@ -119,6 +119,20 @@ const exact: Record<string, string> = {
   'Too many messages. Try again later.': 'Você já mandou várias mensagens. Tente de novo daqui a uma hora ou escreva para o e-mail da página.',
   'The message could not be sent. Try again later or write to the e-mail on the page.':
     'Não foi possível enviar agora. Tente de novo mais tarde ou escreva para o e-mail desta página.',
+
+  // newsletter
+  'This link is invalid or has expired. Subscribe again.': 'Este link não vale mais (passou de 7 dias ou foi trocado por um mais novo). Inscreva-se de novo.',
+  'This link is invalid.': 'Este link não é válido. Confira se ele foi copiado inteiro.',
+  'Nobody has subscribed yet.': 'Ainda não há nenhum inscrito confirmado na newsletter.',
+  'Write a subject.': 'Escreva o assunto do e-mail.',
+  'Pick at least one story.': 'Escolha pelo menos uma matéria.',
+  'At most 10 stories.': 'Escolha no máximo 10 matérias.',
+  'None of these stories is published.': 'Nenhuma das matérias escolhidas está publicada.',
+  'Pick published stories.': 'Escolha matérias publicadas.',
+  'The mail service refused the test. Check MAIL_PROVIDER and the logs.':
+    'O serviço de e-mail recusou o teste. Confira o MAIL_PROVIDER e os logs da API.',
+  'Newsletter not found.': 'Envio não encontrado.',
+
   'Only an admin can delete files.': 'Só o administrador pode apagar arquivos.',
   'Cloudinary did not delete the file. Try again in a moment.': 'O Cloudinary não apagou o arquivo. Tente de novo em instantes.',
   'The same file is attached twice.': 'O mesmo arquivo foi anexado duas vezes.',

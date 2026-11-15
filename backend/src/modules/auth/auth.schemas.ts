@@ -10,6 +10,9 @@ export const registerSchema = z.object({
     name: z.string().trim().min(2).max(120),
     email: z.email().trim().toLowerCase(),
     password: z.string().min(8).max(200),
+    // The unticked box "Quero receber a newsletter". Ticked, a confirmation
+    // link goes to the address; nothing is sent before it is clicked.
+    newsletter: z.boolean().optional(),
   }),
 });
 

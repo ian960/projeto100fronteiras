@@ -559,6 +559,8 @@ export function robots(request: Request, env: SeoEnv): Response {
     'Disallow: /redefinir-senha',
     'Disallow: /minha-conta',
     'Disallow: /salvos',
+    // The links in the newsletter e-mails (confirm, leave).
+    'Disallow: /newsletter/',
     // Search results: endless combinations of the same articles.
     'Disallow: /busca',
     'Disallow: /api/',

@@ -22,6 +22,7 @@ function Sidebar({ me }: { me: User }) {
         { to: '/painel/autores', label: 'Autores' },
         { to: '/painel/usuarios', label: 'Usuários' },
         { to: '/painel/anunciantes', label: 'Anunciantes' },
+        { to: '/painel/newsletter', label: 'Newsletter' },
         { to: '/painel/perfil', label: 'Minha conta' },
       ]
     : [

@@ -4,6 +4,7 @@ import { disconnectDatabase } from './config/prisma';
 import { isMediaConfigured } from './config/cloudinary';
 import { logger } from './shared/utils/logger';
 import { isMailConfigured } from './shared/mail/mailer';
+import { QUEUE_INTERVAL_MS, newsletterService } from './modules/newsletter/newsletter.service';
 
 const app = createApp();
 
@@ -26,6 +27,12 @@ const server = app.listen(env.PORT, () => {
     logger.warn('SESSION_SECRET is not set: using the development fallback. Never do this in production.');
   }
 });
+
+// Newsletter e-mails still waiting for the daily limit (or interrupted by a
+// restart) go out on their own: a look at the queue shortly after starting,
+// then every 10 minutes. See modules/newsletter/newsletter.service.ts.
+setTimeout(() => newsletterService.kick(), 30_000).unref();
+setInterval(() => newsletterService.kick(), QUEUE_INTERVAL_MS).unref();
 
 // Render's proxy keeps connections to the API open and reuses them. If Node
 // closed an idle one first (its default is 5 s), a request sent on it at that

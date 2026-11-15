@@ -582,6 +582,11 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
                     <a href={postPath(post)} target="_blank" rel="noreferrer" className="text-center text-sm font-medium text-anil hover:underline underline-offset-4">
                       Ver no site
                     </a>
+                    {isAdmin && (
+                      <Link to={`/painel/newsletter?materia=${post.id}`} className="text-center text-sm font-medium text-anil hover:underline underline-offset-4">
+                        Enviar por newsletter
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
