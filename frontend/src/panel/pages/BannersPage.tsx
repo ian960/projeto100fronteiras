@@ -109,16 +109,20 @@ export default function BannersPage() {
                 />
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2 font-semibold">
-                    {banner.advertiser}
+                    {banner.advertiser ?? <span className="font-normal text-tinta-suave">Sem nome</span>}
                     <span className={cx('rounded-full px-2 text-xs font-semibold leading-5', status.tone)}>{status.label}</span>
                   </p>
                   <p className="text-sm text-tinta-suave">
                     {SLOT_LABELS[banner.slot].label}, de {formatDate(banner.startsAt)} a {formatDate(banner.endsAt)}
                   </p>
                   <p className="text-sm text-tinta-suave">{statsLine(banner)}</p>
-                  <a href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block truncate text-sm text-anil hover:underline underline-offset-4">
-                    {banner.linkUrl}
-                  </a>
+                  {banner.linkUrl ? (
+                    <a href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block truncate text-sm text-anil hover:underline underline-offset-4">
+                      {banner.linkUrl}
+                    </a>
+                  ) : (
+                    <p className="text-sm text-tinta-suave">Sem link (só a imagem, sem clique)</p>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Checkbox
@@ -186,8 +190,9 @@ function BannerForm({ banner, onDone }: { banner: BannerAdmin | null; onDone: ()
     if (linkUrl && !/^https?:\/\//i.test(linkUrl)) linkUrl = `https://${linkUrl}`;
 
     const input = {
-      advertiser: form.advertiser.trim(),
-      linkUrl,
+      // Empty means none: a banner can be just the picture.
+      advertiser: form.advertiser.trim() || null,
+      linkUrl: linkUrl || null,
       slot: form.slot,
       imageId: form.image.id,
       mobileImageId: form.mobileImage?.id ?? null,
@@ -207,21 +212,23 @@ function BannerForm({ banner, onDone }: { banner: BannerAdmin | null; onDone: ()
       {shownError && <Alert>{shownError}</Alert>}
       <TextField
         label="Anunciante"
+        optional
         placeholder="Ex.: Padaria Central"
         value={form.advertiser}
         onChange={(e) => setForm({ ...form, advertiser: e.target.value })}
         error={errors.advertiser}
-        hint="Também é o texto alternativo da imagem, lido por leitores de tela."
+        hint="Aparece aqui no painel e é lido por leitores de tela. Não aparece escrito no site."
       />
       <TextField
         label="Link do anunciante"
+        optional
         type="url"
         inputMode="url"
         placeholder="https://"
         value={form.linkUrl}
         onChange={(e) => setForm({ ...form, linkUrl: e.target.value })}
         error={errors.linkUrl}
-        hint="Abre em uma nova aba quando o leitor clica no banner."
+        hint="Abre em uma nova aba quando o leitor clica. Sem link, o banner é só a imagem e não é clicável."
       />
       <SelectField
         label="Onde aparece"

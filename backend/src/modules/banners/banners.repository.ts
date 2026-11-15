@@ -5,8 +5,8 @@ import { mediaSelect } from '../media/media.select';
 import type { IBanner } from './banners.types';
 
 export type BannerData = {
-  advertiser: string;
-  linkUrl: string;
+  advertiser: string | null;
+  linkUrl: string | null;
   slot: BannerSlot;
   imageId: string;
   mobileImageId: string | null;

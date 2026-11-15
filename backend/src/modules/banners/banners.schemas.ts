@@ -12,9 +12,12 @@ const slot = z.enum([
 // Only http(s): a "javascript:" link on a banner would run on the site.
 const linkUrl = z.url({ protocol: /^https?$/, error: 'Use a link starting with http:// or https://.' }).max(2000);
 
+// Both optional: a banner can be just a picture. An empty field means "none".
+const emptyToNull = (value: unknown) => (typeof value === 'string' && value.trim() === '' ? null : value);
+
 const fields = {
-  advertiser: z.string().trim().min(2).max(120),
-  linkUrl,
+  advertiser: z.preprocess(emptyToNull, z.string().trim().min(2).max(120).nullish()),
+  linkUrl: z.preprocess(emptyToNull, linkUrl.nullish()),
   slot,
   imageId: z.uuid(),
   mobileImageId: z.uuid().nullish(),
@@ -38,8 +41,8 @@ export const updateBannerSchema = z.object({
   params: z.object({ id: z.uuid() }),
   body: z
     .object({
-      advertiser: fields.advertiser.optional(),
-      linkUrl: fields.linkUrl.optional(),
+      advertiser: fields.advertiser,
+      linkUrl: fields.linkUrl,
       slot: fields.slot.optional(),
       imageId: fields.imageId.optional(),
       mobileImageId: fields.mobileImageId,

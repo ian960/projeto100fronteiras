@@ -117,6 +117,30 @@ describe('banners: quem pode mexer', () => {
   });
 });
 
+describe('banners: só a imagem', () => {
+  it('aceita banner sem nome e sem link', async () => {
+    const { client, image } = await asAdmin();
+    const created = await client
+      .post('/api/admin/banners')
+      .send(bannerInput(image.id, { advertiser: '', linkUrl: '' }))
+      .expect(201);
+    expect(created.body.data.banner).toMatchObject({ advertiser: null, linkUrl: null });
+
+    const site = (await agent().get('/api/banners').expect(200)).body.data.banners;
+    expect(site[0]).toMatchObject({ advertiser: null, linkUrl: null });
+  });
+
+  it('tira o link de um banner que já tinha', async () => {
+    const { client, image } = await asAdmin();
+    const created = await client.post('/api/admin/banners').send(bannerInput(image.id)).expect(201);
+    const updated = await client
+      .patch(`/api/admin/banners/${created.body.data.banner.id}`)
+      .send({ linkUrl: null, advertiser: null })
+      .expect(200);
+    expect(updated.body.data.banner).toMatchObject({ advertiser: null, linkUrl: null });
+  });
+});
+
 describe('banners: validação', () => {
   it('recusa link que não seja http ou https', async () => {
     const { client, image } = await asAdmin();
