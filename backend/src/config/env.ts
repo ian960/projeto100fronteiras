@@ -14,6 +14,14 @@ const emptyToUndefined = (value: unknown) =>
 
 const optionalString = z.preprocess(emptyToUndefined, z.string().min(1).optional());
 
+// Keys pasted into a dashboard often bring a newline or a space at the end.
+// Sent as they are, Google answers "OAuth client was not found" (it got
+// "...googleusercontent.com%0A"). Trimmed here, the paste does not matter.
+const trimmedString = z.preprocess(
+  (value) => emptyToUndefined(typeof value === 'string' ? value.trim() : value),
+  z.string().min(1).optional(),
+);
+
 // The exact format the Cloudinary console shows under "API Keys":
 //   cloudinary://<api_key>:<api_secret>@<cloud_name>
 const CLOUDINARY_URL_PATTERN = /^cloudinary:\/\/([^:\s]+):([^@\s]+)@([A-Za-z0-9_-]+)$/;
@@ -89,8 +97,8 @@ const schema = z
     // and the rest of the login works as before. Google sends readers back to
     // SITE_URL + /api/auth/google/callback, which must be listed in the
     // client's "Authorized redirect URIs".
-    GOOGLE_CLIENT_ID: optionalString,
-    GOOGLE_CLIENT_SECRET: optionalString,
+    GOOGLE_CLIENT_ID: trimmedString,
+    GOOGLE_CLIENT_SECRET: trimmedString,
 
     // First admin, created by `npm run db:seed`.
     SEED_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().default('Admin')),
