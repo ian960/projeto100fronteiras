@@ -59,6 +59,18 @@ export const bannerStatsLimiter = rateLimit({
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many requests.' } },
 });
 
+// The contact form sends an e-mail to the newsroom. A person writes once or
+// twice; a script would fill the inbox.
+export const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip,
+  keyGenerator,
+  message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many messages. Try again later.' } },
+});
+
 // A public sign-up endpoint with no limit becomes a fake-account dump.
 export const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,

@@ -9,6 +9,8 @@
 //                                   article itself inside <div id="root">
 //   /categoria/:slug, /autor/:slug  title, description, canonical and the
 //                                   list of the latest articles
+//   /privacidade, /termos,          title, description, canonical and the
+//   /contato                        whole text (src/site/legal.ts)
 //   /sitemap.xml                    every public address
 //   /sitemap-news.xml               the Google News sitemap (last 48 hours)
 //   /robots.txt                     what robots may read, and where the
@@ -17,6 +19,8 @@
 // React replaces the content of #root as soon as it loads, so the reader sees
 // the normal page. If the API fails, the plain index.html goes out: the page
 // still opens, only without these extras.
+
+import { CONTACT, CONTACT_EMAIL, PRIVACY, TERMS, UPDATED_AT, pieces, type LegalPage } from '../src/site/legal';
 
 export interface SeoEnv {
   ASSETS: Fetcher;
@@ -400,6 +404,60 @@ export async function authorPage(request: Request, env: SeoEnv, api: ApiFetch, s
   });
 }
 
+// ── /privacidade, /termos, /contato ────────────────────────────────────────
+
+// The same words the React page shows, so Google (and the AdSense review)
+// reads the policy without running JavaScript.
+
+function richText(text: string): string {
+  return pieces(text)
+    .map((piece) => (piece.href ? `<a href="${escapeHtml(piece.href)}">${escapeHtml(piece.text)}</a>` : escapeHtml(piece.text)))
+    .join('');
+}
+
+function legalHtml(page: LegalPage): string {
+  const paragraphs = (list?: string[]) => (list ?? []).map((text) => `<p>${richText(text)}</p>`).join('');
+  return (
+    `<article><h1>${escapeHtml(page.title)}</h1><p>Última atualização: ${escapeHtml(UPDATED_AT)}</p>` +
+    paragraphs(page.intro) +
+    page.sections
+      .map(
+        (section) =>
+          `<section id="${escapeHtml(section.id)}"><h2>${escapeHtml(section.title)}</h2>` +
+          paragraphs(section.paragraphs) +
+          (section.items ? `<ul>${section.items.map((item) => `<li>${richText(item)}</li>`).join('')}</ul>` : '') +
+          paragraphs(section.after) +
+          '</section>',
+      )
+      .join('') +
+    '</article>'
+  );
+}
+
+function contactHtml(): string {
+  return (
+    `<article><h1>${escapeHtml(CONTACT.title)}</h1>` +
+    CONTACT.intro.map((text) => `<p>${richText(text)}</p>`).join('') +
+    `<p>E-mail: <a href="mailto:${escapeHtml(CONTACT_EMAIL)}">${escapeHtml(CONTACT_EMAIL)}</a></p>` +
+    `<ul>${CONTACT.topics.map((topic) => `<li>${richText(topic)}</li>`).join('')}</ul>` +
+    '</article>'
+  );
+}
+
+export const STATIC_PATHS = [PRIVACY.path, TERMS.path, CONTACT.path] as const;
+
+export function staticPage(request: Request, env: SeoEnv, path: (typeof STATIC_PATHS)[number]): Promise<Response> {
+  const origin = siteOrigin(env, request);
+  const page = path === PRIVACY.path ? PRIVACY : path === TERMS.path ? TERMS : null;
+  return renderPage(request, env, {
+    title: page?.title ?? CONTACT.title,
+    description: page?.description ?? CONTACT.description,
+    canonical: `${origin}${path}`,
+    ogType: 'website',
+    rootHtml: page ? legalHtml(page) : contactHtml(),
+  });
+}
+
 // ── sitemaps ────────────────────────────────────────────────────────────────
 
 type SitemapData = {
@@ -451,6 +509,7 @@ export async function sitemap(request: Request, env: SeoEnv, api: ApiFetch): Pro
     url('/', newest),
     url('/noticias', newest),
     url('/colunistas'),
+    ...STATIC_PATHS.map((path) => url(path)),
     ...data.categories.map((category) => url(`/categoria/${category.slug}`, category.updatedAt)),
     ...data.authors.map((author) => url(`/autor/${author.slug}`, author.updatedAt)),
     ...data.posts.map((post) => url(postPath(post.type, post.slug), post.updatedAt)),

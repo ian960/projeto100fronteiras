@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { Button } from '../components/ui';
 import { GA_ID, setConsent, useConsent } from '../lib/analytics';
 
@@ -16,7 +17,10 @@ export default function CookieBanner() {
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p className="text-[0.9375rem] leading-relaxed">
           Usamos cookies do Google Analytics para contar as visitas e saber quais notícias são mais lidas. Nada é usado para
-          anúncios. Você aceita?
+          anúncios. Você aceita?{' '}
+          <Link to="/privacidade#cookies" className="font-medium text-anil hover:underline underline-offset-4">
+            Saiba mais
+          </Link>
         </p>
         <div className="flex shrink-0 gap-2">
           <Button variant="secundario" small onClick={() => setConsent('recusado')}>

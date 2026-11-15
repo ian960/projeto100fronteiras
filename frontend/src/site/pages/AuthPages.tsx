@@ -154,6 +154,17 @@ export function RegisterPage() {
         <TextField label="Nome" autoComplete="name" {...field('name')} required />
         <TextField label="E-mail" type="email" autoComplete="email" {...field('email')} required />
         <TextField label="Senha" type="password" autoComplete="new-password" hint="Pelo menos 8 caracteres." {...field('password')} required />
+        <p className="text-sm text-tinta-suave">
+          Ao criar a conta, você concorda com os{' '}
+          <Link to="/termos" className="font-medium text-anil hover:underline underline-offset-4">
+            Termos de uso
+          </Link>{' '}
+          e com a{' '}
+          <Link to="/privacidade" className="font-medium text-anil hover:underline underline-offset-4">
+            Política de Privacidade
+          </Link>
+          .
+        </p>
         <Button type="submit" busy={busy} className="mt-1 h-11">
           Criar conta
         </Button>

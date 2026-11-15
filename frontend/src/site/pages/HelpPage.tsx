@@ -350,8 +350,11 @@ export default function HelpPage() {
       <div className="mt-16 rounded-lg bg-superficie p-6 text-center">
         <p className="titulo text-xl">Não achou o que procurava?</p>
         <p className="mt-2 text-tinta-suave">Comente em qualquer matéria ou fale com a equipe do portal.</p>
-        <div className="mt-5 flex justify-center gap-3">
-          <ButtonLink to="/">Voltar para o início</ButtonLink>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <ButtonLink to="/contato">Fale com a redação</ButtonLink>
+          <ButtonLink to="/" variant="secundario">
+            Voltar para o início
+          </ButtonLink>
         </div>
       </div>
     </div>
