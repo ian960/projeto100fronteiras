@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { env } from './config/env';
 import { isMediaConfigured } from './config/cloudinary';
 import { sessionMiddleware } from './config/session';
+import { isGoogleLoginConfigured } from './modules/auth/auth.google';
 import { proxyGuard } from './shared/middlewares/proxyGuard';
 import { buildRouter } from './routes/routes';
 import { notFound } from './shared/middlewares/notFound';
@@ -44,6 +45,8 @@ export function createApp() {
         ok: true,
         environment: env.NODE_ENV,
         uploads: isMediaConfigured() ? 'cloudinary' : 'disabled',
+        // The site shows "Entrar com Google" only when this is true.
+        googleLogin: isGoogleLoginConfigured(),
       },
     });
   });

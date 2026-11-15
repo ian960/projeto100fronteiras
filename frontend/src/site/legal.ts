@@ -58,6 +58,7 @@ export const PRIVACY: LegalPage = {
       title: '2. Quais dados coletamos',
       items: [
         'Cadastro: nome, e-mail e senha. A senha é guardada só de forma cifrada (Argon2): nem a equipe do portal consegue lê-la.',
+        'Entrar com Google, se você escolher: o Google nos informa o seu nome, o seu e-mail (confirmado por ele) e um código que identifica a sua conta do Google. Não recebemos a sua senha do Google, seus contatos nem nada além disso. Na primeira vez, pedimos que você crie também uma senha do portal.',
         'Perfil, se você quiser preencher: foto e uma bio curta. Eles aparecem ao lado dos seus comentários.',
         'Comentários: o texto, a data e a conta que comentou. Comentários são públicos e mostram o seu nome e a sua foto.',
         'Login: um cookie de sessão que mantém você conectado (veja a seção 4).',
@@ -109,7 +110,7 @@ export const PRIVACY: LegalPage = {
         'Render: servidor e banco de dados onde ficam as contas e os comentários.',
         'Cloudinary: armazenamento e entrega das imagens e arquivos, incluindo a sua foto de perfil, se você enviar uma.',
         'Brevo: envio dos e-mails do portal (redefinição de senha e mensagens de contato).',
-        'Google: Google Analytics, só com o seu consentimento, e YouTube, nos vídeos incorporados às matérias.',
+        'Google: login com a conta do Google, só se você escolher essa opção; Google Analytics, só com o seu consentimento; e YouTube, nos vídeos incorporados às matérias. Ao entrar com o Google, o próprio Google fica sabendo que você entrou no portal, conforme a política de privacidade dele.',
       ],
       after: [
         'Anunciantes não recebem dados pessoais dos leitores: só o total de visualizações e de cliques dos seus banners.',
@@ -129,7 +130,7 @@ export const PRIVACY: LegalPage = {
       id: 'retencao',
       title: '7. Por quanto tempo guardamos',
       items: [
-        'Conta e perfil: enquanto a conta existir.',
+        'Conta e perfil, incluindo a ligação com a sua conta do Google: enquanto a conta existir.',
         'Comentários: até você apagá-los, excluir a conta ou a moderação removê-los.',
         'Sessão de login: até 7 dias sem uso, ou até você sair.',
         'Links de redefinição de senha: valem por 1 hora e só podem ser usados uma vez.',
@@ -142,7 +143,7 @@ export const PRIVACY: LegalPage = {
       id: 'exclusao',
       title: '8. Excluir a sua conta',
       paragraphs: [
-        'Você mesmo pode excluir a conta, a qualquer momento, no fim da página [Minha conta](/minha-conta), confirmando com a sua senha. Na hora, apagamos o seu nome, e-mail, senha, foto e bio, e encerramos todas as sessões abertas.',
+        'Você mesmo pode excluir a conta, a qualquer momento, no fim da página [Minha conta](/minha-conta), confirmando com a sua senha. Na hora, apagamos o seu nome, e-mail, senha, foto e bio, a ligação com a sua conta do Google, e encerramos todas as sessões abertas. Para também tirar o acesso do portal no Google, acesse [Sua conta do Google → Segurança → Apps e serviços de terceiros](https://myaccount.google.com/connections).',
         'Os comentários que você escreveu continuam no ar, para não quebrar as conversas, mas passam a aparecer como "Conta excluída", sem nome nem foto. Se quiser que algum comentário também seja apagado, apague antes de excluir a conta ou escreva para nós.',
       ],
     },

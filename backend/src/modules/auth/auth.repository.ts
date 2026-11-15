@@ -10,6 +10,14 @@ export class AuthRepository implements IAuthRepository {
     role: true,
     active: true,
     author: { select: { id: true } },
+    // Only to know whether there is one (authenticate: "Criar senha").
+    passwordHash: true,
+  } as const;
+
+  private readonly credentialsSelect = {
+    ...this.sessionSelect,
+    email: true,
+    googleId: true,
   } as const;
 
   async findSessionUser(id: string): Promise<IAuthSessionRow | null> {
@@ -25,10 +33,30 @@ export class AuthRepository implements IAuthRepository {
     try {
       return await prisma.user.findUnique({
         where: { email },
-        select: { ...this.sessionSelect, email: true, passwordHash: true },
+        select: this.credentialsSelect,
       });
     } catch (err) {
       logger.error('Failed to load user by email', err);
+      throw err;
+    }
+  }
+
+  // ── Entrar com Google ───────────────────────────────────────────────────
+
+  async findByGoogleId(googleId: string): Promise<IAuthCredentialsRow | null> {
+    try {
+      return await prisma.user.findUnique({ where: { googleId }, select: this.credentialsSelect });
+    } catch (err) {
+      logger.error('Failed to load user by Google id', err);
+      throw err;
+    }
+  }
+
+  async linkGoogle(userId: string, googleId: string): Promise<void> {
+    try {
+      await prisma.user.update({ where: { id: userId }, data: { googleId } });
+    } catch (err) {
+      logger.error('Failed to link Google account', err);
       throw err;
     }
   }

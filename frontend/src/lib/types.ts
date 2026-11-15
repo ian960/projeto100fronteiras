@@ -78,6 +78,10 @@ export type User = {
   bio?: string | null;
   avatarId?: string | null;
   avatarUrl?: string | null; // square, centred on the face
+  // Also only on your own account. false: made with "Entrar com Google" and no
+  // password created yet; the site sends the person to /criar-senha.
+  hasPassword?: boolean;
+  googleLinked?: boolean;
 };
 
 // Comments under a post (backend: modules/comments/comments.types.ts).
@@ -157,6 +161,7 @@ export type Health = {
   ok: boolean;
   environment: string;
   uploads: 'cloudinary' | 'disabled';
+  googleLogin?: boolean; // "Entrar com Google" switched on in the API
 };
 
 // What POST /api/media/signature returns: where to send the file and the

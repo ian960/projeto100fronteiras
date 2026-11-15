@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router';
+import { Link, NavLink, Navigate, Outlet, ScrollRestoration, useLocation } from 'react-router';
 import { Avatar, cx } from '../components/ui';
 import { pauseMeasuring, trackPage, useConsent } from '../lib/analytics';
 import { useBookmarks } from '../lib/bookmarks';
@@ -243,6 +243,22 @@ function Footer() {
   );
 }
 
+// Pages someone logged in with Google and no password yet may still open.
+// Everywhere else they are sent to create one first (ian's rule; the API
+// enforces it too, with 403 PASSWORD_REQUIRED).
+const OPEN_WITHOUT_PASSWORD = ['/criar-senha', '/privacidade', '/termos', '/contato', '/ajuda'];
+
+function PasswordGate() {
+  const { data: me } = useMe();
+  const location = useLocation();
+
+  if (me?.hasPassword === false && !OPEN_WITHOUT_PASSWORD.includes(location.pathname.replace(/\/$/, ''))) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/criar-senha?proxima=${next}`} replace />;
+  }
+  return <Outlet />;
+}
+
 export default function SiteLayout() {
   const { theme } = useTheme();
   // The masthead going out of view is what turns on the compact name.
@@ -273,7 +289,7 @@ export default function SiteLayout() {
       <div ref={sentinel} aria-hidden="true" className="h-px" />
       <CategoryNav compact={compact} />
       <main id="conteudo" className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 sm:pt-10">
-        <Outlet />
+        <PasswordGate />
         {/* Every page; nothing at all when no banner is running here. */}
         <BannerSlot slot="site_footer" className="mt-16" />
       </main>

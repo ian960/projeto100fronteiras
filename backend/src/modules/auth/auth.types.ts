@@ -19,6 +19,7 @@ export type IAuthSessionRow = {
   role: Role;
   active: boolean;
   author: { id: string } | null;
+  passwordHash: string | null;
 };
 
 // A password recovery link, as found by the hash of its token.
@@ -34,7 +35,8 @@ export type IAuthCredentialsRow = {
   id: string;
   name: string;
   email: string;
-  passwordHash: string;
+  passwordHash: string | null; // null: Google only
+  googleId: string | null;
   role: Role;
   active: boolean;
   author: { id: string } | null;

@@ -77,8 +77,13 @@ model User {
   // a columnist may sign under a different name than the one on their account.
   name String
 
-  email        String @unique
-  passwordHash String @map("password_hash")
+  email        String  @unique
+  // Null for someone who only ever signed in with Google. They can set one
+  // later on "Minha conta" or through "Esqueci minha senha".
+  passwordHash String? @map("password_hash")
+  // The Google account ("sub" of its ID token) linked to this one, if any.
+  // Set on the first "Entrar com Google", by a verified e-mail match.
+  googleId     String? @unique @map("google_id")
 
   // Self sign-up always lands here. Only an admin can change it.
   // NEVER read this field from request input — see the register schema.

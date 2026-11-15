@@ -58,12 +58,13 @@ export function useUpdateMe() {
   });
 }
 
-// Deleting your own account, confirmed with the password. Afterwards the
-// browser holds nothing of that person.
+// Deleting your own account, confirmed with the password (none for an
+// account made with Google that has none yet). Afterwards the browser holds
+// nothing of that person.
 export function useDeleteMe() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (password: string) => del('/auth/me', { password }),
+    mutationFn: (password: string | undefined) => del('/auth/me', password ? { password } : {}),
     onSuccess: () => {
       client.removeQueries({ predicate: (query) => query.queryKey[0] === 'panel' });
       client.setQueryData(['me'], null);
@@ -72,8 +73,11 @@ export function useDeleteMe() {
 }
 
 export function useChangePassword() {
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: { currentPassword: string; newPassword: string }) => post('/auth/change-password', input),
+    // No currentPassword: "Criar senha", for an account made with Google.
+    mutationFn: (input: { currentPassword?: string; newPassword: string }) => post('/auth/change-password', input),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['me'] }),
   });
 }
 

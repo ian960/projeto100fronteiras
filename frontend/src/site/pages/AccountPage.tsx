@@ -27,6 +27,7 @@ export default function AccountPage() {
       <h1 className="titulo text-4xl text-anil">Minha conta</h1>
       <p className="mt-2 text-tinta-suave">
         {me.email} · {roleLabel[me.role]}
+        {me.googleLinked && ' · entra também com o Google'}
       </p>
 
       {inNewsroom && (

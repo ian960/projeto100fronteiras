@@ -41,11 +41,14 @@ export const updateMeSchema = z.object({
 });
 
 // Deleting your own account asks for the password again: a session left open
-// on a shared computer must not be enough to erase someone.
+// on a shared computer must not be enough to erase someone. Optional only
+// because an account made with Google has none (AuthService.confirmDeletion).
 export const deleteMeSchema = z.object({
-  body: z.object({
-    password: z.string().min(1).max(200),
-  }),
+  body: z
+    .object({
+      password: z.string().min(1).max(200).optional(),
+    })
+    .default({}),
 });
 
 export const forgotPasswordSchema = z.object({
@@ -61,9 +64,23 @@ export const resetPasswordSchema = z.object({
   }),
 });
 
+// "Entrar com Google": where to go after logging in. Only paths on this site,
+// so the button cannot be used to bounce someone to another website.
+export const googleStartSchema = z.object({
+  query: z.object({
+    proxima: z
+      .string()
+      .max(500)
+      .regex(/^\/(?![/\\])/)
+      .optional()
+      .catch(undefined),
+  }),
+});
+
 export const changePasswordSchema = z.object({
   body: z.object({
-    currentPassword: z.string().min(1).max(200),
+    // Optional only for an account with no password yet (made with Google).
+    currentPassword: z.string().min(1).max(200).optional(),
     newPassword: z.string().min(8).max(200),
   }),
 });
