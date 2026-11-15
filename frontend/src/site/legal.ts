@@ -11,7 +11,7 @@
 // them read before publishing, and update UPDATED_AT on every change.
 
 // Where readers write. Shown on /contato, /privacidade and /termos.
-export const CONTACT_EMAIL = 'iandevbr@gmail.com';
+export const CONTACT_EMAIL = 'portal100fronteiras1@gmail.com';
 
 export const UPDATED_AT = '15 de novembro de 2026';
 
