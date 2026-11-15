@@ -194,8 +194,8 @@ export type BannerPicture = { url: string; srcset: string | null; width: number 
 export type Banner = {
   id: string;
   slot: BannerSlot;
-  advertiser: string;
-  linkUrl: string;
+  advertiser: string | null;
+  linkUrl: string | null; // null: just a picture, not clickable
   image: BannerPicture;
   mobileImage: BannerPicture | null;
 };
@@ -204,8 +204,8 @@ export type Banner = {
 export type BannerAdmin = {
   id: string;
   slot: BannerSlot;
-  advertiser: string;
-  linkUrl: string;
+  advertiser: string | null;
+  linkUrl: string | null; // null: just a picture, not clickable
   imageId: string;
   mobileImageId: string | null;
   image: Media;

@@ -384,8 +384,9 @@ model PasswordResetToken {
 model Banner {
   id String @id @default(uuid(7))
 
-  advertiser String // who pays, e.g. "Padaria Central". Shown in the panel and as the image's alt text.
-  linkUrl    String @map("link_url") // where a click goes (http/https only)
+  // Both optional: a banner can be just a picture.
+  advertiser String? // who pays, e.g. "Padaria Central". Shown in the panel and as the image's alt text.
+  linkUrl    String? @map("link_url") // where a click goes (http/https only). Without it, not clickable.
   slot       BannerSlot
 
   // Restrict: a file in use by a banner cannot be deleted from under it.

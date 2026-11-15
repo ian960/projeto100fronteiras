@@ -4,8 +4,8 @@ import type { IMedia, IMediaView } from '../media/media.types';
 // One row of the banners table, with its pictures loaded.
 export interface IBanner {
   id: string;
-  advertiser: string;
-  linkUrl: string;
+  advertiser: string | null;
+  linkUrl: string | null;
   slot: BannerSlot;
   imageId: string;
   mobileImageId: string | null;
@@ -29,8 +29,8 @@ export type IBannerPicture = Pick<IMediaView, 'url' | 'srcset' | 'width' | 'heig
 export type IBannerPublic = {
   id: string;
   slot: BannerSlot;
-  advertiser: string;
-  linkUrl: string;
+  advertiser: string | null;
+  linkUrl: string | null; // null: just a picture, not clickable
   image: IBannerPicture;
   mobileImage: IBannerPicture | null;
 };

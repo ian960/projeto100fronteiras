@@ -249,8 +249,8 @@ export function useAdminBanners() {
 }
 
 export type BannerInput = {
-  advertiser?: string;
-  linkUrl?: string;
+  advertiser?: string | null;
+  linkUrl?: string | null;
   slot?: BannerSlot;
   imageId?: string;
   mobileImageId?: string | null;

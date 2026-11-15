@@ -7,7 +7,9 @@ import type { IMedia } from '../media/media.types';
 import { bannersRepository, type BannerData } from './banners.repository';
 import type { IBanner, IBannerAdmin, IBannerPicture, IBannerPublic } from './banners.types';
 
-export type CreateBannerInput = Omit<BannerData, 'mobileImageId' | 'active'> & {
+export type CreateBannerInput = Omit<BannerData, 'advertiser' | 'linkUrl' | 'mobileImageId' | 'active'> & {
+  advertiser?: string | null;
+  linkUrl?: string | null;
   mobileImageId?: string | null;
   active?: boolean;
 };
@@ -52,8 +54,8 @@ export class BannersService {
     await this.checkImages(actor, input);
 
     const banner = await bannersRepository.create({
-      advertiser: input.advertiser,
-      linkUrl: input.linkUrl,
+      advertiser: input.advertiser ?? null,
+      linkUrl: input.linkUrl ?? null,
       slot: input.slot,
       imageId: input.imageId,
       mobileImageId: input.mobileImageId ?? null,

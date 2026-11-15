@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { cx } from '../components/ui';
 import type { Banner, BannerSlot as Slot } from '../lib/types';
@@ -124,46 +125,57 @@ function useViewCount(id: string) {
 export function BannerAd({ banner, className }: { banner: Banner; className?: string }) {
   const ref = useViewCount(banner.id);
   const { image, mobileImage } = banner;
-  const onClick = () => send(`/banners/${banner.id}/click`);
+  const picture = (
+    <picture>
+      {mobileImage && (
+        <source
+          media="(max-width: 639px)"
+          srcSet={mobileImage.srcset ?? mobileImage.url}
+          sizes="100vw"
+          width={mobileImage.width ?? undefined}
+          height={mobileImage.height ?? undefined}
+        />
+      )}
+      {/* width and height let the browser hold the banner's shape before
+          the file arrives. It is never stretched past its own size. */}
+      <img
+        src={image.url}
+        srcSet={image.srcset ?? undefined}
+        sizes="(min-width: 1152px) 1152px, 100vw"
+        width={image.width ?? undefined}
+        height={image.height ?? undefined}
+        alt={banner.advertiser ?? 'Anúncio'}
+        loading="lazy"
+        decoding="async"
+        className="mx-auto block h-auto max-w-full rounded-md"
+      />
+    </picture>
+  );
 
   return (
     <aside ref={ref} aria-label="Publicidade" className={cx('text-center', className)}>
       <p className="mb-1.5 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-tinta-suave">Publicidade</p>
-      <a
-        href={banner.linkUrl}
-        target="_blank"
-        // sponsored: tells Google this is a paid link (no ranking passed).
-        rel="sponsored noopener noreferrer"
-        onClick={onClick}
-        onAuxClick={(event) => event.button === 1 && onClick()}
-        className="inline-block max-w-full align-top"
-      >
-        <picture>
-          {mobileImage && (
-            <source
-              media="(max-width: 639px)"
-              srcSet={mobileImage.srcset ?? mobileImage.url}
-              sizes="100vw"
-              width={mobileImage.width ?? undefined}
-              height={mobileImage.height ?? undefined}
-            />
-          )}
-          {/* width and height let the browser hold the banner's shape before
-              the file arrives. It is never stretched past its own size. */}
-          <img
-            src={image.url}
-            srcSet={image.srcset ?? undefined}
-            sizes="(min-width: 1152px) 1152px, 100vw"
-            width={image.width ?? undefined}
-            height={image.height ?? undefined}
-            alt={banner.advertiser}
-            loading="lazy"
-            decoding="async"
-            className="mx-auto block h-auto max-w-full rounded-md"
-          />
-        </picture>
-      </a>
+      {banner.linkUrl ? <BannerLink banner={banner}>{picture}</BannerLink> : picture}
     </aside>
+  );
+}
+
+// The clickable version, for a banner with a link. Without one the picture
+// is shown on its own: no hand cursor, nothing to click.
+function BannerLink({ banner, children }: { banner: Banner; children: ReactNode }) {
+  const onClick = () => send(`/banners/${banner.id}/click`);
+  return (
+    <a
+      href={banner.linkUrl!}
+      target="_blank"
+      // sponsored: tells Google this is a paid link (no ranking passed).
+      rel="sponsored noopener noreferrer"
+      onClick={onClick}
+      onAuxClick={(event) => event.button === 1 && onClick()}
+      className="inline-block max-w-full align-top"
+    >
+      {children}
+    </a>
   );
 }
 
