@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { Unauthenticated } from '../errors/AppError';
+import { PasswordRequired, Unauthenticated } from '../errors/AppError';
 import { authRepository } from '../../modules/auth/auth.repository';
 
 // Loads the session user on every authenticated request.
@@ -8,7 +8,13 @@ import { authRepository } from '../../modules/auth/auth.repository';
 // at login time, and that is deliberate: it is what makes deactivating a user
 // or resetting their password take effect immediately, on the very next
 // request, instead of whenever their cookie happens to expire.
-export const authenticate: RequestHandler = async (req, _res, next) => {
+//
+// An account made with "Entrar com Google" must create a password before it
+// can do anything (ian's rule): every route answers 403 PASSWORD_REQUIRED,
+// except the few in auth.routes.ts that use authenticateAllowingNoPassword
+// (see who is logged in, create the password, delete the account).
+function buildAuthenticate(requirePassword: boolean): RequestHandler {
+  return async (req, _res, next) => {
   const userId = req.session.userId;
 
   if (!userId) {
@@ -23,6 +29,10 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
     return next(new Unauthenticated('Your session is no longer valid.'));
   }
 
+  if (requirePassword && !user.passwordHash) {
+    return next(new PasswordRequired());
+  }
+
   req.user = {
     id: user.id,
     name: user.name,
@@ -31,4 +41,8 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
   };
 
   return next();
-};
+  };
+}
+
+export const authenticate = buildAuthenticate(true);
+export const authenticateAllowingNoPassword = buildAuthenticate(false);

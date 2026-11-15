@@ -36,13 +36,26 @@ export class UsersRepository implements IUsersRepository {
     bio: true,
     avatarId: true,
     avatar: { select: mediaSelect },
+    // Only turned into two booleans by toMe below; never sent as they are.
+    passwordHash: true,
+    googleId: true,
   } as const;
 
-  private toMe<T extends { author: Parameters<typeof toAuthorSummary>[0] | null; avatar: IMedia | null }>(
-    row: T,
-  ) {
-    const { avatar, ...rest } = row;
-    return { ...this.toWithAuthor(rest), avatarUrl: photoUrlOf(avatar) };
+  private toMe<
+    T extends {
+      author: Parameters<typeof toAuthorSummary>[0] | null;
+      avatar: IMedia | null;
+      passwordHash: string | null;
+      googleId: string | null;
+    },
+  >(row: T) {
+    const { avatar, passwordHash, googleId, ...rest } = row;
+    return {
+      ...this.toWithAuthor(rest),
+      avatarUrl: photoUrlOf(avatar),
+      hasPassword: passwordHash !== null,
+      googleLinked: googleId !== null,
+    };
   }
 
   // The byline comes with its photo as a media row and leaves with photoUrl.
@@ -218,6 +231,7 @@ export class UsersRepository implements IUsersRepository {
             // Unique and never deliverable (.invalid is reserved, RFC 2606).
             email: `excluida-${id}@contas.invalid`,
             passwordHash,
+            googleId: null,
             bio: null,
             avatarId: null,
             role: 'reader',

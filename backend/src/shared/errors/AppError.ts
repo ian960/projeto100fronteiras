@@ -27,6 +27,14 @@ export class Forbidden extends AppError {
   constructor(message = 'You do not have permission to do that.') { super(message); }
 }
 
+// Logged in with Google and never created a password: the account is usable
+// only after "Criar senha" (the site sends the reader there on this code).
+export class PasswordRequired extends AppError {
+  readonly statusCode = 403;
+  readonly code = 'PASSWORD_REQUIRED';
+  constructor(message = 'Create a password to use your account.') { super(message); }
+}
+
 export class NotFound extends AppError {
   readonly statusCode = 404;
   readonly code = 'NOT_FOUND';

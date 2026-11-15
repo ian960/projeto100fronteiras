@@ -6,6 +6,7 @@ import { Conflict, Unauthenticated, ValidationError } from '../../shared/errors/
 import { Role } from '../../shared/types/enums';
 import { usersRepository } from '../users/users.repository';
 import { authRepository } from './auth.repository';
+import type { GoogleProfile } from './auth.google';
 import type { SessionUser } from './auth.types';
 import type {
   ChangePasswordInput,
@@ -51,7 +52,10 @@ export class AuthService {
     // Distinguishing them turns the login form into an account enumerator.
     const invalid = new Unauthenticated('Invalid email or password.');
 
-    if (!user) {
+    // An account made with "Entrar com Google" has no password: same answer
+    // as an unknown address (the login page reminds people of the Google
+    // button).
+    if (!user || !user.passwordHash) {
       // Hash a throwaway value so a missing account does not answer noticeably
       // faster than a wrong password.
       await argon2.hash(input.password);
@@ -71,10 +75,62 @@ export class AuthService {
     };
   }
 
-  // For actions that must be confirmed with the password (deleting the account).
-  async confirmPassword(userId: string, password: string): Promise<void> {
+  // "Entrar com Google". Finds the account by the Google id, or else by the
+  // e-mail (which Google verified: see auth.google.ts) and links the two, or
+  // else creates a reader. Like register, never anything but a reader.
+  async loginWithGoogle(profile: GoogleProfile): Promise<SessionUser & { hasPassword: boolean }> {
+    let user = await authRepository.findByGoogleId(profile.sub);
+
+    if (!user) {
+      const byEmail = await authRepository.findByEmailWithCredentials(profile.email);
+
+      if (byEmail) {
+        // The address already has a different Google account linked (the
+        // reader changed the e-mail of their Google account, or Google reused
+        // it). Linking a second one silently would hand the account over.
+        if (byEmail.googleId && byEmail.googleId !== profile.sub) {
+          throw new Conflict('This account is linked to another Google account.');
+        }
+        if (byEmail.active) await authRepository.linkGoogle(byEmail.id, profile.sub);
+        user = byEmail;
+      }
+    }
+
+    if (user) {
+      if (!user.active) throw new Unauthenticated('This account is disabled.');
+      return {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        authorId: user.author?.id ?? null,
+        hasPassword: user.passwordHash !== null,
+      };
+    }
+
+    const fallbackName = profile.email.split('@')[0] ?? 'Leitor';
+    const name = (profile.name.length >= 2 ? profile.name : fallbackName).slice(0, 120);
+
+    const created = await usersRepository.create({
+      name: name.length >= 2 ? name : 'Leitor',
+      email: profile.email,
+      passwordHash: null,
+      googleId: profile.sub,
+      role: Role.READER,
+    });
+
+    return { id: created.id, name: created.name, role: created.role, authorId: null, hasPassword: false };
+  }
+
+  // Deleting the account asks for the password again. An account with no
+  // password (Google only) has nothing to ask for: the site asks twice instead.
+  async confirmDeletion(userId: string, password: string | undefined): Promise<void> {
     const user = await usersRepository.findByIdWithCredentials(userId);
     if (!user) throw new Unauthenticated();
+    if (!user.passwordHash) return;
+
+    if (!password) {
+      throw new ValidationError('Type your password to confirm.', { password: 'Type your password.' });
+    }
 
     if (!(await argon2.verify(user.passwordHash, password))) {
       throw new ValidationError('Current password is incorrect.', { password: 'Incorrect password.' });
@@ -148,18 +204,29 @@ export class AuthService {
       throw new Unauthenticated();
     }
 
-    const matches = await argon2.verify(user.passwordHash, input.currentPassword);
+    // With a password, the current one is required. Without one (an account
+    // made with Google), this is "Criar senha": the session is enough, and
+    // from then on the reader can also log in with e-mail and password.
+    if (user.passwordHash) {
+      if (!input.currentPassword) {
+        throw new ValidationError('Current password is incorrect.', {
+          currentPassword: 'Type your current password.',
+        });
+      }
 
-    if (!matches) {
-      throw new ValidationError('Current password is incorrect.', {
-        currentPassword: 'Incorrect password.',
-      });
-    }
+      const matches = await argon2.verify(user.passwordHash, input.currentPassword);
 
-    if (input.currentPassword === input.newPassword) {
-      throw new ValidationError('The new password must be different.', {
-        newPassword: 'Choose a different password.',
-      });
+      if (!matches) {
+        throw new ValidationError('Current password is incorrect.', {
+          currentPassword: 'Incorrect password.',
+        });
+      }
+
+      if (input.currentPassword === input.newPassword) {
+        throw new ValidationError('The new password must be different.', {
+          newPassword: 'Choose a different password.',
+        });
+      }
     }
 
     await authRepository.updatePasswordHash(userId, await argon2.hash(input.newPassword));

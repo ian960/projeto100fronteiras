@@ -3,7 +3,8 @@ import type { Role } from '../../shared/types/enums';
 export type CreateUserData = {
   name: string;
   email: string;
-  passwordHash: string;
+  passwordHash: string | null;
+  googleId?: string | null;
   role: Role;
 };
 

@@ -77,7 +77,9 @@ export default defineConfig({
           name: 'api',
           include: ['tests/**/*.spec.ts'],
           exclude: ['tests/runtime.spec.ts', 'tests/cloudinary-real.spec.ts'],
-          env: FAKE_CLOUDINARY_ENV,
+          // Google login switched on with a made-up client: the tests answer
+          // for Google themselves (tests/google-login.spec.ts).
+          env: { ...FAKE_CLOUDINARY_ENV, GOOGLE_CLIENT_ID: 'test-client.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'test-google-secret' },
           globalSetup: ['./tests/helpers/fakeCloudinary.global.ts'],
           sequence: { groupOrder: 0 },
         },

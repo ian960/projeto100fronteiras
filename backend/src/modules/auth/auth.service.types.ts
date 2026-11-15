@@ -19,6 +19,7 @@ export type ResetPasswordInput = {
 };
 
 export type ChangePasswordInput = {
-  currentPassword: string;
+  // Absent for an account with no password yet (made with Google).
+  currentPassword?: string;
   newPassword: string;
 };

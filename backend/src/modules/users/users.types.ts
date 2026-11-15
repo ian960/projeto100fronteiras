@@ -6,7 +6,7 @@ export interface IUser {
   id: string;
   name: string;
   email: string;
-  passwordHash: string;
+  passwordHash: string | null; // null: signs in with Google only
   role: Role;
   active: boolean;
   createdAt: Date;
@@ -29,6 +29,11 @@ export type IUserMe = IUserWithAuthor & {
   bio: string | null;
   avatarId: string | null;
   avatarUrl: string | null; // square, centred on the face
+  // Never the hash or the Google id themselves, only whether they exist:
+  // "Minha conta" shows "Criar senha" instead of "Trocar senha", and says
+  // when the account is linked to Google.
+  hasPassword: boolean;
+  googleLinked: boolean;
 };
 
 export type IUserCredentials = Pick<IUser, 'id' | 'email' | 'passwordHash' | 'role' | 'active'>;

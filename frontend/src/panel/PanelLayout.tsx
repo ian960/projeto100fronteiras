@@ -121,6 +121,12 @@ export default function PanelLayout() {
     return <Navigate to={`/entrar?proxima=${next}`} replace />;
   }
 
+  // Made with Google and no password yet: that comes first.
+  if (me.hasPassword === false) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/criar-senha?proxima=${next}`} replace />;
+  }
+
   if (me.role === 'reader') return <ReaderNotice me={me} />;
 
   return (

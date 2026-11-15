@@ -55,6 +55,13 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
+      # "Entrar com Google": the OAuth client from the Google Cloud Console.
+      # Both empty hides the button. Its redirect URI is
+      # SITE_URL + /api/auth/google/callback.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
 
 databases:
   - name: portal-db
