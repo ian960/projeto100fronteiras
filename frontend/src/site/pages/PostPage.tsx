@@ -1,4 +1,5 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
+import type { RefObject } from 'react';
 import { Link, useParams } from 'react-router';
 import { Alert, Avatar, Loading, cx } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
@@ -8,14 +9,18 @@ import { Attachments, BookmarkButton, Byline, Cover, Kicker, ReadingProgress, Re
 import { useAuthor, usePost, useRelatedPosts } from '../queries';
 import NotFoundPage from './NotFoundPage';
 import { Comments } from '../Comments';
+import { BannerAd, BannerSlot, splitInHalf, useBannersReady, useSlotBanner } from '../banners';
 
 export default function PostPage() {
   const { slug = '' } = useParams();
   const { data: post, isPending, error } = usePost(slug);
   useDocumentTitle(post?.title);
   const body = useRef<HTMLDivElement>(null);
+  // The banner in the middle of the text must be known before the text is
+  // drawn, or the second half would jump down when it arrives.
+  const bannersReady = useBannersReady();
 
-  if (isPending) return <Loading />;
+  if (isPending || !bannersReady) return <Loading />;
 
   if (error) {
     // A draft or a deleted post answers 404, same as a mistyped link.
@@ -69,11 +74,7 @@ export default function PostPage() {
       {/* Sanitized by the API before it was stored: only p, h2, h3, strong,
           em, u, s, a, lists, blockquote and our own Cloudinary photos (with
           srcset and lazy loading) can reach this point. */}
-      <div
-        ref={body}
-        className={cx('corpo-materia mx-auto mt-10', isOpinion && 'corpo-materia--opiniao')}
-        dangerouslySetInnerHTML={{ __html: post.content }}
-      />
+      <ArticleBody html={post.content} opinion={isOpinion} bodyRef={body} />
 
       {/* Most readers arrive from a WhatsApp link: the end of the text is
           where they decide to pass it on. */}
@@ -88,6 +89,9 @@ export default function PostPage() {
         <Attachments items={post.attachments} />
       </div>
 
+      {/* Nothing at all when no banner is running here. */}
+      <BannerSlot slot="article_end" className="mx-auto mt-12 max-w-3xl" />
+
       {post.author && <AuthorBox slug={post.author.slug} opinion={isOpinion} />}
 
       {/* Before the comments: whoever finished the text gets somewhere to
@@ -96,6 +100,26 @@ export default function PostPage() {
 
       <Comments postId={post.id} opinion={isOpinion} />
     </article>
+  );
+}
+
+// The text, with the "meio da matéria" banner halfway through when one is
+// running. Without one, exactly the same single block as always.
+function ArticleBody({ html, opinion, bodyRef }: { html: string; opinion: boolean; bodyRef: RefObject<HTMLDivElement | null> }) {
+  const banner = useSlotBanner('article_middle');
+  const halves = useMemo(() => (banner ? splitInHalf(html) : null), [banner, html]);
+  const textClass = cx('corpo-materia mx-auto', opinion && 'corpo-materia--opiniao');
+
+  if (!banner || !halves) {
+    return <div ref={bodyRef} className={cx(textClass, 'mt-10')} dangerouslySetInnerHTML={{ __html: html }} />;
+  }
+
+  return (
+    <div ref={bodyRef} className="mt-10">
+      <div className={textClass} dangerouslySetInnerHTML={{ __html: halves[0] }} />
+      <BannerAd banner={banner} className="mx-auto my-10 max-w-3xl" />
+      <div className={textClass} dangerouslySetInnerHTML={{ __html: halves[1] }} />
+    </div>
   );
 }
 

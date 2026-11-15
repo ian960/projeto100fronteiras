@@ -27,6 +27,7 @@ afterEach(async () => {
   // Attachments go with their post (Cascade). Media after everything that
   // points at it, users last because media points at its uploader.
   await prisma.post.deleteMany();
+  await prisma.banner.deleteMany();
   await prisma.author.deleteMany();
   await prisma.media.deleteMany();
   await prisma.category.deleteMany();

@@ -47,6 +47,18 @@ export const passwordResetLimiter = rateLimit({
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many attempts. Try again later.' } },
 });
 
+// The site counts banner views and clicks without a login. A person sends a
+// few per page; this keeps a script from inflating an advertiser's report.
+export const bannerStatsLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 300,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip,
+  keyGenerator,
+  message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many requests.' } },
+});
+
 // A public sign-up endpoint with no limit becomes a fake-account dump.
 export const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,

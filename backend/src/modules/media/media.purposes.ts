@@ -10,6 +10,7 @@ export const MediaPurpose = {
   AVATAR: 'avatar', // a user's own account photo; the only purpose a reader may upload for
   VIDEO: 'video',
   DOCUMENT: 'document',
+  BANNER: 'banner', // an advertiser's banner; admin only
 } as const;
 export type MediaPurpose = (typeof MediaPurpose)[keyof typeof MediaPurpose];
 
@@ -105,6 +106,17 @@ export const PURPOSE_RULES: Record<MediaPurpose, PurposeRule> = {
     formats: ['mp4', 'mov', 'webm', 'm4v'],
     accept: 'video/mp4,video/quicktime,video/webm,video/x-m4v',
     maxBytes: 100 * MB,
+  },
+  banner: {
+    kind: MediaKind.IMAGE,
+    resourceType: 'image',
+    folder: 'banners',
+    // GIF included on purpose: animated banners are common.
+    formats: IMAGE_FORMATS,
+    accept: IMAGE_ACCEPT,
+    maxBytes: 10 * MB,
+    maxSourceBytes: 40 * MB,
+    minWidth: 100,
   },
   document: {
     kind: MediaKind.DOCUMENT,

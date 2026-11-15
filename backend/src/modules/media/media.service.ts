@@ -296,7 +296,9 @@ export class MediaService {
 
   private assertMayUploadFor(actor: SessionUser, purpose: MediaPurpose): void {
     if (!policy.canUploadFor(actor, purpose)) {
-      throw new Forbidden('You can only upload your account photo.');
+      throw new Forbidden(
+        purpose === 'banner' ? 'Only an admin can upload banners.' : 'You can only upload your account photo.',
+      );
     }
   }
 

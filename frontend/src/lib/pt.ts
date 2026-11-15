@@ -105,6 +105,13 @@ const exact: Record<string, string> = {
   'Too many comments. Wait a few minutes.': 'Muitos comentários seguidos. Espere alguns minutos.',
   'Write something before sending.': 'Escreva alguma coisa antes de enviar.',
   'You can only upload your account photo.': 'Por aqui você só pode enviar a sua foto de perfil.',
+
+  // banners
+  'Only an admin can upload banners.': 'Só o administrador envia imagens de banner.',
+  'Banner not found.': 'Banner não encontrado.',
+  'The end must come after the start.': 'O fim precisa ser depois do início.',
+  'Use a link starting with http:// or https://.': 'Use um link que comece com http:// ou https://.',
+  'Too many requests.': 'Muitos pedidos. Aguarde alguns minutos.',
   'Only an admin can delete files.': 'Só o administrador pode apagar arquivos.',
   'Cloudinary did not delete the file. Try again in a moment.': 'O Cloudinary não apagou o arquivo. Tente de novo em instantes.',
   'The same file is attached twice.': 'O mesmo arquivo foi anexado duas vezes.',

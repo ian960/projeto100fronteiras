@@ -6,7 +6,7 @@ export type AuthorType = 'writer' | 'columnist';
 export type PostType = 'news' | 'column';
 export type PostStatus = 'draft' | 'pending' | 'published';
 export type MediaKind = 'image' | 'video' | 'document';
-export type MediaPurpose = 'cover' | 'body' | 'author' | 'avatar' | 'video' | 'document';
+export type MediaPurpose = 'cover' | 'body' | 'author' | 'avatar' | 'video' | 'document' | 'banner';
 
 export type Paginated<T> = {
   items: T[];
@@ -183,3 +183,38 @@ export type MediaRule = {
   recommendedWidth?: number;
 };
 export type MediaRules = Record<MediaPurpose, MediaRule>;
+
+// ── Advertisers' banners (backend modules/banners) ──────────────────────────
+
+export type BannerSlot = 'home_top' | 'home_middle' | 'article_middle' | 'article_end' | 'site_footer';
+
+export type BannerPicture = { url: string; srcset: string | null; width: number | null; height: number | null };
+
+// What the site gets: only banners running right now.
+export type Banner = {
+  id: string;
+  slot: BannerSlot;
+  advertiser: string;
+  linkUrl: string;
+  image: BannerPicture;
+  mobileImage: BannerPicture | null;
+};
+
+// What the panel gets: every banner, with dates and counts.
+export type BannerAdmin = {
+  id: string;
+  slot: BannerSlot;
+  advertiser: string;
+  linkUrl: string;
+  imageId: string;
+  mobileImageId: string | null;
+  image: Media;
+  mobileImage: Media | null;
+  startsAt: string;
+  endsAt: string;
+  active: boolean;
+  impressions: number;
+  clicks: number;
+  createdAt: string;
+  updatedAt: string;
+};
