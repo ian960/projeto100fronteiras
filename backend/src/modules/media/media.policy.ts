@@ -16,8 +16,10 @@ export function canUse(user: SessionUser, media: IMedia): boolean {
 }
 
 // A reader may upload only their own account photo. The newsroom (admin and
-// columnists) uploads for every purpose.
+// columnists) uploads for every purpose, except banners, which only the admin
+// manages.
 export function canUploadFor(user: SessionUser, purpose: MediaPurpose): boolean {
+  if (purpose === MediaPurpose.BANNER) return isAdmin(user);
   return user.role !== Role.READER || purpose === MediaPurpose.AVATAR;
 }
 

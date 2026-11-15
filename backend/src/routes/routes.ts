@@ -19,6 +19,7 @@ import { mediaRouter } from '../modules/media/media.routes';
 import { commentsRouter } from '../modules/comments/comments.routes';
 import { postsController } from '../modules/posts/posts.controller';
 import { seoController } from '../modules/seo/seo.controller';
+import { bannersAdminRouter, bannersPublicRouter } from '../modules/banners/banners.routes';
 
 export function buildRouter(): Router {
   const router = Router();
@@ -33,6 +34,8 @@ export function buildRouter(): Router {
   router.use('/posts', postsPublicRouter());
   // Reading is public; writing checks the session inside the router.
   router.use('/comments', commentsRouter());
+  // Advertisers' banners running now, and the counts of views and clicks.
+  router.use('/banners', bannersPublicRouter());
 
   // ── admin ───────────────────────────────────────────────────────────────
   // Each of these routers applies authenticate + authorize(ADMIN) on itself,
@@ -42,6 +45,7 @@ export function buildRouter(): Router {
   router.use('/admin/categories', categoriesAdminRouter());
   router.use('/admin/authors', authorsAdminRouter());
   router.use('/admin/posts', postsAdminRouter());
+  router.use('/admin/banners', bannersAdminRouter());
 
   // ── columnist ───────────────────────────────────────────────────────────
   router.use('/columnist/posts', postsColumnistRouter());

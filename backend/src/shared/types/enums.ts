@@ -30,3 +30,13 @@ export const MediaKind = {
   DOCUMENT: 'document',
 } as const;
 export type MediaKind = (typeof MediaKind)[keyof typeof MediaKind];
+
+// Places on the site where an advertiser's banner can go (schema.prisma).
+export const BannerSlot = {
+  HOME_TOP: 'home_top',
+  HOME_MIDDLE: 'home_middle',
+  ARTICLE_MIDDLE: 'article_middle',
+  ARTICLE_END: 'article_end',
+  SITE_FOOTER: 'site_footer',
+} as const;
+export type BannerSlot = (typeof BannerSlot)[keyof typeof BannerSlot];

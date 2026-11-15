@@ -21,6 +21,7 @@ function Sidebar({ me }: { me: User }) {
         { to: '/painel/categorias', label: 'Categorias' },
         { to: '/painel/autores', label: 'Autores' },
         { to: '/painel/usuarios', label: 'Usuários' },
+        { to: '/painel/anunciantes', label: 'Anunciantes' },
         { to: '/painel/perfil', label: 'Minha conta' },
       ]
     : [

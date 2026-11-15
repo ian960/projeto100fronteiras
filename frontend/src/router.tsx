@@ -66,6 +66,7 @@ export const router = createBrowserRouter([
       { path: 'categorias', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.Categories }))) },
       { path: 'autores', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.Authors }))) },
       { path: 'usuarios', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.Users }))) },
+      { path: 'anunciantes', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.Banners }))) },
       { path: 'colunas', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.MyColumns }))) },
       { path: 'colunas/nova', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.ColumnistNewPost }))) },
       { path: 'colunas/:id', lazy: panel(() => import('./panel/routes').then((m) => ({ default: m.ColumnistEditPost }))) },

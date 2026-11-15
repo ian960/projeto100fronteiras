@@ -3,6 +3,7 @@ import { AuthorsPage, CategoriesPage, UsersPage } from './pages/AdminPages';
 import PostEditorPage from './pages/PostEditorPage';
 import { AdminPostsPage, DashboardPage, MyColumnsPage, ReviewQueuePage } from './pages/PostListPages';
 import ProfilePage from './pages/ProfilePage';
+import BannersPage from './pages/BannersPage';
 
 // One entry per panel route, with the role it needs. Kept in one module so
 // the whole panel downloads as a single chunk the first time it is opened.
@@ -39,6 +40,11 @@ export const Authors = () => (
 export const Users = () => (
   <RequireRole role="admin">
     <UsersPage />
+  </RequireRole>
+);
+export const Banners = () => (
+  <RequireRole role="admin">
+    <BannersPage />
   </RequireRole>
 );
 

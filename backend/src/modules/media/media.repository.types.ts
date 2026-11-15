@@ -21,5 +21,6 @@ export type MediaUsage = {
   attachments: number;
   authorPhotos: number;
   userAvatars: number; // account photos (Minha conta)
+  banners: number; // advertisers' banners
   inText: number; // photos inside the text of a post
 };

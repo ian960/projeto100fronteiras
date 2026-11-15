@@ -7,6 +7,7 @@ import { useMe } from '../lib/hooks';
 import { useTheme } from '../lib/theme';
 import CookieBanner, { CookieSettingsButton } from './CookieBanner';
 import { useCategories } from './queries';
+import { BannerSlot } from './banners';
 
 // "quarta-feira, 11 de novembro": a news site says what day it is.
 const today = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -264,6 +265,8 @@ export default function SiteLayout() {
       <CategoryNav compact={compact} />
       <main id="conteudo" className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 sm:pt-10">
         <Outlet />
+        {/* Every page; nothing at all when no banner is running here. */}
+        <BannerSlot slot="site_footer" className="mt-16" />
       </main>
       <Footer />
       <CookieBanner />

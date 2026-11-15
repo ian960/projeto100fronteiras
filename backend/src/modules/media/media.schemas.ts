@@ -8,6 +8,7 @@ const purpose = z.enum([
   MediaPurpose.AVATAR,
   MediaPurpose.VIDEO,
   MediaPurpose.DOCUMENT,
+  MediaPurpose.BANNER,
 ]);
 
 export const signUploadSchema = z.object({

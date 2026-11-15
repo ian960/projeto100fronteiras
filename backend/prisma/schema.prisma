@@ -49,6 +49,17 @@ enum PostStatus {
   published // live
 }
 
+// Where an advertiser's banner shows on the site. Each value is one place in
+// the layout (frontend/src/site/BannerSlot.tsx); a place with no banner
+// running draws nothing at all.
+enum BannerSlot {
+  home_top // home page, above the carousel
+  home_middle // home page, between the latest news and the category blocks
+  article_middle // inside the text of a story or column, halfway through
+  article_end // after the text of a story or column
+  site_footer // every page of the site, just above the footer
+}
+
 enum MediaKind {
   image // covers, photos inside the text, author photos
   video
@@ -263,6 +274,8 @@ model Media {
   videoOf    Post[]           @relation("PostVideo")
   photoOf    Author[]         @relation("AuthorPhoto")
   avatarOf   User[]           @relation("UserAvatar")
+  bannerOf   Banner[]         @relation("BannerImage")
+  bannerMobileOf Banner[]     @relation("BannerMobileImage")
   attachedTo PostAttachment[]
 
   // "My uploads", newest first.
@@ -359,4 +372,44 @@ model PasswordResetToken {
   // "How many links did this account get in the last hour?"
   @@index([userId, createdAt])
   @@map("password_reset_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Banner — a local advertiser's ad, managed by the admin
+//
+// Shown only between startsAt and endsAt, and only while active. A slot with
+// nothing running is not drawn at all: the site looks exactly as without ads.
+// ---------------------------------------------------------------------------
+
+model Banner {
+  id String @id @default(uuid(7))
+
+  advertiser String // who pays, e.g. "Padaria Central". Shown in the panel and as the image's alt text.
+  linkUrl    String @map("link_url") // where a click goes (http/https only)
+  slot       BannerSlot
+
+  // Restrict: a file in use by a banner cannot be deleted from under it.
+  imageId String @map("image_id")
+  image   Media  @relation("BannerImage", fields: [imageId], references: [id], onDelete: Restrict)
+
+  // Optional narrower picture for phones. Without it, phones get `image`.
+  mobileImageId String? @map("mobile_image_id")
+  mobileImage   Media?  @relation("BannerMobileImage", fields: [mobileImageId], references: [id], onDelete: Restrict)
+
+  startsAt DateTime @map("starts_at")
+  endsAt   DateTime @map("ends_at")
+  active   Boolean  @default(true) // the admin's on/off switch, independent of the dates
+
+  // The monthly report for the advertiser.
+  impressions Int @default(0)
+  clicks      Int @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // "What is running in this slot right now?"
+  @@index([slot, active, startsAt, endsAt])
+  @@index([imageId])
+  @@index([mobileImageId])
+  @@map("banners")
 }

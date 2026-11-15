@@ -4,6 +4,7 @@ import { useDocumentTitle, useMe } from '../../lib/hooks';
 import { HighlightsCarousel } from '../HighlightsCarousel';
 import { OpinionPanel, SecondaryStory, SectionBlock, SectionHeading, StoryList } from '../parts';
 import { useHome } from '../queries';
+import { BannerSlot, useBannersReady } from '../banners';
 
 // How many stories sit in the row under the carousel, and how many follow as a list.
 const BESIDE_LEAD = 3;
@@ -23,8 +24,10 @@ export default function HomePage() {
   useDocumentTitle(null);
   const { data, isPending, error, refetch } = useHome();
   const { data: me } = useMe();
+  // Known before the page is drawn, so a banner never pushes the news down.
+  const bannersReady = useBannersReady();
 
-  if (isPending) return <Loading />;
+  if (isPending || !bannersReady) return <Loading />;
 
   if (error) {
     return (
@@ -63,6 +66,9 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-14 sm:gap-20">
+      {/* Banners draw nothing when none is running: no gap, no box. */}
+      <BannerSlot slot="home_top" className="-mb-4 sm:-mb-8" />
+
       {highlights.length > 0 && (
         <div className="flex flex-col gap-8 sm:gap-10">
           <HighlightsCarousel posts={highlights} />
@@ -94,6 +100,8 @@ export default function HomePage() {
           )}
         </div>
       )}
+
+      <BannerSlot slot="home_middle" />
 
       {sections.length > 0 && (
         <div className="grid gap-x-10 gap-y-14 md:grid-cols-2 lg:grid-cols-6">

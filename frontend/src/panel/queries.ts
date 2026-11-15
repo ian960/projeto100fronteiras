@@ -2,6 +2,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { del, get, getPage, patch, post } from '../lib/api';
 import type {
   AuthorWithCount,
+  BannerAdmin,
+  BannerSlot,
   CategoryWithCount,
   PostDetail,
   PostListItem,
@@ -234,5 +236,38 @@ export function useAccountActions() {
         client.invalidateQueries({ queryKey: ['site'] }),
       ]),
     }),
+  };
+}
+
+// ── Banners (admin only) ─────────────────────────────────────────────────────
+
+export function useAdminBanners() {
+  return useQuery({
+    queryKey: ['panel', 'banners'],
+    queryFn: async () => (await get<{ banners: BannerAdmin[] }>('/admin/banners')).banners,
+  });
+}
+
+export type BannerInput = {
+  advertiser?: string;
+  linkUrl?: string;
+  slot?: BannerSlot;
+  imageId?: string;
+  mobileImageId?: string | null;
+  startsAt?: string;
+  endsAt?: string;
+  active?: boolean;
+};
+
+export function useBannerActions() {
+  const invalidate = useInvalidateContent();
+  const onSuccess = () => invalidate();
+  return {
+    create: useMutation({ mutationFn: (input: BannerInput) => post('/admin/banners', input), onSuccess }),
+    update: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: BannerInput }) => patch(`/admin/banners/${id}`, input),
+      onSuccess,
+    }),
+    remove: useMutation({ mutationFn: (id: string) => del(`/admin/banners/${id}`), onSuccess }),
   };
 }

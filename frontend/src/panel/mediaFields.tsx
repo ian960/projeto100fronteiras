@@ -38,10 +38,11 @@ const FALLBACK_ACCEPT: Record<MediaPurpose, string> = {
   avatar: 'image/*',
   video: 'video/*',
   document: 'application/pdf',
+  banner: 'image/*',
 };
 
 function useAccept(purpose: MediaPurpose): string {
-  return useMediaRules()?.[purpose].accept ?? FALLBACK_ACCEPT[purpose];
+  return useMediaRules()?.[purpose]?.accept ?? FALLBACK_ACCEPT[purpose];
 }
 
 function useRule(purpose: MediaPurpose): MediaRule | undefined {
@@ -199,7 +200,7 @@ export const imageValue = (media: Media): ImageValue => ({ id: media.id, preview
 
 export function ImageField({ label, purpose, value, onChange, error, hint, optional, round, disabled }: {
   label: string;
-  purpose: Extract<MediaPurpose, 'cover' | 'author' | 'avatar'>;
+  purpose: Extract<MediaPurpose, 'cover' | 'author' | 'avatar' | 'banner'>;
   value: ImageValue;
   onChange: (value: ImageValue) => void;
   error?: string;
@@ -226,7 +227,9 @@ export function ImageField({ label, purpose, value, onChange, error, hint, optio
     setImporting(true);
     upload.setError(null);
     try {
-      if (purpose === 'avatar') return; // readers send a file; there is no link import for them
+      // Readers send a file, and banners come from the advertiser as a file:
+      // neither has a link import.
+      if (purpose === 'avatar' || purpose === 'banner') return;
       const media = await importMedia(purpose, link.trim());
       onChange(imageValue(media));
       setLink('');
@@ -252,15 +255,19 @@ export function ImageField({ label, purpose, value, onChange, error, hint, optio
           src={value.previewUrl}
           alt=""
           className={cx(
-            'border border-linha bg-superficie object-cover',
-            round ? 'size-24 rounded-full' : 'aspect-video w-full max-w-md rounded-md',
+            'border border-linha bg-superficie',
+            round
+              ? 'size-24 rounded-full object-cover'
+              : purpose === 'banner'
+                ? 'h-auto max-h-48 w-full max-w-md rounded-md object-contain'
+                : 'aspect-video w-full max-w-md rounded-md object-cover',
           )}
         />
       ) : (
         <div
           className={cx(
             'grid place-items-center border border-dashed bg-superficie text-sm text-tinta-suave',
-            round ? 'size-24 rounded-full' : 'aspect-video w-full max-w-md rounded-md',
+            round ? 'size-24 rounded-full' : purpose === 'banner' ? 'h-24 w-full max-w-md rounded-md' : 'aspect-video w-full max-w-md rounded-md',
             shownError ? 'border-alerta' : 'border-linha',
           )}
         >
@@ -276,7 +283,7 @@ export function ImageField({ label, purpose, value, onChange, error, hint, optio
             <FileButton accept={accept} disabled={busy || !enabled} onFiles={([file]) => onFile(file!)}>
               {value ? 'Trocar imagem' : 'Enviar imagem'}
             </FileButton>
-            {purpose !== 'avatar' && (
+            {purpose !== 'avatar' && purpose !== 'banner' && (
               <Button type="button" variant="texto" small disabled={busy || !enabled} onClick={() => setLinkOpen(!linkOpen)} aria-expanded={linkOpen}>
                 Usar um link
               </Button>
