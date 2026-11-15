@@ -96,6 +96,26 @@ const schema = z
     // links, confirmations and the contact form. On a paid plan, raise it.
     NEWSLETTER_DAILY_LIMIT: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(100_000).default(250)),
 
+    // Push notifications (modules/push). The pair of VAPID keys is made once
+    // with `npx web-push generate-vapid-keys`; without both, the "Ativar
+    // notificações" button stays hidden and the rest of the site works as
+    // before. The public key reaches the browsers through GET /api/push/config,
+    // so the site needs no variable of its own. VAPID_SUBJECT is how the push
+    // services (Google, Apple...) can reach whoever sends: a mailto: or https:
+    // address. Empty: mailto: CONTACT_EMAIL (or MAIL_FROM).
+    VAPID_PUBLIC_KEY: trimmedString,
+    VAPID_PRIVATE_KEY: trimmedString,
+    VAPID_SUBJECT: z.preprocess(
+      emptyToUndefined,
+      z
+        .string()
+        .regex(/^(mailto:\S+@\S+|https:\/\/\S+)$/, 'VAPID_SUBJECT must be a mailto: or https: address')
+        .optional(),
+    ),
+    // Notifications the admin can send in any 24 hours. Readers who get too
+    // many turn them off (or block the site); a handful a day is plenty.
+    PUSH_DAILY_LIMIT: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(100).default(5)),
+
     // "Entrar com Google" (modules/auth/auth.google.ts). Both from the OAuth
     // client in the Google Cloud Console; without them the button is hidden
     // and the rest of the login works as before. Google sends readers back to
@@ -193,6 +213,25 @@ export const googleConfig =
         clientId: data.GOOGLE_CLIENT_ID,
         clientSecret: data.GOOGLE_CLIENT_SECRET,
         redirectUri: `${data.SITE_URL.replace(/\/+$/, '')}/api/auth/google/callback`,
+      }
+    : null;
+
+// Push notifications: on only with both keys, and only if they look like
+// VAPID keys (65 and 32 bytes in base64url). A pasted key with a missing
+// character switches the feature off with a warning instead of failing at
+// the first send.
+const base64urlBytes = (value: string) => (/^[A-Za-z0-9_-]+$/.test(value) ? Buffer.from(value, 'base64url').length : 0);
+
+export const pushKeysInvalid =
+  Boolean(data.VAPID_PUBLIC_KEY || data.VAPID_PRIVATE_KEY) &&
+  (base64urlBytes(data.VAPID_PUBLIC_KEY ?? '') !== 65 || base64urlBytes(data.VAPID_PRIVATE_KEY ?? '') !== 32);
+
+export const pushConfig =
+  data.VAPID_PUBLIC_KEY && data.VAPID_PRIVATE_KEY && !pushKeysInvalid
+    ? {
+        publicKey: data.VAPID_PUBLIC_KEY,
+        privateKey: data.VAPID_PRIVATE_KEY,
+        subject: data.VAPID_SUBJECT ?? `mailto:${data.CONTACT_EMAIL ?? data.MAIL_FROM ?? 'contato@example.com'}`,
       }
     : null;
 

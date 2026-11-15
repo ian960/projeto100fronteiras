@@ -93,3 +93,14 @@ export const newsletterLimiter = rateLimit({
   keyGenerator,
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many attempts. Try again later.' } },
 });
+
+// "Ativar/Desativar notificações". A reader clicks it a few times at most.
+export const pushLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip,
+  keyGenerator,
+  message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many attempts. Try again later.' } },
+});

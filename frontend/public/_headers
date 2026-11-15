@@ -2,10 +2,15 @@
 # the Worker get the same ones from worker/index.ts (keep both in sync).
 
 /*
-  Content-Security-Policy: default-src 'self'; img-src 'self' data: https://res.cloudinary.com https://*.google-analytics.com https://*.googletagmanager.com; media-src 'self' https://res.cloudinary.com; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://api.cloudinary.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; style-src 'self' 'unsafe-inline'; script-src 'self' https://*.googletagmanager.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; img-src 'self' data: https://res.cloudinary.com https://*.google-analytics.com https://*.googletagmanager.com; media-src 'self' https://res.cloudinary.com; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://api.cloudinary.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; style-src 'self' 'unsafe-inline'; script-src 'self' https://*.googletagmanager.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; worker-src 'self'; manifest-src 'self'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+# The service worker of the push notifications (src/lib/push.ts). Always
+# checked again, so a new version reaches the readers on their next visit.
+/sw.js
+  Cache-Control: no-cache
 
 # Vite puts a hash of the content in these file names, so they never change:
 # a browser can keep them for a year.

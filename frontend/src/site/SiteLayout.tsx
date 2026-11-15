@@ -9,6 +9,7 @@ import CookieBanner, { CookieSettingsButton } from './CookieBanner';
 import { useCategories } from './queries';
 import { BannerSlot } from './banners';
 import { NewsletterBox } from './Newsletter';
+import { PushFooterButton } from './Notifications';
 
 // "quarta-feira, 11 de novembro": a news site says what day it is.
 const today = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -238,6 +239,7 @@ function Footer() {
             Área da redação
           </Link>
           <CookieSettingsButton className="hover:underline underline-offset-4" />
+          <PushFooterButton className="hover:underline underline-offset-4 disabled:opacity-60" />
           <ThemeButton withLabel className="inline-flex items-center gap-2 hover:underline underline-offset-4" />
         </nav>
       </div>

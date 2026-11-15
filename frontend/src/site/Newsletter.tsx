@@ -29,9 +29,6 @@ export function NewsletterBox({ tone = 'claro', className }: { tone?: Tone; clas
       className={cx(tone === 'claro' ? 'rounded-2xl bg-superficie p-5 sm:p-6' : '', className)}
     >
       <p className={cx('font-serif text-xl', tone === 'claro' ? 'text-tinta' : 'text-white')}>Receba as principais notícias por e-mail</p>
-      <p className={cx('mt-1 text-[0.9375rem]', tone === 'claro' ? 'text-tinta-suave' : 'text-white/75')}>
-        Um resumo de vez em quando, sem propaganda. Para sair, é um clique.
-      </p>
       <div className="mt-4">{me ? <AccountButton tone={tone} /> : <EmailForm tone={tone} />}</div>
     </section>
   );
@@ -156,7 +153,7 @@ function AccountButton({ tone }: { tone: Tone }) {
           onClick={() => set.mutate(true)}
           variant={tone === 'escuro' ? 'secundario' : 'primario'}
         >
-          Quero receber no e-mail da minha conta
+          Quero receber notícias no e-mail
         </Button>
       </div>
       {set.error && <p className={cx('text-sm', tone === 'claro' ? 'text-alerta' : 'text-white')}>{errorMessage(set.error)}</p>}

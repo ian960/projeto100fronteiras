@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Avatar, Button, ButtonLink, cx } from '../../components/ui';
 import { useDocumentTitle } from '../../lib/hooks';
 import { SectionHeading } from '../parts';
+import { PushSettings } from '../Notifications';
 
 // "Ajuda": every feature of the site explained, each one next to a copy of
 // how it looks on the site. The copies are drawn with the site's own pieces
@@ -280,6 +281,43 @@ const topics: Topic[] = [
       {
         q: 'Como um colunista publica?',
         a: 'Pelo Painel (botão no topo, para quem é colunista). A coluna é enviada para revisão e o administrador aprova antes de ela ir ao ar.',
+      },
+    ],
+  },
+  {
+    id: 'notificacoes',
+    title: 'Notificações',
+    // The real switch, not a picture: it works from here too.
+    preview: (
+      <div className="mt-5">
+        <PushSettings />
+      </div>
+    ),
+    questions: [
+      {
+        q: 'O que são as notificações?',
+        a: 'Um aviso que aparece no celular ou no computador quando sai uma notícia importante, mesmo com o site fechado. Tocando nele, a matéria abre.',
+      },
+      {
+        q: 'Preciso ter conta?',
+        a: 'Não. A notificação fica ligada ao navegador, não à conta: cada celular ou computador tem o seu botão. Também fica no rodapé de todas as páginas.',
+      },
+      {
+        q: 'Como desligo?',
+        a: (
+          <>
+            No rodapé do site, em &ldquo;Desativar notificações&rdquo;, ou aqui mesmo. Também dá para bloquear o site nas configurações do
+            navegador ou do celular.
+          </>
+        ),
+      },
+      {
+        q: 'Não aparece a opção no iPhone.',
+        a: 'No iPhone e no iPad (iOS 16.4 ou mais novo) as notificações só funcionam com o site adicionado à Tela de Início: no Safari, toque em Compartilhar, depois em "Adicionar à Tela de Início", e ative pelo ícone novo.',
+      },
+      {
+        q: 'Quantas notificações vou receber?',
+        a: 'Poucas: só notícias importantes, no máximo algumas por dia.',
       },
     ],
   },

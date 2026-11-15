@@ -26,6 +26,8 @@ afterEach(async () => {
   // literally the shape of the relations.
   // Attachments go with their post (Cascade). Media after everything that
   // points at it, users last because media points at its uploader.
+  await prisma.pushNotification.deleteMany();
+  await prisma.pushSubscription.deleteMany();
   await prisma.newsletterIssue.deleteMany();
   await prisma.newsletterSubscriber.deleteMany();
   await prisma.post.deleteMany();

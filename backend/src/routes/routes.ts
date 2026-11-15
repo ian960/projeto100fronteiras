@@ -22,6 +22,7 @@ import { seoController } from '../modules/seo/seo.controller';
 import { bannersAdminRouter, bannersPublicRouter } from '../modules/banners/banners.routes';
 import { contactRouter } from '../modules/contact/contact.routes';
 import { newsletterAdminRouter, newsletterRouter } from '../modules/newsletter/newsletter.routes';
+import { pushAdminRouter, pushRouter } from '../modules/push/push.routes';
 
 export function buildRouter(): Router {
   const router = Router();
@@ -42,6 +43,8 @@ export function buildRouter(): Router {
   router.use('/contact', contactRouter());
   // Opt-in newsletter: subscribe, confirm, leave; "Minha conta" switch.
   router.use('/newsletter', newsletterRouter());
+  // Opt-in push notifications: the browser's subscription, no account needed.
+  router.use('/push', pushRouter());
 
   // ── admin ───────────────────────────────────────────────────────────────
   // Each of these routers applies authenticate + authorize(ADMIN) on itself,
@@ -53,6 +56,7 @@ export function buildRouter(): Router {
   router.use('/admin/posts', postsAdminRouter());
   router.use('/admin/banners', bannersAdminRouter());
   router.use('/admin/newsletter', newsletterAdminRouter());
+  router.use('/admin/push', pushAdminRouter());
 
   // ── columnist ───────────────────────────────────────────────────────────
   router.use('/columnist/posts', postsColumnistRouter());

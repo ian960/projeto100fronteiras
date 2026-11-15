@@ -29,6 +29,8 @@ export type NewsletterPostOption = {
   type: 'news' | 'column';
   title: string;
   slug: string;
+  // The default text of a push notification (panel, Notificações).
+  excerpt: string;
   publishedAt: Date | null;
   category: string | null;
 };

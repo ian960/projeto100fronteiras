@@ -195,7 +195,7 @@ export class NewsletterRepository {
       where: { status: 'published' },
       orderBy: { publishedAt: 'desc' },
       take: limit,
-      select: { id: true, type: true, title: true, slug: true, publishedAt: true, category: { select: { name: true } } },
+      select: { id: true, type: true, title: true, slug: true, excerpt: true, publishedAt: true, category: { select: { name: true } } },
     });
     return rows.map(({ category, ...row }) => ({ ...row, category: category?.name ?? null }));
   }

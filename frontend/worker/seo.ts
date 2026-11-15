@@ -582,7 +582,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
     "default-src 'self'; img-src 'self' data: https://res.cloudinary.com https://*.google-analytics.com https://*.googletagmanager.com; media-src 'self' https://res.cloudinary.com; " +
     "frame-src https://www.youtube-nocookie.com; connect-src 'self' https://api.cloudinary.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; " +
     "style-src 'self' 'unsafe-inline'; script-src 'self' https://*.googletagmanager.com; font-src 'self' data:; object-src 'none'; " +
-    "base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    "base-uri 'self'; form-action 'self'; frame-ancestors 'none'; worker-src 'self'; manifest-src 'self'",
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
   'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=()',

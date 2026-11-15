@@ -1,10 +1,11 @@
-import { env, usingDevSessionSecret } from './config/env';
+import { env, pushConfig, pushKeysInvalid, usingDevSessionSecret } from './config/env';
 import { createApp } from './app';
 import { disconnectDatabase } from './config/prisma';
 import { isMediaConfigured } from './config/cloudinary';
 import { logger } from './shared/utils/logger';
 import { isMailConfigured } from './shared/mail/mailer';
 import { QUEUE_INTERVAL_MS, newsletterService } from './modules/newsletter/newsletter.service';
+import { pushService } from './modules/push/push.service';
 
 const app = createApp();
 
@@ -23,6 +24,12 @@ const server = app.listen(env.PORT, () => {
     logger.warn('MAIL_PROVIDER is log: e-mails (password recovery) are written to this log instead of being sent.');
   }
 
+  if (pushKeysInvalid) {
+    logger.warn('VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY do not look like VAPID keys: push notifications are off. Generate them again with npx web-push generate-vapid-keys.');
+  } else if (!pushConfig) {
+    logger.info('VAPID keys not set: push notifications are off (the site hides the button).');
+  }
+
   if (usingDevSessionSecret) {
     logger.warn('SESSION_SECRET is not set: using the development fallback. Never do this in production.');
   }
@@ -33,6 +40,9 @@ const server = app.listen(env.PORT, () => {
 // then every 10 minutes. See modules/newsletter/newsletter.service.ts.
 setTimeout(() => newsletterService.kick(), 30_000).unref();
 setInterval(() => newsletterService.kick(), QUEUE_INTERVAL_MS).unref();
+// The same for a push notification interrupted by a restart.
+setTimeout(() => pushService.kick(), 30_000).unref();
+setInterval(() => pushService.kick(), QUEUE_INTERVAL_MS).unref();
 
 // Render's proxy keeps connections to the API open and reuses them. If Node
 // closed an idle one first (its default is 5 s), a request sent on it at that
