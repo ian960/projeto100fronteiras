@@ -84,6 +84,14 @@ const schema = z
     // Where the site's contact form (/contato) delivers. Empty: MAIL_FROM.
     CONTACT_EMAIL: z.preprocess(emptyToUndefined, z.email().optional()),
 
+    // "Entrar com Google" (modules/auth/auth.google.ts). Both from the OAuth
+    // client in the Google Cloud Console; without them the button is hidden
+    // and the rest of the login works as before. Google sends readers back to
+    // SITE_URL + /api/auth/google/callback, which must be listed in the
+    // client's "Authorized redirect URIs".
+    GOOGLE_CLIENT_ID: optionalString,
+    GOOGLE_CLIENT_SECRET: optionalString,
+
     // First admin, created by `npm run db:seed`.
     SEED_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().default('Admin')),
     SEED_ADMIN_EMAIL: z.preprocess(emptyToUndefined, z.email().default('admin@portal.local')),
@@ -113,6 +121,14 @@ const schema = z
         code: 'custom',
         path: ['MAIL_API_KEY'],
         message: `MAIL_API_KEY and MAIL_FROM are required to send e-mail with ${value.MAIL_PROVIDER}.`,
+      });
+    }
+
+    if (Boolean(value.GOOGLE_CLIENT_ID) !== Boolean(value.GOOGLE_CLIENT_SECRET)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['GOOGLE_CLIENT_ID'],
+        message: 'Set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither.',
       });
     }
 
@@ -158,5 +174,14 @@ export const cloudinaryConfig = cloudinaryMatch
       deliveryBase: data.CLOUDINARY_DELIVERY_BASE.replace(/\/+$/, ''),
     }
   : null;
+
+export const googleConfig =
+  data.GOOGLE_CLIENT_ID && data.GOOGLE_CLIENT_SECRET
+    ? {
+        clientId: data.GOOGLE_CLIENT_ID,
+        clientSecret: data.GOOGLE_CLIENT_SECRET,
+        redirectUri: `${data.SITE_URL.replace(/\/+$/, '')}/api/auth/google/callback`,
+      }
+    : null;
 
 export type CloudinaryConfig = NonNullable<typeof cloudinaryConfig>;
