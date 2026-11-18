@@ -21,6 +21,8 @@ import { logger } from '../shared/utils/logger';
 //   a file in frontend/dist          the file, with the headers in _headers
 //   anything else                    index.html, and React takes it from there
 //
+// Pages asked for on the *.onrender.com address are redirected to SITE_URL.
+//
 // Without frontend/dist (development, Docker, tests) none of this is mounted:
 // Vite serves the site on its own port.
 
@@ -254,10 +256,25 @@ export function siteMiddleware(options: SiteOptions): RequestHandler {
   }
 
   const env = { ASSETS: assets, SITE_URL: options.siteUrl ?? '' };
+  const canonicalHost = (() => {
+    try {
+      return options.siteUrl ? new URL(options.siteUrl).hostname : null;
+    } catch {
+      return null;
+    }
+  })();
 
   return (req, res, next) => {
     if (req.path === '/api' || req.path.startsWith('/api/')) return next();
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+
+    // Someone on the Render address (portal-api-xxxx.onrender.com): send them
+    // to the real one, so links they copy or share carry the site's domain.
+    // /api stays reachable there (health check, the Worker's ping).
+    if (canonicalHost && req.hostname !== canonicalHost && req.hostname.endsWith('.onrender.com')) {
+      res.redirect(301, `${options.siteUrl!.replace(/\/+$/, '')}${req.originalUrl}`);
+      return;
+    }
 
     const ip = clientIp(req, options.proxySecret);
     const api: ApiFetch = (apiPath, timeoutMs) => {
