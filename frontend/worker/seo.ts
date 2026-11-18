@@ -22,8 +22,14 @@
 
 import { CONTACT, CONTACT_EMAIL, PRIVACY, TERMS, UPDATED_AT, pieces, type LegalPage } from '../src/site/legal';
 
+// The built files (dist/). On Cloudflare it is the ASSETS binding; on Render
+// the API serves them (backend/src/site/site.ts). Only fetch is used.
+export interface Assets {
+  fetch(request: Request): Promise<Response>;
+}
+
 export interface SeoEnv {
-  ASSETS: Fetcher;
+  ASSETS: Assets;
   // The site's public address, without a trailing slash, e.g.
   // https://portal100fronteiras.com.br. Empty: the address the page was
   // opened at. Set in wrangler.jsonc.
@@ -141,40 +147,33 @@ async function renderPage(request: Request, env: SeoEnv, meta: PageMeta): Promis
   if (!meta.noindex) head += `<link rel="canonical" href="${escapeHtml(meta.canonical)}" />`;
   if (meta.jsonLd) head += `<script type="application/ld+json">${jsonForScript(meta.jsonLd)}</script>`;
 
-  const title = `${meta.title} | ${SITE_NAME}`;
-  let rewriter = new HTMLRewriter()
-    .on('title', {
-      element(element) {
-        element.setInnerContent(title);
-      },
-    })
-    // The generic tags from index.html, replaced by this page's own.
-    .on('meta[name="description"], meta[name="robots"], meta[property^="og:"], meta[name^="twitter:"], link[rel="canonical"]', {
-      element(element) {
-        element.remove();
-      },
-    })
-    .on('head', {
-      element(element) {
-        element.append(head, { html: true });
-      },
-    });
+  // Plain text edits on our own index.html (the same file on Cloudflare and
+  // on Render), so this runs anywhere: no HTMLRewriter, which only Cloudflare
+  // has.
+  let html = await page.text();
+  // Functions as replacements: a "$&" in a title must stay text.
+  const title = `<title>${escapeHtml(`${meta.title} | ${SITE_NAME}`)}</title>`;
+  html = html.replace(/<title>[\s\S]*?<\/title>/, () => title);
+  // The generic tags from index.html, replaced by this page's own.
+  html = html.replace(
+    /<meta\s+(?:name="(?:description|robots|twitter:[^"]*)"|property="og:[^"]*")[^>]*>\s*|<link\s+rel="canonical"[^>]*>\s*/g,
+    '',
+  );
+  html = html.replace('</head>', () => `${head}</head>`);
   if (meta.rootHtml) {
     const rootHtml = meta.rootHtml;
-    rewriter = rewriter.on('div#root', {
-      element(element) {
-        element.setInnerContent(rootHtml, { html: true });
-      },
-    });
+    html = html.replace(/<div id="root">[\s\S]*?<\/div>/, () => `<div id="root">${rootHtml}</div>`);
   }
-  const response = rewriter.transform(page);
 
   // Same headers as every other page (public/_headers): this response is
   // built here, so Cloudflare does not add them by itself.
-  const headers = new Headers(response.headers);
+  const headers = new Headers(page.headers);
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) headers.set(key, value);
+  headers.set('content-type', 'text/html; charset=utf-8');
   headers.set('cache-control', 'no-cache');
-  return new Response(response.body, { status: meta.status ?? response.status, headers });
+  // The body changed: the file's own length, ETag and encoding no longer apply.
+  for (const key of ['content-length', 'content-encoding', 'etag', 'last-modified']) headers.delete(key);
+  return new Response(html, { status: meta.status ?? page.status, headers });
 }
 
 // The page React would show for a missing address, answered with a real 404

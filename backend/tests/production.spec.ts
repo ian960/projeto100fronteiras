@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import { agent } from './helpers/agent';
-import { clientIp, proxyGuard } from '../src/shared/middlewares/proxyGuard';
+import { clientIp } from '../src/shared/middlewares/proxyGuard';
 import { logger } from '../src/shared/utils/logger';
 
-// What only shows up once the API is behind Render and the Cloudflare Worker.
+// What only shows up once the API is on Render (and behind the Cloudflare Worker).
 
 describe('pedidos errados do cliente', () => {
   it('responde 400, não 500, a JSON malformado', async () => {
@@ -29,35 +29,35 @@ describe('pedidos errados do cliente', () => {
   });
 });
 
-describe('proteção do Worker (PROXY_SECRET)', () => {
+describe('IP do visitante (PROXY_SECRET)', () => {
   const secret = 's'.repeat(40);
 
   function app(withSecret: string | undefined) {
     const server = express();
     server.set('trust proxy', 1);
-    server.use(proxyGuard(withSecret));
-    server.get('/api/health', (_req, res) => res.json({ ok: true }));
     server.get('/api/who', (req, res) => res.json({ ip: clientIp(req, withSecret) }));
     return server;
   }
 
-  it('não faz nada sem PROXY_SECRET (desenvolvimento, Docker)', async () => {
+  it('ignora x-client-ip sem PROXY_SECRET (desenvolvimento, Docker)', async () => {
     const response = await request(app(undefined)).get('/api/who').set('x-client-ip', '203.0.113.9').expect(200);
-    // Without the secret a forged x-client-ip is ignored.
     expect(response.body.ip).not.toBe('203.0.113.9');
   });
 
-  it('recusa pedidos que pulam o Worker', async () => {
-    await request(app(secret)).get('/api/who').expect(403);
-    await request(app(secret)).get('/api/who').set('x-proxy-secret', 'wrong').expect(403);
-    await request(app(secret)).get('/api/who').set('x-proxy-secret', `${secret}x`).expect(403);
+  it('aceita pedidos direto do navegador (o site está no próprio Render)', async () => {
+    const response = await request(app(secret)).get('/api/who').set('x-forwarded-for', '198.51.100.7').expect(200);
+    expect(response.body.ip).toBe('198.51.100.7');
   });
 
-  it('deixa o health check do Render entrar sem o segredo', async () => {
-    await request(app(secret)).get('/api/health').expect(200);
+  it('ignora x-client-ip com o segredo errado ou sem ele', async () => {
+    for (const given of [undefined, 'wrong', `${secret}x`]) {
+      const call = request(app(secret)).get('/api/who').set('x-forwarded-for', '198.51.100.7').set('x-client-ip', '203.0.113.9');
+      const response = await (given ? call.set('x-proxy-secret', given) : call).expect(200);
+      expect(response.body.ip).toBe('198.51.100.7');
+    }
   });
 
-  it('usa o x-client-ip do Worker nos limites de tentativas', async () => {
+  it('usa o x-client-ip do Worker com o segredo certo', async () => {
     const response = await request(app(secret))
       .get('/api/who')
       .set('x-proxy-secret', secret)

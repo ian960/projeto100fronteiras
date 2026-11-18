@@ -1,13 +1,22 @@
 import crypto from 'node:crypto';
-import type { Request, RequestHandler } from 'express';
+import type { Request } from 'express';
 
-// In production the site's Cloudflare Worker (frontend/worker/index.ts) is
-// the only way in. It forwards /api/* here and adds two headers:
+// Who is asking, for the rate limits (rateLimit.ts).
 //
-//   x-proxy-secret  the PROXY_SECRET shared by the Worker and this API
-//   x-client-ip     the visitor's address, as Cloudflare saw it
+// The site is served by this API on Render, so a visitor's request arrives
+// straight from Render's proxy, and req.ip (X-Forwarded-For, trusted by
+// app.ts) is the visitor.
 //
-// Without PROXY_SECRET (development, Docker, tests) nothing here applies.
+// Two callers speak for someone else and add two headers:
+//
+//   x-proxy-secret  the PROXY_SECRET shared with them
+//   x-client-ip     the visitor's address
+//
+// The Cloudflare Worker (frontend/worker/index.ts, the workers.dev address),
+// which forwards /api/* from Cloudflare's own addresses, and this server's
+// SEO pages (site/site.ts), which ask the API from 127.0.0.1. x-client-ip is
+// believed only together with the right secret: anyone else could send their
+// own and dodge the login limit.
 
 function sameSecret(given: string, expected: string): boolean {
   const a = Buffer.from(given);
@@ -17,31 +26,11 @@ function sameSecret(given: string, expected: string): boolean {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-// Refuses requests that did not come through the Worker. Someone calling the
-// Render address directly could otherwise send their own x-client-ip and dodge
-// the login rate limit. Render's health check has no secret, so it is let in.
-export function proxyGuard(secret: string | undefined): RequestHandler {
-  return (req, res, next) => {
-    if (!secret || req.path === '/api/health') return next();
-
-    const given = req.get('x-proxy-secret');
-    if (given && sameSecret(given, secret)) return next();
-
-    res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Use the site address, not the API address.' },
-    });
-  };
-}
-
-// Who is asking, for the rate limits. Behind the Worker every request arrives
-// from a Cloudflare address, so req.ip would put every reader in one bucket
-// and ten logins would lock the whole newsroom out. With the secret set,
-// proxyGuard has already checked that the request came from the Worker, so
-// its x-client-ip can be trusted.
 export function clientIp(req: Request, secret: string | undefined): string {
   if (secret) {
+    const given = req.get('x-proxy-secret');
     const forwarded = req.get('x-client-ip');
-    if (forwarded) return forwarded;
+    if (given && forwarded && sameSecret(given, secret)) return forwarded;
   }
   return req.ip ?? 'unknown';
 }

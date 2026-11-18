@@ -1,24 +1,37 @@
 # Going live
 
 ```
-reader ──▶ Cloudflare ── site files (frontend/dist)
-              │  Worker (frontend/worker/index.ts)
-              │    /api/*            ──▶ Render: API (backend/) ──▶ Render: Postgres
-              │    /noticia/:slug     link preview tags
-              │    every 10 minutes   keeps the free API awake
+reader ──▶ portal100fronteiras.com.br (Cloudflare DNS only, grey cloud)
+              │
+              ▼
+           Render: portal-api (backend/) ──▶ Render: Postgres
+              │  /api/*             the API
+              │  /noticia/:slug...  pages with link preview tags, sitemaps,
+              │                     robots.txt (frontend/worker/routes.ts)
+              │  everything else    the site's files (frontend/dist)
               ▼
            Cloudinary: images, videos and PDFs (straight from the browser)
+
+Cloudflare Worker (projeto-sem-fronteiras.<account>.workers.dev): the same
+site on a second address, and every 10 minutes a ping that keeps the free API
+awake.
 ```
 
-The browser only ever talks to the Cloudflare address. The Worker forwards
-`/api/*` to Render, so the login cookie belongs to the site's own address:
-with the site and the API on two different domains, Safari would block the
-cookie and nobody could log in from an iPhone.
+**Why not Cloudflare for the domain:** TIM (and other Brazilian ISPs) block
+some of Cloudflare's shared IPs in anti-piracy orders, and a free Cloudflare
+zone cannot choose its IPs. On 2026-11-18 portal100fronteiras.com.br sat on
+two blocked ones (104.21.20.81, 172.67.191.252) and did not open on TIM
+fiber. So the domain points at Render and Cloudflare only answers its DNS.
+
+The browser only ever talks to the site's own address, and the API is on that
+same address, so the login cookie is first-party: with the site and the API on
+two different domains, Safari would block the cookie and nobody could log in
+from an iPhone.
 
 | | plan | limit to know |
 |---|---|---|
 | Cloudflare Workers | free | 100,000 Worker requests a day (`/api/*` and article pages; plain files do not count) |
-| Render web service | free | sleeps after 15 minutes without requests (the Worker pings it every 10) |
+| Render web service | free | sleeps after 15 minutes without requests (the Worker pings it every 10); also serves the site |
 | Render Postgres | free | **deleted 30 days after creation**, no backups: upgrade before that (Basic, US$ 6/month) |
 | Render bandwidth | Hobby workspace | 5 GB/month out of Render (images and videos come from Cloudinary, not Render) |
 
@@ -116,16 +129,12 @@ refuse when the database and the site address do not belong together.
 - Log in on the panel (also on an iPhone).
 - Publish a test article with a cover, open it, and paste its link in a
   WhatsApp chat: the preview shows the headline and the cover.
-- Calling the Render address directly (`/api/home`) answers 403: only the
-  Worker gets in.
 
 ## Day to day
 
 - **Push to `master`** and both redeploy: Render builds the API, applies
   migrations and restarts; Cloudflare builds and publishes the site.
 - **Logs:** Render → `portal-api` → Logs. Cloudflare → the Worker → Logs.
-- **"Acesse pelo endereço do site" / 403 from the API**: `PROXY_SECRET`
-  differs between Render and Cloudflare.
 - **"O servidor não está respondendo" / 502**: Render is deploying or waking up.
 
 ## Before day 30
@@ -134,12 +143,18 @@ Render → `portal-db` → **Upgrade** to Basic-256mb. Same database, same data,
 nothing to change in the code. Free databases are deleted 14 days after
 expiring.
 
-## When the domain goes live
+## The domain (portal100fronteiras.com.br)
 
-1. Add the domain to Cloudflare (it becomes the domain's DNS).
-2. The Worker → **Settings → Domains & Routes → Add → Custom domain**.
-3. Render → `SITE_URL` with the new address.
+The domain's DNS is on Cloudflare, but the records are **DNS only** (grey
+cloud), pointing at Render:
 
-With a domain of its own, Cloudflare can also cache public pages at the edge
-(the Cache API does nothing on `workers.dev`), which takes most of the load
-off the API.
+1. Render → `portal-api` → **Settings → Custom Domains → Add**:
+   `portal100fronteiras.com.br` (Render adds `www` and redirects it).
+2. Cloudflare → the domain → **DNS**, records as Render shows them, all with
+   the cloud **grey** (DNS only):
+   - `A` `@` → `216.24.57.1`
+   - `CNAME` `www` → `portal-api-o5v4.onrender.com`
+3. Back on Render, **Verify**. The https certificate comes in a few minutes.
+4. `SITE_URL` on Render stays `https://portal100fronteiras.com.br`.
+
+An orange cloud would put the site back on Cloudflare's shared IPs.

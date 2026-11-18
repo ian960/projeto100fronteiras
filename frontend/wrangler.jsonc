@@ -1,6 +1,8 @@
-// The site on Cloudflare: the files Vite builds (dist/) plus the Worker in
-// worker/index.ts. Deployed by Cloudflare on every push to master (Workers
-// Builds), or by hand with `npm run deploy`.
+// The site on Cloudflare, at the workers.dev address only: the files Vite
+// builds (dist/) plus the Worker in worker/index.ts. The real domain is served
+// by Render (render.yaml, DEPLOY.md): TIM blocks Cloudflare's shared IPs.
+// Deployed by Cloudflare on every push to master (Workers Builds), or by hand
+// with `npm run deploy`.
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "projeto-sem-fronteiras",

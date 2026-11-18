@@ -1,11 +1,12 @@
+import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { env } from './config/env';
+import { env, isTest } from './config/env';
 import { isMediaConfigured } from './config/cloudinary';
 import { sessionMiddleware } from './config/session';
 import { isGoogleLoginConfigured } from './modules/auth/auth.google';
-import { proxyGuard } from './shared/middlewares/proxyGuard';
+import { builtSiteDir, siteMiddleware } from './site/site';
 import { buildRouter } from './routes/routes';
 import { notFound } from './shared/middlewares/notFound';
 import { errorMiddleware } from './shared/middlewares/error.middleware';
@@ -16,15 +17,32 @@ export function createApp() {
   const app = express();
 
   // Behind Render's proxy, which says in X-Forwarded-Proto that the visitor
-  // came over https. express-session only sends the Secure cookie when it
-  // trusts that. (The visitor's IP comes from the Worker: see proxyGuard.)
+  // came over https and in X-Forwarded-For who the visitor is. express-session
+  // only sends the Secure cookie when it trusts that.
   app.set('trust proxy', 1);
+  // No need to tell the world which server this is.
+  app.disable('x-powered-by');
 
-  app.use(helmet());
+  // The site's own headers (Content-Security-Policy and the rest) come from
+  // frontend/public/_headers; helmet's defaults would block Google Analytics,
+  // Cloudinary and YouTube there. So helmet covers the API only.
+  app.use('/api', helmet());
 
-  // Before the body and the session: a request that did not come through the
-  // site's Worker is refused without touching the database.
-  app.use(proxyGuard(env.PROXY_SECRET));
+  // The site (frontend/dist), when it has been built: in production on Render.
+  // Before the body parser and the session, so a file never touches the
+  // database. See site/site.ts.
+  const siteDir = isTest ? null : builtSiteDir();
+  if (siteDir) {
+    app.use(
+      siteMiddleware({
+        distDir: siteDir,
+        routesFile: path.resolve(siteDir, '../dist-server/routes.js'),
+        siteUrl: env.SITE_URL,
+        apiOrigin: `http://127.0.0.1:${env.PORT}`,
+        proxySecret: env.PROXY_SECRET,
+      }),
+    );
+  }
 
   app.use(
     cors({
