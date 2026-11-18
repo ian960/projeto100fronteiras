@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:server": "vite build --config vite.server.config.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.worker.json",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",

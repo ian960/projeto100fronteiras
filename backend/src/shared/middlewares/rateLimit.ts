@@ -7,7 +7,7 @@ import { clientIp } from './proxyGuard';
 // would trip the limiter instead of testing what it means to test.
 const skip = () => isTest;
 
-// The visitor's address, also behind the Cloudflare Worker (see proxyGuard).
+// The visitor's address, also through the Cloudflare Worker (see proxyGuard).
 const keyGenerator = (req: Request) => clientIp(req, env.PROXY_SECRET);
 
 // Brute force on a password field. Only failed attempts count: a newsroom

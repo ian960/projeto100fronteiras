@@ -1,6 +1,11 @@
-// The site in production, on Cloudflare. Cloudflare serves the built files
-// (dist/) by itself; this Worker only runs for the paths listed under
-// run_worker_first in wrangler.jsonc, plus the scheduled ping:
+// The site on Cloudflare (projeto-sem-fronteiras.iandevbr.workers.dev). The
+// real address, portal100fronteiras.com.br, is served by the API on Render
+// instead (backend/src/site/site.ts): TIM blocks Cloudflare's shared IPs.
+// This Worker stays for the ping below and as a second address.
+//
+// Cloudflare serves the built files (dist/) by itself; this Worker only runs
+// for the paths listed under run_worker_first in wrangler.jsonc, plus the
+// scheduled ping:
 //
 //   /api/*            forwarded to the API on Render. The browser only ever
 //                     talks to the site's own address, so the login cookie is
@@ -18,18 +23,7 @@
 //   every 10 minutes  a request to the API, so Render's free plan does not
 //                     put it to sleep (waking up takes about a minute).
 
-import {
-  STATIC_PATHS,
-  articlePage,
-  authorPage,
-  categoryPage,
-  newsSitemap,
-  robots,
-  sitemap,
-  staticPage,
-  type ApiFetch,
-  type SeoEnv,
-} from './seo';
+import { seoResponse, type ApiFetch, type SeoEnv } from './routes';
 
 interface Env extends SeoEnv {
   ASSETS: Fetcher;
@@ -48,24 +42,8 @@ export default {
       return proxyToApi(request, env);
     }
 
-    if (request.method === 'GET' || request.method === 'HEAD') {
-      const api = apiFetch(request, env);
-
-      if (url.pathname === '/robots.txt') return robots(request, env);
-      if (url.pathname === '/sitemap.xml') return sitemap(request, env, api);
-      if (url.pathname === '/sitemap-news.xml') return newsSitemap(request, env, api);
-
-      const staticPath = STATIC_PATHS.find((path) => url.pathname.replace(/\/$/, '') === path);
-      if (staticPath) return staticPage(request, env, staticPath);
-
-      const page = url.pathname.match(/^\/(noticia|coluna|categoria|autor)\/([a-z0-9-]+)\/?$/);
-      if (page) {
-        const [, kind, slug] = page as unknown as [string, string, string];
-        if (kind === 'categoria') return categoryPage(request, env, api, slug);
-        if (kind === 'autor') return authorPage(request, env, api, slug);
-        return articlePage(request, env, api, slug);
-      }
-    }
+    const seo = await seoResponse(request, env, apiFetch(request, env));
+    if (seo) return seo;
 
     return env.ASSETS.fetch(request);
   },

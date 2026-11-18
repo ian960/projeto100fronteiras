@@ -1,6 +1,7 @@
-# Render Blueprint: the API and its Postgres. Render reads this file when the
-# repository is connected (Dashboard → New → Blueprint) and again on every
-# push to master. The site is not here: it is on Cloudflare (frontend/wrangler.jsonc).
+# Render Blueprint: the API, which also serves the site, and its Postgres.
+# Render reads this file when the repository is connected (Dashboard → New →
+# Blueprint) and again on every push to master. The site is served from here,
+# not from Cloudflare: TIM blocks Cloudflare's shared IPs (DEPLOY.md).
 #
 # Free plans. Two things to know:
 #   - The API sleeps after 15 minutes without requests; waking takes about a
@@ -15,14 +16,16 @@ services:
     plan: free
     # The closest of Render's regions to Brazil. Cannot be changed later.
     region: virginia
-    rootDir: backend
+    # The whole repository, not only backend/: the site (frontend/) is built
+    # here too, and a change in either one redeploys.
     branch: master
     autoDeployTrigger: commit
-    # Dev dependencies too: TypeScript and the Prisma CLI are needed to build
-    # and to apply migrations, and NODE_ENV=production would skip them.
-    buildCommand: npm ci --include=dev && npm run build
-    # Applies pending migrations, then starts the compiled API.
-    startCommand: npx prisma migrate deploy && node dist/server.js
+    # First the site (frontend/dist, plus dist-server/routes.js for the SEO
+    # pages), then the API. Dev dependencies too: Vite, TypeScript and the
+    # Prisma CLI are needed to build, and NODE_ENV=production would skip them.
+    buildCommand: cd frontend && npm ci --include=dev && npm run build && npm run build:server && cd ../backend && npm ci --include=dev && npm run build
+    # Applies pending migrations, then starts the compiled API (and the site).
+    startCommand: cd backend && npx prisma migrate deploy && node dist/server.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -35,9 +38,14 @@ services:
           property: connectionString
       - key: SESSION_SECRET
         generateValue: true
-      # Copy this value into the Cloudflare Worker's PROXY_SECRET secret.
+      # Copy this value into the Cloudflare Worker's PROXY_SECRET secret, so
+      # the API knows the visitor behind the workers.dev address.
       - key: PROXY_SECRET
         generateValue: true
+      # Google Analytics (G-XXXXXXX), read when the site is built. Empty: no
+      # analytics and no cookie banner.
+      - key: VITE_GA_ID
+        sync: false
       # Asked for when the Blueprint is created.
       - key: CLOUDINARY_URL
         sync: false
