@@ -26,7 +26,7 @@ export interface SeoEnv {
   ASSETS: Fetcher;
   // The site's public address, without a trailing slash, e.g.
   // https://portal100fronteiras.com.br. Empty: the address the page was
-  // opened at (today, the workers.dev one). See wrangler.jsonc.
+  // opened at. Set in wrangler.jsonc.
   SITE_URL?: string;
 }
 

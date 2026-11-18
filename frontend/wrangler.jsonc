@@ -35,10 +35,9 @@
     // (it adds a suffix when the name is taken), change it here and push.
     "API_ORIGIN": "https://portal-api-o5v4.onrender.com",
     // The site's public address, used in canonical links, sitemaps and
-    // robots.txt. Empty: the address the page was opened at (today the
-    // workers.dev one). When the domain is ready, put it here without the
-    // final slash, e.g. "https://portal100fronteiras.com.br", and push.
-    "SITE_URL": ""
+    // robots.txt. No final slash. Empty would mean "the address the page
+    // was opened at".
+    "SITE_URL": "https://portal100fronteiras.com.br"
   },
   // PROXY_SECRET is a secret, not a var: set it in the dashboard (Settings →
   // Variables and Secrets) with the same value as on Render.
