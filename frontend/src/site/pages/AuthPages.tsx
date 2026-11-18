@@ -11,6 +11,14 @@ function canUsePanel(user: Pick<User, 'role'>) {
   return user.role === 'admin' || user.role === 'columnist';
 }
 
+// Where to go after logging in. Readers never land on the panel, even when
+// ?proxima= points there: they go to the home page instead.
+function afterLogin(user: Pick<User, 'role'> | null | undefined, next: string | null) {
+  const staff = !!user && canUsePanel(user);
+  if (next && (staff || !next.startsWith('/painel'))) return next;
+  return staff ? '/painel' : '/';
+}
+
 // Only same-site paths are accepted as ?proxima=, so the login page cannot be
 // used to bounce someone to another website.
 function safeNext(value: string | null): string | null {
@@ -77,7 +85,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  if (me) return <Navigate to={next ?? (canUsePanel(me) ? '/painel' : '/')} replace />;
+  if (me) return <Navigate to={afterLogin(me, next)} replace />;
 
   const googleError = GOOGLE_ERRORS[params.get('erro') ?? ''];
 
@@ -88,7 +96,7 @@ export function LoginPage() {
       {
         onSuccess: (data) => {
           const user = (data as { user: Pick<User, 'role'> }).user;
-          navigate(next ?? (canUsePanel(user) ? '/painel' : '/'), { replace: true });
+          navigate(afterLogin(user, next), { replace: true });
         },
       },
     );
@@ -396,7 +404,7 @@ export function CreatePasswordPage() {
   if (isPending) return null;
   if (!me) return <Navigate to="/entrar" replace />;
   if (me.hasPassword !== false && !create.isSuccess) {
-    return <Navigate to={next ?? (canUsePanel(me) ? '/painel' : '/')} replace />;
+    return <Navigate to={afterLogin(me, next)} replace />;
   }
 
   const mismatch = confirm.length > 0 && confirm !== password;
@@ -407,7 +415,7 @@ export function CreatePasswordPage() {
     if (mismatch) return;
     create.mutate(
       { newPassword: password },
-      { onSuccess: () => navigate(next ?? (me && canUsePanel(me) ? '/painel' : '/'), { replace: true }) },
+      { onSuccess: () => navigate(afterLogin(me, next), { replace: true }) },
     );
   }
 

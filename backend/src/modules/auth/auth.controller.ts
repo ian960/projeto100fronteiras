@@ -129,7 +129,9 @@ export class AuthController {
     await saveSession(req);
 
     const inNewsroom = user.role === Role.ADMIN || user.role === Role.COLUMNIST;
-    const next = pending.next ?? (inNewsroom ? '/painel' : '/');
+    // Readers never land on the panel, even if ?proxima= pointed there.
+    const asked = pending.next && (inNewsroom || !pending.next.startsWith('/painel')) ? pending.next : null;
+    const next = asked ?? (inNewsroom ? '/painel' : '/');
 
     // No password yet (first time with Google): creating one comes first.
     if (!user.hasPassword) {

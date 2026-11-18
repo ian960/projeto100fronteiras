@@ -98,20 +98,6 @@ function Shell({ me, children }: { me: User; children: ReactNode }) {
   );
 }
 
-function ReaderNotice({ me }: { me: User }) {
-  return (
-    <div className="mx-auto max-w-lg px-4 py-20">
-      <h1 className="titulo text-3xl text-anil">Sua conta é de leitor</h1>
-      <p className="mt-4 text-lg leading-relaxed text-tinta-suave">
-        Olá, {me.name}. A área da redação é para quem publica no portal. Se você vai escrever colunas, peça ao administrador para liberar o seu acesso.
-      </p>
-      <div className="mt-8">
-        <ButtonLink to="/">Voltar para o site</ButtonLink>
-      </div>
-    </div>
-  );
-}
-
 export default function PanelLayout() {
   const { data: me, isPending } = useMe();
   const location = useLocation();
@@ -129,7 +115,8 @@ export default function PanelLayout() {
     return <Navigate to={`/criar-senha?proxima=${next}`} replace />;
   }
 
-  if (me.role === 'reader') return <ReaderNotice me={me} />;
+  // Readers have nothing to do in the newsroom: straight to the home page.
+  if (me.role === 'reader') return <Navigate to="/" replace />;
 
   return (
     <ToastProvider>
