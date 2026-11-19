@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Alert, Button, Loading, TextArea, TextField } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
 import { isSlugOf, roleLabel, slugify } from '../../lib/format';
-import { useDocumentTitle, useMe } from '../../lib/hooks';
+import { useDocumentTitle, useMe, useUpdateMe } from '../../lib/hooks';
 import type { User } from '../../lib/types';
 import { useAuthor } from '../../site/queries';
 import { useAccountActions } from '../queries';
@@ -24,9 +24,8 @@ export default function ProfilePage() {
         <div className="flex flex-col gap-8">
           <section className="rounded-lg border border-linha bg-papel p-5">
             <h2 className="mb-3 font-semibold">Conta</h2>
-            <dl className="grid grid-cols-[7rem_1fr] gap-y-1.5 text-[0.9375rem]">
-              <dt className="text-tinta-suave">Nome</dt>
-              <dd>{me.name}</dd>
+            <NameForm key={me.name} name={me.name} />
+            <dl className="mt-4 grid grid-cols-[7rem_1fr] gap-y-1.5 text-[0.9375rem]">
               <dt className="text-tinta-suave">E-mail</dt>
               <dd className="break-all">{me.email}</dd>
               <dt className="text-tinta-suave">Acesso</dt>
@@ -100,6 +99,33 @@ function BylineForm({ me, initialBio }: { me: User; initialBio: string }) {
         </div>
       </form>
     </section>
+  );
+}
+
+// The account's own name (admins included), shown in the panel and on the
+// comments. A columnist's byline is separate: see BylineForm.
+function NameForm({ name: current }: { name: string }) {
+  const updateMe = useUpdateMe();
+  const toast = useToast();
+  const [name, setName] = useState(current);
+  const errors = updateMe.error instanceof ApiError ? updateMe.error.fields : {};
+  const trimmed = name.trim();
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    updateMe.mutate({ name: trimmed }, { onSuccess: () => toast('Nome atualizado') });
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      {updateMe.error && Object.keys(errors).length === 0 && <Alert>{errorMessage(updateMe.error)}</Alert>}
+      <TextField label="Nome" autoComplete="name" maxLength={120} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
+      <div>
+        <Button type="submit" busy={updateMe.isPending} disabled={trimmed.length < 2 || trimmed === current}>
+          Salvar nome
+        </Button>
+      </div>
+    </form>
   );
 }
 
