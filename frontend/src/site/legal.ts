@@ -207,7 +207,7 @@ export const TERMS: LegalPage = {
       id: 'portal',
       title: '1. O portal',
       paragraphs: [
-        'O Portal100Fronteiras publica notícias produzidas pela sua redação e colunas de opinião assinadas por colunistas. As colunas, identificadas em verde na seção Opinião, expressam a visão de quem assina e não necessariamente a do portal.',
+        'O Portal100Fronteiras publica notícias produzidas pela sua redação, notícias de outros portais que permitem a reprodução (sempre com a fonte creditada) e colunas de opinião assinadas por colunistas. As colunas, identificadas em verde na seção Opinião, expressam a visão de quem assina e não necessariamente a do portal.',
         'A leitura é gratuita e não exige cadastro.',
       ],
     },
