@@ -334,6 +334,8 @@ export class PostsRepository implements IPostsRepository {
           subtitle: data.subtitle ?? null,
           excerpt: data.excerpt ?? '',
           content: data.content ?? '',
+          sourceName: data.sourceName ?? null,
+          sourceUrl: data.sourceUrl ?? null,
           coverId: data.coverId ?? null,
           coverAlt: data.coverAlt ?? null,
           videoYoutubeId: data.videoYoutubeId ?? null,

@@ -77,6 +77,8 @@ export default function PostPage() {
           srcset and lazy loading) can reach this point. */}
       <ArticleBody html={post.content} opinion={isOpinion} bodyRef={body} />
 
+      <SourceCredit name={post.sourceName} url={post.sourceUrl} />
+
       {/* Most readers arrive from a WhatsApp link: the end of the text is
           where they decide to pass it on. */}
       <div className="corpo-largura mx-auto mt-10 flex flex-col gap-3 border-t border-linha pt-6 sm:flex-row sm:items-center sm:justify-between">
@@ -124,6 +126,34 @@ function ArticleBody({ html, opinion, bodyRef }: { html: string; opinion: boolea
       <BannerAd banner={banner} className="mx-auto my-10 max-w-3xl" />
       <div className={textClass} dangerouslySetInnerHTML={{ __html: halves[1] }} />
     </div>
+  );
+}
+
+// "Fonte: G1" under the text of a story taken from another site. With only a
+// link, the site's address stands in for the name.
+function SourceCredit({ name, url }: { name: string | null; url: string | null }) {
+  if (!name && !url) return null;
+
+  let label = name;
+  if (!label && url) {
+    try {
+      label = new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      label = url;
+    }
+  }
+
+  return (
+    <p className="corpo-largura mx-auto mt-8 text-[0.9375rem] text-tinta-suave">
+      <span className="font-semibold text-tinta">Fonte:</span>{' '}
+      {url ? (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="text-anil underline underline-offset-4 hover:no-underline">
+          {label}
+        </a>
+      ) : (
+        label
+      )}
+    </p>
   );
 }
 

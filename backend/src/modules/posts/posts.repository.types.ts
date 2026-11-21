@@ -10,6 +10,8 @@ export type CreatePostData = {
   subtitle?: string | null;
   excerpt?: string;
   content?: string;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
   coverId?: string | null;
   coverAlt?: string | null;
   videoYoutubeId?: string | null;
@@ -27,6 +29,8 @@ export type UpdatePostData = {
   subtitle?: string | null;
   excerpt?: string;
   content?: string;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
   coverId?: string | null;
   coverAlt?: string | null;
   videoYoutubeId?: string | null;

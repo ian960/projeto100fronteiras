@@ -128,6 +128,9 @@ export type Attachment = { title: string; media: Media };
 
 export type PostDetail = PostListItem & {
   content: string;
+  // Credit for a story taken from another site ("Fonte: G1", with a link).
+  sourceName: string | null;
+  sourceUrl: string | null;
   video: Media | null;
   attachments: Attachment[];
   categoryId: string | null;

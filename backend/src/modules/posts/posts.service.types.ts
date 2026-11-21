@@ -23,6 +23,8 @@ export type CreatePostInput = PostMediaInput & {
   slug?: string;
   excerpt?: string;
   content?: string;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
   categoryId?: string | null;
   authorId: string;
 };
@@ -33,6 +35,8 @@ export type CreateMyColumnInput = PostMediaInput & {
   slug?: string;
   excerpt?: string;
   content?: string;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
 };
 
 export type UpdatePostInput = PostMediaInput & {
@@ -41,6 +45,8 @@ export type UpdatePostInput = PostMediaInput & {
   slug?: string;
   excerpt?: string;
   content?: string;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
   categoryId?: string | null;
   authorId?: string;
 };

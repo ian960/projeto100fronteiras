@@ -207,6 +207,8 @@ type ArticleData = {
   subtitle: string | null;
   excerpt: string;
   content: string;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
   coverAlt: string | null;
   publishedAt: string | null;
   updatedAt: string;
@@ -214,6 +216,22 @@ type ArticleData = {
   category?: { name: string; slug: string } | null;
   author?: { name: string; slug: string } | null;
 };
+
+// "Fonte: G1" under a story taken from another site, as on the React page.
+function sourceHtml(post: Pick<ArticleData, 'sourceName' | 'sourceUrl'>): string {
+  const url = post.sourceUrl && /^https?:\/\//i.test(post.sourceUrl) ? post.sourceUrl : null;
+  let label = post.sourceName || '';
+  if (!label && url) {
+    try {
+      label = new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      label = url;
+    }
+  }
+  if (!label) return '';
+  const credit = url ? `<a href="${escapeHtml(url)}" rel="noopener noreferrer">${escapeHtml(label)}</a>` : escapeHtml(label);
+  return `<p class="mt-8 text-sm"><strong>Fonte:</strong> ${credit}</p>`;
+}
 
 export async function articlePage(request: Request, env: SeoEnv, api: ApiFetch, slug: string): Promise<Response> {
   const result = await apiGet<{ post: ArticleData }>(api, `/api/posts/${slug}`, PAGE_TIMEOUT_MS);
@@ -280,6 +298,7 @@ export async function articlePage(request: Request, env: SeoEnv, api: ApiFetch, 
     (byline ? `<p class="mt-6 text-sm">${byline}</p>` : '') +
     (cover ? `<img class="mt-8 w-full" src="${escapeHtml(cover.url)}" alt="${escapeHtml(post.coverAlt ?? post.title)}" />` : '') +
     `<div class="corpo-materia mt-10">${post.content}</div>` +
+    sourceHtml(post) +
     `</article>`;
 
   return renderPage(request, env, {

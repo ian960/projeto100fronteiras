@@ -305,6 +305,8 @@ export class PostsService {
       subtitle: input.subtitle ?? null,
       excerpt: input.excerpt ?? '',
       content: input.content ? sanitizePostContent(input.content) : '',
+      sourceName: input.sourceName ?? null,
+      sourceUrl: input.sourceUrl ?? null,
       ...media,
       categoryId,
       authorId: input.authorId,
@@ -331,6 +333,8 @@ export class PostsService {
       subtitle: input.subtitle ?? null,
       excerpt: input.excerpt ?? '',
       content: input.content ? sanitizePostContent(input.content) : '',
+      sourceName: input.sourceName ?? null,
+      sourceUrl: input.sourceUrl ?? null,
       ...media,
       categoryId: null,
       authorId: actor.authorId,
@@ -360,6 +364,8 @@ export class PostsService {
     if (input.title !== undefined) data.title = input.title;
     if (input.subtitle !== undefined) data.subtitle = input.subtitle;
     if (input.excerpt !== undefined) data.excerpt = input.excerpt;
+    if (input.sourceName !== undefined) data.sourceName = input.sourceName;
+    if (input.sourceUrl !== undefined) data.sourceUrl = input.sourceUrl;
 
     if (input.content !== undefined) {
       // Sanitized on the way in, every time. The editor's whitelist is a
@@ -413,7 +419,8 @@ export class PostsService {
   private assertReadyToGoLive(post: IPost): void {
     const fields: Record<string, string> = {};
 
-    if (!post.excerpt.trim()) fields.excerpt = 'Write a short summary.';
+    // The excerpt is optional: without one, lists show only the headline and
+    // link previews fall back to the subtitle or the headline.
     if (isHtmlEmpty(post.content)) fields.content = 'The body is empty.';
 
     // News is what shows up as a card on the home page and as a preview in a
