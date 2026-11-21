@@ -32,7 +32,7 @@ from an iPhone.
 |---|---|---|
 | Cloudflare Workers | free | 100,000 Worker requests a day (`/api/*` and article pages; plain files do not count) |
 | Render web service | free | sleeps after 15 minutes without requests (the Worker pings it every 10); also serves the site |
-| Render Postgres | free | **deleted 30 days after creation**, no backups: upgrade before that (Basic, US$ 6/month) |
+| Render Postgres | 0.1c-256mb (US$ 6/month + US$ 0.30/GB) | point-in-time recovery for the last 3 days (Hobby workspace) |
 | Render bandwidth | Hobby workspace | 5 GB/month out of Render (images and videos come from Cloudinary, not Render) |
 
 ## Before you start
@@ -137,11 +137,12 @@ refuse when the database and the site address do not belong together.
 - **Logs:** Render → `portal-api` → Logs. Cloudflare → the Worker → Logs.
 - **"O servidor não está respondendo" / 502**: Render is deploying or waking up.
 
-## Before day 30
+## Backups
 
-Render → `portal-db` → **Upgrade** to Basic-256mb. Same database, same data,
-nothing to change in the code. Free databases are deleted 14 days after
-expiring.
+`portal-db` is on a paid plan, so Render keeps point-in-time recovery for the
+last 3 days: `portal-db` → **Recovery** restores it, as it was at a chosen
+minute, into a new database. For a copy of your own, `portal-db` → **Export**
+gives a daily logical backup to download.
 
 ## The domain (portal100fronteiras.com.br)
 

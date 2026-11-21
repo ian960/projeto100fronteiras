@@ -3,11 +3,14 @@
 # Blueprint) and again on every push to master. The site is served from here,
 # not from Cloudflare: TIM blocks Cloudflare's shared IPs (DEPLOY.md).
 #
-# Free plans. Two things to know:
-#   - The API sleeps after 15 minutes without requests; waking takes about a
-#     minute. The Cloudflare Worker pings it every 10 minutes to keep it awake.
-#   - The free database is DELETED 30 days after it is created, and has no
-#     backups. Move it to a paid plan (Basic, US$ 6/month) before that date.
+# Plans. Two things to know:
+#   - The API is on the free plan: it sleeps after 15 minutes without
+#     requests; waking takes about a minute. The Cloudflare Worker pings it
+#     every 10 minutes to keep it awake.
+#   - The database is paid since 2026-11 (0.1c-256mb, US$ 6/month plus
+#     US$ 0.30 per GB of disk): kept for good, with point-in-time recovery
+#     (3 days on the Hobby workspace).
+# Keep these values equal to the dashboard: a Blueprint sync applies them.
 
 services:
   - type: web
@@ -79,7 +82,7 @@ services:
 
 databases:
   - name: portal-db
-    plan: free
+    plan: 0.1c-256mb
     region: virginia
     databaseName: portal
     user: portal
