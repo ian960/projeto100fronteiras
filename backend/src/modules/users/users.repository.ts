@@ -6,6 +6,7 @@ import type { Paginated, PaginationParams } from '../../shared/types/pagination'
 import { authorSummarySelect, photoUrlOf, toAuthorSummary } from '../authors/authors.select';
 import { mediaSelect } from '../media/media.select';
 import type { IMedia } from '../media/media.types';
+import { DELETED_EMAIL_SUFFIX, deletedEmailFor } from './users.deleted';
 import type { IUsersRepository, PromoteToColumnistData } from './users.repository.interfaces';
 import type {
   CreateUserData,
@@ -71,7 +72,11 @@ export class UsersRepository implements IUsersRepository {
   ): Promise<Paginated<IUserWithAuthor>> {
     try {
       // Filtering happens in the WHERE clause, never in memory after the fact.
+      // Deleted (anonymized) accounts only show up when asked for; otherwise
+      // they would clutter the list with rows nobody can act on.
+      const deletedOnly = { email: { endsWith: DELETED_EMAIL_SUFFIX } };
       const where: Prisma.UserWhereInput = {
+        ...(filters.deleted ? deletedOnly : { NOT: deletedOnly }),
         ...(filters.role ? { role: filters.role } : {}),
         ...(filters.search
           ? {
@@ -229,7 +234,7 @@ export class UsersRepository implements IUsersRepository {
           data: {
             name: 'Conta excluída',
             // Unique and never deliverable (.invalid is reserved, RFC 2606).
-            email: `excluida-${id}@contas.invalid`,
+            email: deletedEmailFor(id),
             passwordHash,
             googleId: null,
             bio: null,

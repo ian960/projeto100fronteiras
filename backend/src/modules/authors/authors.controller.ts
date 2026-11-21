@@ -4,6 +4,7 @@ import { Unauthenticated } from '../../shared/errors/AppError';
 import { authorsService } from './authors.service';
 import {
   authorIdParamSchema,
+  removeAuthorSchema,
   authorSlugParamSchema,
   createAuthorSchema,
   updateAuthorSchema,
@@ -53,8 +54,8 @@ export class AuthorsController {
   };
 
   remove = async (req: Request, res: Response) => {
-    const parsed = authorIdParamSchema.parse({ params: req.params });
-    await authorsService.remove(parsed.params.id);
+    const parsed = removeAuthorSchema.parse({ params: req.params, query: req.query });
+    await authorsService.remove(parsed.params.id, parsed.query);
     return noContent(res);
   };
 

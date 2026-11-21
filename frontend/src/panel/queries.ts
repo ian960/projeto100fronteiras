@@ -184,13 +184,20 @@ export function useAuthorActions() {
       mutationFn: ({ id, input }: { id: string; input: AuthorInput }) => patch(`/admin/authors/${id}`, input),
       onSuccess,
     }),
-    remove: useMutation({ mutationFn: (id: string) => del(`/admin/authors/${id}`), onSuccess }),
+    // With posts, say what happens to them: move to another author or delete.
+    remove: useMutation({
+      mutationFn: ({ id, transferTo, deletePosts }: { id: string; transferTo?: string; deletePosts?: boolean }) => {
+        const query = transferTo ? `?transferTo=${transferTo}` : deletePosts ? '?deletePosts=true' : '';
+        return del(`/admin/authors/${id}${query}`);
+      },
+      onSuccess,
+    }),
   };
 }
 
 // ── Users ────────────────────────────────────────────────────────────────────
 
-export type UserFilters = { role?: Role; search?: string; page?: number };
+export type UserFilters = { role?: Role; search?: string; page?: number; deleted?: boolean };
 
 export function useUsers(filters: UserFilters) {
   return useQuery({

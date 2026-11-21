@@ -1,6 +1,7 @@
 import type { Role } from '../../shared/types/enums';
 
 export type ListUsersInput = {
+  deleted?: boolean;
   role?: Role;
   search?: string;
   page: number;

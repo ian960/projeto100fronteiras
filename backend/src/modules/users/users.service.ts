@@ -8,6 +8,7 @@ import { authRepository } from '../auth/auth.repository';
 import type { SessionUser } from '../auth/auth.types';
 import { authorsRepository } from '../authors/authors.repository';
 import { mediaService } from '../media/media.service';
+import { isDeletedAccount } from './users.deleted';
 import { usersRepository } from './users.repository';
 import type { IUserMe, IUserPublic, IUserWithAuthor } from './users.types';
 import { newsletterRepository } from '../newsletter/newsletter.repository';
@@ -23,6 +24,14 @@ export class UsersService {
     const user = await usersRepository.findById(id);
     if (!user) throw new NotFound('User not found.');
     return user;
+  }
+
+  // A deleted (anonymized) account is gone for good: nobody can promote,
+  // reactivate or give it a password. The only thing left is removing the row.
+  private ensureNotDeleted(user: { email: string }): void {
+    if (isDeletedAccount(user)) {
+      throw new Conflict('This account was deleted.');
+    }
   }
 
   async getMe(id: string): Promise<IUserMe> {
@@ -43,7 +52,11 @@ export class UsersService {
 
   list(input: ListUsersInput): Promise<Paginated<IUserWithAuthor>> {
     return usersRepository.findMany(
-      { ...(input.role ? { role: input.role } : {}), ...(input.search ? { search: input.search } : {}) },
+      {
+        ...(input.role ? { role: input.role } : {}),
+        ...(input.search ? { search: input.search } : {}),
+        deleted: input.deleted ?? false,
+      },
       { page: input.page, limit: input.limit },
     );
   }
@@ -64,6 +77,7 @@ export class UsersService {
     const user = await usersRepository.findByIdWithAuthor(id);
 
     if (!user) throw new NotFound('User not found.');
+    this.ensureNotDeleted(user);
 
     if (user.author) {
       throw new Conflict('This user already has an author profile.');
@@ -104,6 +118,7 @@ export class UsersService {
 
   async update(actorId: string, id: string, input: UpdateUserInput): Promise<IUserPublic> {
     const target = await this.ensureExists(id);
+    this.ensureNotDeleted(target);
 
     // An admin locking themselves out is unrecoverable without psql access.
     if (actorId === id) {
@@ -161,6 +176,12 @@ export class UsersService {
       return { mode: 'deleted' };
     }
 
+    // Already anonymized and still holding posts or files: nothing more to do.
+    // Say so instead of pretending, so the admin knows why the row stays.
+    if (isDeletedAccount(target)) {
+      throw new Conflict('This deleted account still has posts or files, so it has to stay.');
+    }
+
     // A hash of random bytes nobody knows: login is impossible.
     await usersRepository.anonymize(id, await argon2.hash(randomBytes(32).toString('hex')));
     return { mode: 'anonymized' };
@@ -177,7 +198,7 @@ export class UsersService {
   // The admin's reset, for someone who cannot receive e-mail. Everyone else
   // uses "Esqueci minha senha" (AuthService.forgotPassword).
   async resetPassword(id: string, newPassword: string): Promise<void> {
-    await this.ensureExists(id);
+    this.ensureNotDeleted(await this.ensureExists(id));
 
     await usersRepository.updatePasswordHash(id, await argon2.hash(newPassword));
 

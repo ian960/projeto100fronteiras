@@ -7,6 +7,11 @@ export const listUsersSchema = z.object({
   query: z.object({
     role: roleEnum.optional(),
     search: z.string().trim().min(1).max(120).optional(),
+    // "true" lists only deleted accounts; they are hidden otherwise.
+    deleted: z
+      .enum(['true', 'false'])
+      .optional()
+      .transform((value) => value === 'true'),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),
   }),
