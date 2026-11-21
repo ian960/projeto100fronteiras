@@ -177,10 +177,16 @@ model Post {
   subtitle String?
   slug     String  @unique
 
-  // excerpt, content and cover start empty on purpose: a draft is allowed to
-  // be incomplete. Completeness is enforced by the service on publish, not here.
+  // content and cover start empty on purpose: a draft is allowed to be
+  // incomplete. Completeness is enforced by the service on publish, not here.
+  // The excerpt (summary) is optional even to publish: "" means none.
   excerpt String @default("")
   content String @default("") // HTML, already sanitized server-side
+
+  // Credit for a story taken from another outlet ("Fonte: G1", with a link).
+  // Both optional; the URL may be absent when the source is not online.
+  sourceName String? @map("source_name")
+  sourceUrl  String? @map("source_url")
 
   // Required to publish news (checked by the service, not here: a draft may
   // be saved without one). The alt text belongs to the post, not to the file:

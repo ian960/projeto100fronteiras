@@ -16,6 +16,9 @@ export interface IPost {
   slug: string;
   excerpt: string;
   content: string; // sanitized HTML
+  // Credit for a story taken from another site; both optional.
+  sourceName: string | null;
+  sourceUrl: string | null;
   coverId: string | null;
   coverAlt: string | null;
 

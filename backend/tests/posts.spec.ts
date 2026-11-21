@@ -69,6 +69,45 @@ describe('notícias e editorias', () => {
   });
 });
 
+describe('crédito da fonte', () => {
+  it('guarda nome e link da fonte e mostra na matéria publicada', async () => {
+    const { admin, writer, category, client } = await adminContext();
+
+    const draft = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+
+    const updated = await client
+      .patch(`/api/admin/posts/${draft.id}`)
+      .send({ sourceName: '  Agência Brasil ', sourceUrl: 'https://agenciabrasil.ebc.com.br/geral/noticia/x' })
+      .expect(200);
+
+    expect(updated.body.data.post.sourceName).toBe('Agência Brasil');
+    expect(updated.body.data.post.sourceUrl).toBe('https://agenciabrasil.ebc.com.br/geral/noticia/x');
+
+    await client.post(`/api/admin/posts/${draft.id}/publish`).expect(200);
+    const detail = await agent().get(`/api/posts/${updated.body.data.post.slug}`).expect(200);
+    expect(detail.body.data.post.sourceName).toBe('Agência Brasil');
+
+    // Emptying the fields removes the credit.
+    const cleared = await client
+      .patch(`/api/admin/posts/${draft.id}`)
+      .send({ sourceName: '', sourceUrl: null })
+      .expect(200);
+    expect(cleared.body.data.post.sourceName).toBeNull();
+    expect(cleared.body.data.post.sourceUrl).toBeNull();
+  });
+
+  it('recusa link da fonte que não é http ou https', async () => {
+    const { admin, writer, category, client } = await adminContext();
+
+    const draft = await makeNews({ authorId: writer.id, createdById: admin.id, categoryId: category.id });
+
+    for (const sourceUrl of ['javascript:alert(1)', 'not a link']) {
+      const response = await client.patch(`/api/admin/posts/${draft.id}`).send({ sourceUrl }).expect(422);
+      expect(response.body.error.fields).toHaveProperty(['body.sourceUrl']);
+    }
+  });
+});
+
 describe('publicar', () => {
   it('recusa publicar matéria incompleta', async () => {
     const { admin, writer, category, client } = await adminContext();
@@ -80,9 +119,22 @@ describe('publicar', () => {
 
     const response = await client.post(`/api/admin/posts/${draft.id}/publish`).expect(422);
 
-    expect(response.body.error.fields).toHaveProperty('excerpt');
+    // The summary is optional: only the body and the cover are missing.
+    expect(response.body.error.fields).not.toHaveProperty('excerpt');
     expect(response.body.error.fields).toHaveProperty('content');
     expect(response.body.error.fields).toHaveProperty('coverId');
+  });
+
+  it('publica sem resumo', async () => {
+    const { admin, writer, category, client } = await adminContext();
+
+    const draft = await makeNews(
+      { authorId: writer.id, createdById: admin.id, categoryId: category.id },
+      { excerpt: '' },
+    );
+
+    const response = await client.post(`/api/admin/posts/${draft.id}/publish`).expect(200);
+    expect(response.body.data.post.excerpt).toBe('');
   });
 
   it('trata como vazio o texto vazio do editor', async () => {

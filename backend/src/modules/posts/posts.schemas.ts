@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { PostStatus, PostType } from '../../shared/types/enums';
 
+// "" from an emptied field means "no value", same as null.
+const emptyToNull = (value: string | null | undefined) => (value === '' ? null : value);
+
 // One video per post: a YouTube link, a file uploaded through /api/media, or
 // none (null). The shape itself makes "both at once" impossible to send.
 const videoSchema = z
@@ -30,6 +33,12 @@ const baseBody = {
   slug: z.string().trim().max(220).optional(),
   excerpt: z.string().trim().max(400).optional(),
   content: z.string().max(200_000).optional(),
+  // Credit for a story taken from another site. null (or "") removes it.
+  sourceName: z.string().trim().max(120).nullish().transform(emptyToNull),
+  sourceUrl: z
+    .union([z.literal(''), z.url({ protocol: /^https?$/ }).max(500)])
+    .nullish()
+    .transform(emptyToNull),
   coverId: z.uuid().nullish(), // an image uploaded through /api/media
   coverAlt: z.string().trim().max(200).nullish(),
   video: videoSchema.optional(),

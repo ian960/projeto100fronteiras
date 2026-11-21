@@ -67,6 +67,9 @@ export type PostInput = {
   slug?: string;
   excerpt: string;
   content: string;
+  // Credit for a story taken from another site. null = none.
+  sourceName: string | null;
+  sourceUrl: string | null;
   coverId: string | null;
   coverAlt: string | null;
   categoryId?: string | null;

@@ -26,6 +26,8 @@ type Form = {
   slugTouched: boolean;
   excerpt: string;
   content: string;
+  sourceName: string;
+  sourceUrl: string;
   cover: ImageValue;
   coverAlt: string;
   categoryId: string;
@@ -52,6 +54,8 @@ function toForm(post: PostWithAudit | null, type: PostType): Form {
     slugTouched: false,
     excerpt: post?.excerpt ?? '',
     content: post?.content ?? '',
+    sourceName: post?.sourceName ?? '',
+    sourceUrl: post?.sourceUrl ?? '',
     cover: post?.cover ? imageValue(post.cover) : null,
     coverAlt: post?.coverAlt ?? '',
     categoryId: post?.categoryId ?? '',
@@ -67,6 +71,13 @@ function toVideoInput(video: VideoValue): PostInput['video'] {
   return null;
 }
 
+// "g1.globo.com/..." typed without the https:// still becomes a working link.
+function toLink(value: string): string | null {
+  const link = value.trim();
+  if (!link) return null;
+  return /^https?:\/\//i.test(link) ? link : `https://${link}`;
+}
+
 // What goes over the wire. Empty optional text becomes null. Files travel as
 // ids: the API already has them (see panel/media.ts).
 function toInput(form: Form, scope: Scope, isNew: boolean): PostInput {
@@ -77,6 +88,8 @@ function toInput(form: Form, scope: Scope, isNew: boolean): PostInput {
     subtitle: blank(form.subtitle),
     excerpt: form.excerpt.trim(),
     content: form.content,
+    sourceName: blank(form.sourceName),
+    sourceUrl: toLink(form.sourceUrl),
     coverId: form.cover?.id ?? null,
     coverAlt: blank(form.coverAlt),
     video: toVideoInput(form.video),
@@ -450,13 +463,14 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
 
           <TextArea
             label="Resumo"
+            optional
             rows={3}
             maxLength={EXCERPT_MAX}
             value={form.excerpt}
             disabled={locked}
             onChange={(event) => update('excerpt', event.target.value)}
             error={errors.excerpt}
-            hint={`Aparece nas listas e quando o link é compartilhado. ${form.excerpt.length}/${EXCERPT_MAX}`}
+            hint={`Aparece nas listas e quando o link é compartilhado. Sem resumo, aparece só o título. ${form.excerpt.length}/${EXCERPT_MAX}`}
           />
 
           <div className="flex flex-col gap-1.5">
@@ -487,6 +501,37 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
             error={errors.attachments}
             disabled={locked}
           />
+
+          {/* Many outlets allow republishing as long as they are credited.
+              Shown under the text as "Fonte: ..." with the link. */}
+          <fieldset className="flex flex-col gap-3">
+            <legend className="text-sm font-medium">
+              Fonte <span className="font-normal text-tinta-suave">(opcional, para texto de outro site)</span>
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField
+                label="Nome da fonte"
+                maxLength={120}
+                value={form.sourceName}
+                disabled={locked}
+                onChange={(event) => update('sourceName', event.target.value)}
+                placeholder="Ex.: G1, Agência Brasil"
+                error={errors.sourceName}
+              />
+              <TextField
+                label="Link da matéria original"
+                type="url"
+                inputMode="url"
+                maxLength={500}
+                value={form.sourceUrl}
+                disabled={locked}
+                onChange={(event) => update('sourceUrl', event.target.value)}
+                placeholder="https://..."
+                error={errors.sourceUrl}
+              />
+            </div>
+            <p className="text-sm text-tinta-suave">Aparece no fim da matéria como “Fonte: nome”, com o link.</p>
+          </fieldset>
         </div>
 
         {/* ── Settings ── */}
