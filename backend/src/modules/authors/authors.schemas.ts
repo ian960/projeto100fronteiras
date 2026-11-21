@@ -34,6 +34,18 @@ export const authorIdParamSchema = z.object({
   params: z.object({ id: z.uuid() }),
 });
 
+// DELETE /admin/authors/:id?transferTo=<authorId> or ?deletePosts=true
+export const removeAuthorSchema = z.object({
+  params: z.object({ id: z.uuid() }),
+  query: z.object({
+    transferTo: z.uuid().optional(),
+    deletePosts: z
+      .enum(['true', 'false'])
+      .optional()
+      .transform((value) => value === 'true'),
+  }),
+});
+
 export const authorSlugParamSchema = z.object({
   params: z.object({ slug: z.string().trim().min(1).max(140) }),
 });

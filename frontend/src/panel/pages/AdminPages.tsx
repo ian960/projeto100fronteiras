@@ -203,6 +203,7 @@ export function AuthorsPage() {
   const actions = useAuthorActions();
   const toast = useToast();
   const [editing, setEditing] = useState<AuthorWithCount | 'new' | null>(null);
+  const [removing, setRemoving] = useState<AuthorWithCount | null>(null);
 
   return (
     <>
@@ -247,12 +248,16 @@ export function AuthorsPage() {
                 <Button variant="secundario" small onClick={() => setEditing(author)}>
                   Editar
                 </Button>
-                {(author._count?.posts ?? 0) === 0 && (
+                {(author._count?.posts ?? 0) === 0 ? (
                   <ConfirmButton
                     label="Excluir"
                     confirmLabel="Confirmar"
-                    onConfirm={() => actions.remove.mutate(author.id, { onSuccess: () => toast('Autor excluído') })}
+                    onConfirm={() => actions.remove.mutate({ id: author.id }, { onSuccess: () => toast('Autor excluído') })}
                   />
+                ) : (
+                  <Button variant="perigo" small onClick={() => setRemoving(author)}>
+                    Excluir
+                  </Button>
                 )}
               </div>
             </li>
@@ -263,7 +268,102 @@ export function AuthorsPage() {
       <Modal open={editing !== null} onClose={() => setEditing(null)} title={editing === 'new' ? 'Novo redator' : 'Editar autor'}>
         {editing && <AuthorForm key={editing === 'new' ? 'new' : editing.id} author={editing === 'new' ? null : editing} onDone={() => setEditing(null)} />}
       </Modal>
+      <Modal open={removing !== null} onClose={() => setRemoving(null)} title="Excluir autor">
+        {removing && (
+          <RemoveAuthorForm
+            key={removing.id}
+            author={removing}
+            others={(data ?? []).filter((other) => other.id !== removing.id)}
+            onDone={() => setRemoving(null)}
+          />
+        )}
+      </Modal>
     </>
+  );
+}
+
+// An author who signs posts: the admin decides whether the posts move to
+// another byline or go with the author.
+function RemoveAuthorForm({ author, others, onDone }: { author: AuthorWithCount; others: AuthorWithCount[]; onDone: () => void }) {
+  const { remove } = useAuthorActions();
+  const toast = useToast();
+  const posts = author._count?.posts ?? 0;
+  const [mode, setMode] = useState<'transfer' | 'delete'>(others.length > 0 ? 'transfer' : 'delete');
+  const [transferTo, setTransferTo] = useState(others[0]?.id ?? '');
+  const [understood, setUnderstood] = useState(false);
+  const canSubmit = mode === 'transfer' ? transferTo !== '' : understood;
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!canSubmit) return;
+    remove.mutate(mode === 'transfer' ? { id: author.id, transferTo } : { id: author.id, deletePosts: true }, {
+      onSuccess: () => {
+        toast(mode === 'transfer' ? 'Autor excluído e matérias transferidas' : 'Autor e matérias excluídos');
+        onDone();
+      },
+    });
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      {remove.error && <Alert>{bannerFor(remove.error)}</Alert>}
+      <p className="text-sm">
+        <strong>{author.name}</strong> assina {countPosts(posts)}. O que fazer com elas?
+        {author.type === 'columnist' && ' A conta de login dessa pessoa volta a ser de leitor.'}
+      </p>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="sr-only">O que fazer com as matérias</legend>
+        <label className={cx('flex items-start gap-2 text-sm', others.length === 0 && 'opacity-50')}>
+          <input
+            type="radio"
+            name="modo"
+            className="mt-1"
+            checked={mode === 'transfer'}
+            disabled={others.length === 0}
+            onChange={() => setMode('transfer')}
+          />
+          <span className="flex flex-1 flex-col gap-2">
+            Passar as matérias para outro autor (continuam no ar com a nova assinatura)
+            {mode === 'transfer' && others.length > 0 && (
+              <select
+                aria-label="Autor que recebe as matérias"
+                value={transferTo}
+                onChange={(event) => setTransferTo(event.target.value)}
+                className="h-9 rounded-md border border-linha bg-papel px-2 text-sm"
+              >
+                {others.map((other) => (
+                  <option key={other.id} value={other.id}>
+                    {other.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input type="radio" name="modo" className="mt-1" checked={mode === 'delete'} onChange={() => setMode('delete')} />
+          <span>Apagar as matérias junto com o autor</span>
+        </label>
+      </fieldset>
+
+      {mode === 'delete' && (
+        <Checkbox
+          label={`Entendo que ${countPosts(posts)} e os comentários delas somem do site para sempre`}
+          checked={understood}
+          onChange={setUnderstood}
+        />
+      )}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="secundario" onClick={onDone}>
+          Cancelar
+        </Button>
+        <Button type="submit" variant="perigo" busy={remove.isPending} disabled={!canSubmit}>
+          Excluir autor
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -340,21 +440,32 @@ function AuthorForm({ author, onDone }: { author: AuthorWithCount | null; onDone
 // Users
 // ════════════════════════════════════════════════════════════════════════════
 
-const roleTabs: { value: '' | Role; label: string }[] = [
+// "Excluídas" lists the accounts deleted while posts or files still pointed at
+// them. They are anonymized, not removed, and stay out of the other tabs.
+type UserTab = '' | Role | 'deleted';
+
+const roleTabs: { value: UserTab; label: string }[] = [
   { value: '', label: 'Todos' },
   { value: 'reader', label: 'Leitores' },
   { value: 'columnist', label: 'Colunistas' },
   { value: 'admin', label: 'Administradores' },
+  { value: 'deleted', label: 'Excluídas' },
 ];
 
 export function UsersPage() {
   useDocumentTitle('Usuários');
   const { data: me } = useMe();
-  const [role, setRole] = useState<'' | Role>('');
+  const [role, setRole] = useState<UserTab>('');
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState('');
   const [page, setPage] = useState(1);
-  const { data, isPending, error } = useUsers({ role: role || undefined, search: search || undefined, page });
+  const showDeleted = role === 'deleted';
+  const { data, isPending, error } = useUsers({
+    role: role && !showDeleted ? role : undefined,
+    deleted: showDeleted || undefined,
+    search: search || undefined,
+    page,
+  });
   const actions = useUserActions();
   const toast = useToast();
   const [promoting, setPromoting] = useState<User | null>(null);
@@ -418,12 +529,43 @@ export function UsersPage() {
       ) : error ? (
         <Alert>{errorMessage(error)}</Alert>
       ) : data.items.length === 0 ? (
-        <EmptyState title="Ninguém encontrado" />
+        <EmptyState title={showDeleted ? 'Nenhuma conta excluída guardada' : 'Ninguém encontrado'} />
       ) : (
         <div className="flex flex-col gap-4">
+          {showDeleted && (
+            <p className="text-sm text-tinta-suave">
+              Estas contas já foram excluídas: os dados pessoais foram apagados e ninguém consegue entrar com elas. Elas só
+              ficam guardadas porque ainda têm matérias ou arquivos ligados a elas. Se esse conteúdo já foi removido, use
+              Apagar de vez.
+            </p>
+          )}
           <ul className="divide-y divide-linha rounded-lg border border-linha bg-papel">
             {data.items.map((user) => {
               const isSelf = user.id === me?.id;
+              if (showDeleted) {
+                return (
+                  <li key={user.id} className="flex flex-col gap-3 px-4 py-3.5 lg:flex-row lg:items-center">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-tinta-suave">{user.name}</p>
+                      <p className="truncate text-sm text-tinta-suave">
+                        Criada em {formatDateTime(user.createdAt).slice(0, 10)}, excluída em{' '}
+                        {formatDateTime(user.updatedAt).slice(0, 10)}
+                      </p>
+                    </div>
+                    <ConfirmButton
+                      label="Apagar de vez"
+                      confirmLabel="Confirmar"
+                      busy={actions.remove.isPending && actions.remove.variables === user.id}
+                      onConfirm={() =>
+                        actions.remove.mutate(user.id, {
+                          onSuccess: () => toast('Conta apagada de vez'),
+                          onError: (err) => toast(errorMessage(err), 'erro'),
+                        })
+                      }
+                    />
+                  </li>
+                );
+              }
               return (
                 <li key={user.id} className="flex flex-col gap-3 px-4 py-3.5 lg:flex-row lg:items-center">
                   <div className="min-w-0 flex-1">

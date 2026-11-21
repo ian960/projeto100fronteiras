@@ -170,4 +170,55 @@ describe('excluir a conta', () => {
 
     await client.delete(`/api/admin/users/${other.id}`).expect(403);
   });
+
+  it('esconde as contas excluídas da lista e mostra só na aba Excluídas', async () => {
+    const admin = await makeAdmin();
+    const columnist = await makeColumnist();
+    await makeColumn({ authorId: columnist.author.id, createdById: columnist.user.id });
+    const { client } = await loginAs(admin.email);
+
+    await client.delete(`/api/admin/users/${columnist.user.id}`).expect(204);
+
+    const all = await client.get('/api/admin/users').query({ limit: 100 }).expect(200);
+    const ids = all.body.data.items.map((user: { id: string }) => user.id);
+    expect(ids).not.toContain(columnist.user.id);
+    expect(ids).toContain(admin.id);
+
+    const deleted = await client.get('/api/admin/users').query({ deleted: 'true', limit: 100 }).expect(200);
+    expect(deleted.body.data.items.map((user: { id: string }) => user.id)).toEqual([columnist.user.id]);
+  });
+
+  it('não deixa promover, reativar nem dar senha a uma conta excluída', async () => {
+    const admin = await makeAdmin();
+    const columnist = await makeColumnist();
+    await makeColumn({ authorId: columnist.author.id, createdById: columnist.user.id });
+    const { client } = await loginAs(admin.email);
+    await client.delete(`/api/admin/users/${columnist.user.id}`).expect(204);
+
+    await client.patch(`/api/admin/users/${columnist.user.id}`).send({ active: true }).expect(409);
+    await client
+      .post(`/api/admin/users/${columnist.user.id}/reset-password`)
+      .send({ newPassword: 'outra-senha-123' })
+      .expect(409);
+    await client.post(`/api/admin/users/${columnist.user.id}/promote`).send({ name: 'Volta' }).expect(409);
+
+    const stored = await prisma.user.findUniqueOrThrow({ where: { id: columnist.user.id } });
+    expect(stored.active).toBe(false);
+  });
+
+  it('apaga de vez a conta excluída quando o conteúdo dela já saiu', async () => {
+    const admin = await makeAdmin();
+    const columnist = await makeColumnist();
+    const column = await makeColumn({ authorId: columnist.author.id, createdById: columnist.user.id });
+    const { client } = await loginAs(admin.email);
+    await client.delete(`/api/admin/users/${columnist.user.id}`).expect(204);
+
+    // Still has a post: it has to stay, and the admin is told why.
+    await client.delete(`/api/admin/users/${columnist.user.id}`).expect(409);
+    expect(await prisma.user.findUnique({ where: { id: columnist.user.id } })).not.toBeNull();
+
+    await prisma.post.delete({ where: { id: column.id } });
+    await client.delete(`/api/admin/users/${columnist.user.id}`).expect(204);
+    expect(await prisma.user.findUnique({ where: { id: columnist.user.id } })).toBeNull();
+  });
 });

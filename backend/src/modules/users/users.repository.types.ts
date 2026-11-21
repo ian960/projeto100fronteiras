@@ -24,4 +24,6 @@ export type UpdateProfileData = {
 export type FindUsersFilters = {
   role?: Role;
   search?: string;
+  // true: only deleted (anonymized) accounts; otherwise they are left out.
+  deleted?: boolean;
 };

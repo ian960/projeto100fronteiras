@@ -1,8 +1,10 @@
 import { Conflict, Forbidden, NotFound, ValidationError } from '../../shared/errors/AppError';
-import { AuthorType, MediaKind } from '../../shared/types/enums';
+import { AuthorType, MediaKind, Role } from '../../shared/types/enums';
 import { isSlugOf, slugify } from '../../shared/utils/slugify';
 import type { SessionUser } from '../auth/auth.types';
+import { authRepository } from '../auth/auth.repository';
 import { mediaService } from '../media/media.service';
+import { usersRepository } from '../users/users.repository';
 import { authorsRepository } from './authors.repository';
 import type { IAuthorPublic, IAuthorWithPostCount } from './authors.types';
 import type { CreateAuthorInput, UpdateAuthorInput, UpdateMyProfileInput } from './authors.service.types';
@@ -156,21 +158,55 @@ export class AuthorsService {
     });
   }
 
-  async remove(id: string): Promise<void> {
-    await this.ensureExists(id);
+  // Deleting a byline. Without posts it simply goes. With posts the admin
+  // must say what happens to them: move them to another author (transferTo)
+  // or delete them too (deletePosts). Without either, the database would
+  // refuse anyway (FK Restrict), so we say why first.
+  async remove(
+    id: string,
+    options: { transferTo?: string | undefined; deletePosts?: boolean | undefined } = {},
+  ): Promise<void> {
+    const author = await this.ensureExists(id);
 
-    // The FK is Restrict, so the database already refuses. Counting first
-    // turns "this record is referenced by others" into something the admin
-    // can act on.
+    if (options.transferTo && options.deletePosts) {
+      throw new ValidationError('Choose either to move the posts or to delete them.', {
+        transferTo: 'Choose either to move the posts or to delete them.',
+      });
+    }
+
+    if (options.transferTo) {
+      if (options.transferTo === id) {
+        throw new ValidationError('Choose another author to receive the posts.', {
+          transferTo: 'Choose another author to receive the posts.',
+        });
+      }
+      if (!(await authorsRepository.findById(options.transferTo))) {
+        throw new NotFound('Author not found.');
+      }
+    }
+
     const postCount = await authorsRepository.countPosts(id);
 
-    if (postCount > 0) {
+    if (postCount > 0 && !options.transferTo && !options.deletePosts) {
       throw new Conflict(
         `This author signs ${postCount} post(s) and cannot be deleted. Deactivate them instead.`,
       );
     }
 
-    await authorsRepository.delete(id);
+    // A columnist login without a byline could enter the panel and write
+    // nothing. It goes back to reader and is logged out.
+    const linkedUser = author.userId ? await usersRepository.findById(author.userId) : null;
+    const demoteUserId = linkedUser?.role === Role.COLUMNIST ? linkedUser.id : undefined;
+
+    await authorsRepository.deleteWithPosts(id, {
+      ...(options.transferTo ? { transferTo: options.transferTo } : {}),
+      ...(options.deletePosts ? { deletePosts: true } : {}),
+      ...(demoteUserId ? { demoteUserId } : {}),
+    });
+
+    if (demoteUserId) {
+      await authRepository.deleteSessionsOfUser(demoteUserId);
+    }
   }
 }
 

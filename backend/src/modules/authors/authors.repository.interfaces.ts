@@ -1,5 +1,10 @@
 import type { IAuthorPublic, IAuthorWithPostCount } from './authors.types';
-import type { CreateAuthorData, FindAuthorsFilters, UpdateAuthorData } from './authors.repository.types';
+import type {
+  CreateAuthorData,
+  DeleteAuthorOptions,
+  FindAuthorsFilters,
+  UpdateAuthorData,
+} from './authors.repository.types';
 
 export interface IAuthorsRepository {
   findMany(filters: FindAuthorsFilters): Promise<IAuthorPublic[]>;
@@ -10,5 +15,6 @@ export interface IAuthorsRepository {
   create(data: CreateAuthorData): Promise<IAuthorPublic>;
   update(id: string, data: UpdateAuthorData): Promise<IAuthorPublic>;
   delete(id: string): Promise<void>;
+  deleteWithPosts(id: string, options: DeleteAuthorOptions): Promise<void>;
   countPosts(authorId: string): Promise<number>;
 }

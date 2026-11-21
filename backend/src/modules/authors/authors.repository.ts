@@ -3,7 +3,12 @@ import { logger } from '../../shared/utils/logger';
 import { mediaSelect } from '../media/media.select';
 import type { IMedia } from '../media/media.types';
 import type { IAuthorsRepository } from './authors.repository.interfaces';
-import type { CreateAuthorData, FindAuthorsFilters, UpdateAuthorData } from './authors.repository.types';
+import type {
+  CreateAuthorData,
+  DeleteAuthorOptions,
+  FindAuthorsFilters,
+  UpdateAuthorData,
+} from './authors.repository.types';
 import { photoUrlOf } from './authors.select';
 import type { IAuthor, IAuthorPublic, IAuthorWithPostCount } from './authors.types';
 
@@ -129,6 +134,28 @@ export class AuthorsRepository implements IAuthorsRepository {
       await prisma.author.delete({ where: { id } });
     } catch (err) {
       logger.error('Failed to delete author', err);
+      throw err;
+    }
+  }
+
+  // One transaction: the posts are moved or deleted, the columnist login is
+  // demoted and the byline goes, or nothing changes at all.
+  async deleteWithPosts(id: string, options: DeleteAuthorOptions): Promise<void> {
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (options.transferTo) {
+          await tx.post.updateMany({ where: { authorId: id }, data: { authorId: options.transferTo } });
+        } else if (options.deletePosts) {
+          // Comments and the post's file links go with it (onDelete: Cascade).
+          await tx.post.deleteMany({ where: { authorId: id } });
+        }
+        if (options.demoteUserId) {
+          await tx.user.update({ where: { id: options.demoteUserId }, data: { role: 'reader' } });
+        }
+        await tx.author.delete({ where: { id } });
+      });
+    } catch (err) {
+      logger.error('Failed to delete author with posts', err);
       throw err;
     }
   }
