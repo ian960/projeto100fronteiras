@@ -29,7 +29,10 @@ export interface IPost {
   videoId: string | null;
 
   categoryId: string | null; // always null when type === 'column'
-  authorId: string;
+  // The byline: a registered author, a free-text name, or neither (unsigned
+  // news). Never both; a column always has authorId.
+  authorId: string | null;
+  bylineName: string | null;
   createdById: string;
   publishedById: string | null;
 
@@ -44,7 +47,7 @@ export interface IPost {
 export type IPostSummary = Pick<
   IPost,
   | 'id' | 'type' | 'status' | 'title' | 'subtitle' | 'slug' | 'excerpt'
-  | 'coverId' | 'coverAlt' | 'featured' | 'videoYoutubeId' | 'videoId'
+  | 'coverId' | 'coverAlt' | 'featured' | 'videoYoutubeId' | 'videoId' | 'bylineName'
   | 'publishedAt' | 'createdAt' | 'updatedAt'
 > & {
   cover: IMediaView | null;
@@ -53,7 +56,7 @@ export type IPostSummary = Pick<
 // Home feed, category page, author page, columnists tab.
 export type IPostListItem = IPostSummary & {
   category?: ICategorySummary | null;
-  author?: IAuthorSummary;
+  author?: IAuthorSummary | null;
   // Panel lists only.
   commentCount?: number;
 };
@@ -68,7 +71,7 @@ export type IPostAttachment = {
 // query loads cover, video and attachments, so here they are not optional.
 export type IPostDetail = IPost & {
   category?: ICategorySummary | null;
-  author?: IAuthorSummary;
+  author?: IAuthorSummary | null;
   cover: IMediaView | null;
   video: IMediaView | null;
   attachments: IPostAttachment[];

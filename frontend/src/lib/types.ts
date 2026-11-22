@@ -65,6 +65,12 @@ export type Author = AuthorSummary & {
 
 export type AuthorWithCount = Author & { _count?: { posts: number } };
 
+// The columnists tab: published columns and the newest one.
+export type ColumnistCard = Author & {
+  columnCount: number;
+  latestColumn: { title: string; slug: string; publishedAt: string | null } | null;
+};
+
 export type User = {
   id: string;
   name: string;
@@ -121,7 +127,10 @@ export type PostListItem = {
   createdAt: string;
   updatedAt: string;
   category?: CategorySummary | null;
-  author?: AuthorSummary;
+  // null: unsigned news, or news signed with a typed name (bylineName).
+  author?: AuthorSummary | null;
+  // A name the admin typed instead of a registered author. No author page.
+  bylineName?: string | null;
 };
 
 export type Attachment = { title: string; media: Media };
@@ -134,7 +143,7 @@ export type PostDetail = PostListItem & {
   video: Media | null;
   attachments: Attachment[];
   categoryId: string | null;
-  authorId: string;
+  authorId: string | null;
   createdById: string;
   publishedById: string | null;
 };

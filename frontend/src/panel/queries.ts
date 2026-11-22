@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { del, get, getPage, patch, post } from '../lib/api';
+import { del, get, getPage, patch, post, put } from '../lib/api';
 import type {
   AuthorWithCount,
   BannerAdmin,
@@ -73,7 +73,10 @@ export type PostInput = {
   coverId: string | null;
   coverAlt: string | null;
   categoryId?: string | null;
-  authorId?: string;
+  // News may be signed by nobody (authorId null, bylineName null) or by a
+  // typed name (authorId null, bylineName set). Columns always have authorId.
+  authorId?: string | null;
+  bylineName?: string | null;
   // One video: a YouTube link or an uploaded file. null = no video.
   video: { provider: 'youtube'; url: string } | { provider: 'cloudinary'; mediaId: string } | null;
   // PDFs under the text, in this order. The whole list is sent every time.
@@ -221,6 +224,11 @@ export function useUserActions() {
     update: useMutation({
       mutationFn: ({ id, input }: { id: string; input: { role?: Role; active?: boolean; name?: string } }) =>
         patch(`/admin/users/${id}`, input),
+      onSuccess,
+    }),
+    // Ties the login to an author that already exists, or unties it (null).
+    linkAuthor: useMutation({
+      mutationFn: ({ id, authorId }: { id: string; authorId: string | null }) => put(`/admin/users/${id}/author`, { authorId }),
       onSuccess,
     }),
     resetPassword: useMutation({

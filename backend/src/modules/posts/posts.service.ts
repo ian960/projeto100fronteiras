@@ -172,6 +172,38 @@ export class PostsService {
     if (!author) throw new NotFound('Author not found.');
   }
 
+  // Who signs the piece. News: a registered author, a name the admin types
+  // (not tied to anyone's profile, so it has no author page), or nobody.
+  // A column always belongs to a registered columnist.
+  private async resolveByline(
+    type: PostType,
+    authorId: string | null | undefined,
+    bylineName: string | null | undefined,
+  ): Promise<{ authorId: string | null; bylineName: string | null }> {
+    if (authorId && bylineName) {
+      throw new ValidationError('Choose an author or type a name, not both.', {
+        bylineName: 'Choose an author or type a name, not both.',
+      });
+    }
+
+    if (type === PostType.COLUMN) {
+      if (!authorId) {
+        throw new ValidationError('A column must be signed by its columnist.', {
+          authorId: 'Choose the columnist.',
+        });
+      }
+      if (bylineName) {
+        throw new ValidationError('A column must be signed by its columnist.', {
+          bylineName: 'Columns are signed by a registered columnist.',
+        });
+      }
+    }
+
+    if (authorId) await this.assertAuthorExists(authorId);
+
+    return { authorId: authorId ?? null, bylineName: bylineName ?? null };
+  }
+
   // ── public reads ──────────────────────────────────────────────────────────
 
   listPublished(input: ListPublishedInput): Promise<Paginated<IPostListItem>> {
@@ -290,8 +322,7 @@ export class PostsService {
       throw new Forbidden('You cannot create this type of post.');
     }
 
-    await this.assertAuthorExists(input.authorId);
-
+    const byline = await this.resolveByline(input.type, input.authorId, input.bylineName);
     const categoryId = await this.assertCategoryForType(input.type, input.categoryId);
     const media = await this.resolveMedia(actor, input, null);
     const slug = await this.buildUniqueSlug(input.slug ?? input.title);
@@ -309,7 +340,7 @@ export class PostsService {
       sourceUrl: input.sourceUrl ?? null,
       ...media,
       categoryId,
-      authorId: input.authorId,
+      ...byline,
       createdById: actor.id,
     });
   }
@@ -390,11 +421,21 @@ export class PostsService {
         data.categoryId = await this.assertCategoryForType(post.type, input.categoryId);
       }
 
-      if (input.authorId !== undefined) {
-        await this.assertAuthorExists(input.authorId);
-        data.authorId = input.authorId;
+      // Sending either field sets the whole byline: picking an author clears
+      // a typed name and vice versa. A field left out keeps its value only
+      // when the other one does not conflict with it.
+      if (input.authorId !== undefined || input.bylineName !== undefined) {
+        const authorId =
+          input.authorId !== undefined ? input.authorId : input.bylineName ? null : post.authorId;
+        const bylineName =
+          input.bylineName !== undefined ? input.bylineName : input.authorId ? null : post.bylineName;
+        Object.assign(data, await this.resolveByline(post.type, authorId, bylineName));
       }
-    } else if (input.categoryId !== undefined || input.authorId !== undefined) {
+    } else if (
+      input.categoryId !== undefined ||
+      input.authorId !== undefined ||
+      input.bylineName !== undefined
+    ) {
       throw new Forbidden('You cannot change the category or the byline.');
     }
 

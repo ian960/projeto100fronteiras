@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { cx } from '../components/ui';
 import { formatRelative, postPath } from '../lib/format';
 import type { PostListItem } from '../lib/types';
-import { Cover } from './parts';
+import { Cover, bylineText } from './parts';
 
 // The home page carousel: the stories the admin featured, topped up by the API
 // with the latest news. Slides move with the arrows, the dots, a swipe on a
@@ -62,7 +62,7 @@ function Slide({ post, index, total, eager }: { post: PostListItem; index: numbe
             </p>
           )}
           <p className="mt-3 text-sm text-white/75">
-            {post.author?.name ? `${post.author.name} · ` : ''}
+            {bylineText(post) ? `${bylineText(post)} · ` : ''}
             {formatRelative(post.publishedAt)}
           </p>
         </div>

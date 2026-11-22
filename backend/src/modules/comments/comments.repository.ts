@@ -33,7 +33,7 @@ export class CommentsRepository {
         select: { id: true, status: true, authorId: true, author: { select: { userId: true } } },
       });
       return post
-        ? { id: post.id, status: post.status, authorId: post.authorId, authorUserId: post.author.userId }
+        ? { id: post.id, status: post.status, authorId: post.authorId, authorUserId: post.author?.userId ?? null }
         : null;
     } catch (err) {
       logger.error('Failed to load the post of a comment', err);
