@@ -30,6 +30,7 @@ export interface IUsersRepository {
   update(id: string, data: UpdateUserData): Promise<IUserPublic>;
   updatePasswordHash(id: string, passwordHash: string): Promise<void>;
   promoteToColumnist(data: PromoteToColumnistData): Promise<IUserWithAuthor>;
+  linkAuthor(userId: string, authorId: string | null): Promise<IUserWithAuthor>;
   countActiveAdmins(): Promise<number>;
   countPostsOf(id: string): Promise<number>;
   delete(id: string): Promise<void>;

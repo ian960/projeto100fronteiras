@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { get, getPage } from '../lib/api';
-import type { Author, Category, HomePayload, PostDetail, PostListItem, PostType } from '../lib/types';
+import type { Author, Category, ColumnistCard, HomePayload, PostDetail, PostListItem, PostType } from '../lib/types';
 
 // Public data. Nothing here needs a login.
 
@@ -63,7 +63,7 @@ export function useAuthor(slug: string | undefined) {
 export function useColumnists() {
   return useQuery({
     queryKey: ['site', 'columnists'],
-    queryFn: async () => (await get<{ authors: Author[] }>('/columnists')).authors,
+    queryFn: async () => (await get<{ authors: ColumnistCard[] }>('/columnists')).authors,
     staleTime: 5 * 60_000,
   });
 }

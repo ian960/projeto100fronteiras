@@ -33,3 +33,10 @@ export type IAuthorSummary = Pick<
 export type IAuthorWithPostCount = IAuthorPublic & {
   _count?: { posts: number };
 };
+
+// The columnists tab: how many columns each one has published, and the
+// newest, so the reader can pick whom to read.
+export type IColumnistCard = IAuthorPublic & {
+  columnCount: number;
+  latestColumn: { title: string; slug: string; publishedAt: Date | null } | null;
+};

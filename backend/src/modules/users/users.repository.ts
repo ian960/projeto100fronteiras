@@ -287,6 +287,30 @@ export class UsersRepository implements IUsersRepository {
       throw err;
     }
   }
+
+  // One transaction: the login lets go of its old byline (which stays, with
+  // its posts) and takes the new one, or none. With a byline the login is a
+  // columnist and the byline counts as one; without, the login is a reader,
+  // because a columnist with no byline cannot write anything.
+  async linkAuthor(userId: string, authorId: string | null): Promise<IUserWithAuthor> {
+    try {
+      return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        await tx.author.updateMany({ where: { userId }, data: { userId: null } });
+
+        if (authorId) {
+          await tx.author.update({ where: { id: authorId }, data: { userId, type: 'columnist' } });
+        }
+
+        await tx.user.update({ where: { id: userId }, data: { role: authorId ? 'columnist' : 'reader' } });
+
+        const row = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: this.withAuthor });
+        return this.toWithAuthor(row);
+      });
+    } catch (err) {
+      logger.error('Failed to link user to author', err);
+      throw err;
+    }
+  }
 }
 
 export const usersRepository = new UsersRepository();

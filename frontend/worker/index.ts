@@ -14,6 +14,7 @@
 //   /coluna/:slug     card, structured data and text already inside, for
 //   /categoria/:slug  Google and for WhatsApp's preview (seo.ts).
 //   /autor/:slug
+//   /colunistas       the list of columnists, each linking to their page
 //   /privacidade      the same, with the page's whole text (Google reads
 //   /termos           these before approving AdSense)
 //   /contato

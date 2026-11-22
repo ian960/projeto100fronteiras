@@ -33,6 +33,14 @@ export const promoteUserSchema = z.object({
   }),
 });
 
+// The admin ties a login to a byline that already exists (or unties it, null).
+export const linkAuthorSchema = z.object({
+  params: z.object({ id: z.uuid() }),
+  body: z.object({
+    authorId: z.uuid().nullable(),
+  }),
+});
+
 export const updateUserSchema = z.object({
   params: z.object({ id: z.uuid() }),
   body: z
