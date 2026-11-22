@@ -205,11 +205,31 @@ export function AuthorsPage() {
   const [editing, setEditing] = useState<AuthorWithCount | 'new' | null>(null);
   const [removing, setRemoving] = useState<AuthorWithCount | null>(null);
 
+  // Swaps an author with the one above (-1) or below (+1) and saves the whole
+  // order. The list shows the new order right away.
+  const [order, setOrder] = useState<string[] | null>(null);
+  const list = order && data ? order.map((id) => data.find((a) => a.id === id)).filter((a): a is AuthorWithCount => !!a) : data;
+  function move(index: number, step: -1 | 1) {
+    if (!list) return;
+    const ids = list.map((a) => a.id);
+    const target = index + step;
+    if (target < 0 || target >= ids.length) return;
+    [ids[index], ids[target]] = [ids[target]!, ids[index]!];
+    setOrder(ids);
+    actions.reorder.mutate(ids, {
+      onSuccess: () => setOrder(null),
+      onError: (err) => {
+        setOrder(null);
+        toast(errorMessage(err), 'erro');
+      },
+    });
+  }
+
   return (
     <>
       <PanelHeader
         title="Autores"
-        description="Quem assina as matérias. Redatores são só assinatura, sem login. Colunistas entram pela tela de Usuários."
+        description="Quem assina as matérias. Redatores são só assinatura, sem login. Colunistas entram pela tela de Usuários. Use as setas para escolher a ordem em que os autores aparecem na página Colunistas do site."
         actions={<Button onClick={() => setEditing('new')}>Novo redator</Button>}
       />
       {actions.remove.error && (
@@ -224,9 +244,31 @@ export function AuthorsPage() {
         <Alert>{errorMessage(error)}</Alert>
       ) : (
         <ul className="divide-y divide-linha rounded-lg border border-linha bg-papel">
-          {data.map((author) => (
+          {(list ?? data).map((author, index, all) => (
             <li key={author.id} className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center">
               <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="flex shrink-0 flex-col">
+                  <button
+                    type="button"
+                    aria-label={`Subir ${author.name}`}
+                    title="Subir"
+                    disabled={index === 0 || actions.reorder.isPending}
+                    onClick={() => move(index, -1)}
+                    className="flex h-6 w-7 items-center justify-center rounded text-tinta-suave hover:bg-superficie hover:text-tinta disabled:opacity-30"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Descer ${author.name}`}
+                    title="Descer"
+                    disabled={index === all.length - 1 || actions.reorder.isPending}
+                    onClick={() => move(index, 1)}
+                    className="flex h-6 w-7 items-center justify-center rounded text-tinta-suave hover:bg-superficie hover:text-tinta disabled:opacity-30"
+                  >
+                    ▼
+                  </button>
+                </div>
                 <Avatar src={author.photoUrl} name={author.name} size={44} />
                 <div className="min-w-0">
                   <p className={cx('font-semibold', !author.active && 'text-tinta-suave line-through')}>

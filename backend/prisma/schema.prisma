@@ -127,6 +127,8 @@ model Author {
   columnTitle String?    @map("column_title") // columnists only
   type        AuthorType
   active      Boolean    @default(true)
+  // Position on /colunistas and in the panel list, set by the admin (0 first).
+  sortOrder   Int        @default(0) @map("sort_order")
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 

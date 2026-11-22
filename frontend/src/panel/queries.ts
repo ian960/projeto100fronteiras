@@ -187,6 +187,8 @@ export function useAuthorActions() {
       mutationFn: ({ id, input }: { id: string; input: AuthorInput }) => patch(`/admin/authors/${id}`, input),
       onSuccess,
     }),
+    // The whole list in its new order (the order of /colunistas).
+    reorder: useMutation({ mutationFn: (ids: string[]) => put('/admin/authors/order', { ids }), onSuccess }),
     // With posts, say what happens to them: move to another author or delete.
     remove: useMutation({
       mutationFn: ({ id, transferTo, deletePosts }: { id: string; transferTo?: string; deletePosts?: boolean }) => {

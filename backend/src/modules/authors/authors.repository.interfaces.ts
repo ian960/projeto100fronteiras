@@ -18,4 +18,6 @@ export interface IAuthorsRepository {
   delete(id: string): Promise<void>;
   deleteWithPosts(id: string, options: DeleteAuthorOptions): Promise<void>;
   countPosts(authorId: string): Promise<number>;
+  reorder(ids: string[]): Promise<void>;
+  countByIds(ids: string[]): Promise<number>;
 }

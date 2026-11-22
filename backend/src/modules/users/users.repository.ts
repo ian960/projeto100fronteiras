@@ -263,8 +263,11 @@ export class UsersRepository implements IUsersRepository {
           data: { role: 'columnist' },
         });
 
+        // The new byline goes to the end of the admin's order of authors.
+        const last = await tx.author.aggregate({ _max: { sortOrder: true } });
         await tx.author.create({
           data: {
+            sortOrder: (last._max.sortOrder ?? -1) + 1,
             userId: data.userId,
             name: data.name,
             slug: data.slug,

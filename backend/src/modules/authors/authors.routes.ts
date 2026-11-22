@@ -20,6 +20,7 @@ export function authorsAdminRouter(): Router {
   router.use(authenticate, authorize(Role.ADMIN));
 
   router.get('/', authorsController.list);
+  router.put('/order', authorsController.reorder);
   router.get('/:id', authorsController.getById);
   router.post('/', authorsController.create);
   router.patch('/:id', authorsController.update);
