@@ -1,9 +1,28 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { createServer, type Server } from 'node:http';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '../src/config/prisma';
 import { fetchFeedOverHttp, newsImportService } from '../src/modules/newsImport/newsImport.service';
 import { parseFeed, shorten, stripTags } from '../src/modules/newsImport/newsImport.feed';
 import { agent, loginAs } from './helpers/agent';
 import { makeAdmin, makeCategory, makeColumnist } from './factories';
+import { pngFile } from './helpers/upload';
+
+// Stands in for the agency's photo server: /fotos/<guid>.png is a photo,
+// anything else is a 404.
+let photoSite: Server;
+let photoBase = '';
+beforeAll(async () => {
+  photoSite = createServer((req, res) => {
+    if (req.url?.startsWith('/fotos/') && !req.url.includes('sumiu')) {
+      res.writeHead(200, { 'content-type': 'image/png' });
+      return res.end(pngFile(1280, 720).bytes);
+    }
+    res.writeHead(404).end();
+  });
+  await new Promise<void>((resolve) => photoSite.listen(0, '127.0.0.1', resolve));
+  photoBase = `http://127.0.0.1:${(photoSite.address() as { port: number }).port}/fotos`;
+});
+afterAll(() => new Promise<void>((resolve) => photoSite.close(() => resolve())));
 
 const HOUR = 60 * 60 * 1000;
 const ago = (hours: number) => new Date(Date.now() - hours * HOUR).toUTCString();
@@ -23,7 +42,7 @@ ${items
   <pubDate>${ago(item.hoursAgo)}</pubDate>
   <dc:creator>Maria Silva - Repórter da Agência Brasil</dc:creator>
   <guid isPermaLink="false">${item.guid}</guid>
-  <imagem-destaque>https://imagens.ebc.com.br/${item.guid}.jpg</imagem-destaque>
+  <imagem-destaque>${photoBase}/${item.guid}.png</imagem-destaque>
 </item>`,
   )
   .join('\n')}
@@ -75,7 +94,7 @@ describe('leitura do feed', () => {
     expect(item?.link).toBe('https://agenciabrasil.ebc.com.br/geral/noticia/a1');
     expect(item?.summaryHtml).toContain('<strong>Chuva no Sul</strong>');
     expect(item?.author).toBe('Maria Silva - Repórter da Agência Brasil');
-    expect(item?.imageUrl).toBe('https://imagens.ebc.com.br/a1.jpg');
+    expect(item?.imageUrl).toBe(`${photoBase}/a1.png`);
     expect(item?.publishedAt).toBeInstanceOf(Date);
   });
 
@@ -135,14 +154,37 @@ describe('importar notícias', () => {
     }
     expect(posts.map((p) => p.sourceUrl)).toContain('https://agenciabrasil.ebc.com.br/geral/noticia/a1');
 
-    // The editor offers the source's photo.
+    // The source's photo became the cover, copied to Cloudinary by the admin.
+    for (const post of posts) {
+      expect(post.coverId).not.toBeNull();
+      expect(post.coverAlt).toBe(post.title);
+      const cover = await prisma.media.findUniqueOrThrow({ where: { id: post.coverId! } });
+      expect(cover.uploadedById).toBe(admin.id);
+      expect(cover.width).toBe(1280);
+    }
+
     const origin = await client.get(`/api/admin/news-import/posts/${posts[0]!.id}`).expect(200);
     expect(origin.body.data.origin).toMatchObject({ sourceName: 'Agência Brasil', fullText: true });
-    expect(origin.body.data.origin.imageUrl).toMatch(/^https:\/\/imagens\.ebc\.com\.br\/a[12]\.jpg$/);
+    expect(origin.body.data.origin.imageUrl).toMatch(/\/fotos\/a[12]\.png$/);
 
     const items = await client.get('/api/admin/news-import/items').expect(200);
     expect(items.body.data.items).toHaveLength(2);
     expect(items.body.data.items[0].post.status).toBe('draft');
+  });
+
+  it('se a foto não puder ser copiada, o rascunho entra sem capa e o editor oferece a foto', async () => {
+    const { client, category } = await setup();
+    const feedUrl = 'https://agenciabrasil.ebc.com.br/feed.xml';
+    feeds[feedUrl] = agenciaFeed([{ guid: 'sumiu', title: 'Foto que sumiu', hoursAgo: 1 }]);
+    const source = await addSource(client, { name: 'Agência Brasil', feedUrl, fullText: true, categoryId: category.id });
+
+    const run = await client.post(`/api/admin/news-import/sources/${source.id}/run`).expect(200);
+    expect(run.body.data.results[0]).toMatchObject({ imported: 1, error: null });
+
+    const post = await prisma.post.findFirstOrThrow();
+    expect(post.coverId).toBeNull();
+    const origin = await client.get(`/api/admin/news-import/posts/${post.id}`).expect(200);
+    expect(origin.body.data.origin.imageUrl).toMatch(/\/fotos\/sumiu\.png$/);
   });
 
   it('de fonte sem permissão de cópia traz só o resumo e o link', async () => {

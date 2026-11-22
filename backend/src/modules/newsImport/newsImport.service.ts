@@ -1,7 +1,9 @@
 import { Conflict, NotFound, ValidationError } from '../../shared/errors/AppError';
 import { logger } from '../../shared/utils/logger';
 import { PostType, type Role } from '../../shared/types/enums';
+import { isMediaConfigured } from '../../config/cloudinary';
 import { categoriesRepository } from '../categories/categories.repository';
+import { mediaService } from '../media/media.service';
 import { postsService } from '../posts/posts.service';
 import type { SessionUser } from '../auth/auth.types';
 import { parseFeed, shorten, stripTags, type FeedItem } from './newsImport.feed';
@@ -20,9 +22,10 @@ import type { IImportOrigin, IImportedItem, INewsSource, ImportRunResult } from 
 //    (server.ts; the Worker keeps this server awake, like the newsletter
 //    queue). The admin can also press "Buscar agora".
 // 3. Each new item becomes a DRAFT news post: "Fonte: <name>" with the link,
-//    signed by the reporter the feed names (full text only). Nothing is
-//    published by the robot: the admin reviews, picks a cover (the source's
-//    photo is offered in the editor) and publishes.
+//    signed by the reporter the feed names (full text only). The source's
+//    photo, when the feed has one, is copied to Cloudinary and becomes the
+//    cover. Nothing is published by the robot: the admin reviews and
+//    publishes. If the photo could not be copied, the editor offers it again.
 // 4. Every item seen is remembered, so nothing comes in twice, not even after
 //    the admin deletes the draft.
 
@@ -201,6 +204,7 @@ export class NewsImportService {
   private async createDraft(actor: SessionUser, source: INewsSource, item: FeedItem): Promise<string> {
     const excerpt = shorten(stripTags(item.summaryHtml || item.contentHtml), EXCERPT_MAX);
     const title = shorten(item.title, 200);
+    const coverId = await this.importCover(actor, item.imageUrl);
     const post = await postsService.create(actor, {
       type: PostType.NEWS,
       title: title.length >= 3 ? title : `${title} — ${source.name}`,
@@ -212,8 +216,25 @@ export class NewsImportService {
       bylineName: source.fullText && item.author ? item.author : null,
       sourceName: source.name.slice(0, 120),
       sourceUrl: item.link && item.link.length <= 500 ? item.link : null,
+      coverId,
+      coverAlt: coverId ? title : null,
     });
     return post.id;
+  }
+
+  // The source's photo, copied to Cloudinary so the story does not depend on
+  // the other site keeping it online. A photo that cannot be copied (gone,
+  // not an image, too small, Cloudinary off) leaves the draft without a
+  // cover: the import goes on, and the editor offers the photo again.
+  private async importCover(actor: SessionUser, imageUrl: string | null): Promise<string | null> {
+    if (!imageUrl || !isMediaConfigured()) return null;
+    try {
+      const media = await mediaService.importFromUrl(actor, { purpose: 'cover', url: imageUrl });
+      return media.id;
+    } catch (err) {
+      logger.warn('News import: could not copy the photo', { imageUrl, err });
+      return null;
+    }
   }
 
   private async importingActor(): Promise<SessionUser> {
