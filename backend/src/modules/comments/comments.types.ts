@@ -48,6 +48,6 @@ export type ICommentRow = {
 export type ICommentPost = {
   id: string;
   status: string;
-  authorId: string;
+  authorId: string | null; // null: unsigned news or a free-text byline
   authorUserId: string | null;
 };

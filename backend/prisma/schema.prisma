@@ -210,9 +210,13 @@ model Post {
   categoryId String?   @map("category_id")
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
-  // Whose name signs the piece.
-  authorId String @map("author_id")
-  author   Author @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  // Whose name signs the piece. News may instead be signed with a free-text
+  // name (bylineName, not a registered author) or by nobody (both null).
+  // A column always has an author. Enforced by the CHECK constraints
+  // "posts_single_byline" and "posts_column_has_author" in the migration.
+  authorId   String? @map("author_id")
+  author     Author? @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  bylineName String? @map("byline_name")
 
   // Who actually typed it (audit trail — the admin may write on a writer's behalf).
   createdById String @map("created_by_id")

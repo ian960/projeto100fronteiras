@@ -26,7 +26,8 @@ export type CreatePostInput = PostMediaInput & {
   sourceName?: string | null;
   sourceUrl?: string | null;
   categoryId?: string | null;
-  authorId: string;
+  authorId?: string | null;
+  bylineName?: string | null;
 };
 
 export type CreateMyColumnInput = PostMediaInput & {
@@ -48,7 +49,8 @@ export type UpdatePostInput = PostMediaInput & {
   sourceName?: string | null;
   sourceUrl?: string | null;
   categoryId?: string | null;
-  authorId?: string;
+  authorId?: string | null;
+  bylineName?: string | null;
 };
 
 export type ListPublishedInput = {

@@ -47,7 +47,7 @@ export default function PostPage() {
         {/* The buttons go under the byline when both do not fit on one line,
             instead of squeezing the date into three short lines. */}
         <div className="mt-7 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 border-y border-linha py-4">
-          <Byline author={post.author} date={post.publishedAt} readingMinutes={readingMinutes(post.content)} />
+          <Byline author={post.author} name={post.bylineName} date={post.publishedAt} readingMinutes={readingMinutes(post.content)} />
           <div className="flex flex-wrap gap-2">
             <BookmarkButton id={post.id} />
             <ShareActions title={post.title} url={url} />

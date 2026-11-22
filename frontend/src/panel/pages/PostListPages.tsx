@@ -57,7 +57,7 @@ function PostRows({ posts, scope }: { posts: PostListItem[]; scope: Scope }) {
               {post.title}
             </Link>
             <p className="mt-0.5 text-sm text-tinta-suave">
-              {scope === 'admin' && post.author ? `${post.author.name}, ` : ''}
+              {scope === 'admin' ? `${post.author?.name ?? post.bylineName ?? 'Sem assinatura'}, ` : ''}
               {post.category ? `${post.category.name}, ` : ''}
               atualizada em {formatDateTime(post.updatedAt)}
             </p>

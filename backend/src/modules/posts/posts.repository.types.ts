@@ -19,7 +19,8 @@ export type CreatePostData = {
   // Replaces the whole list, in this order.
   attachments?: AttachmentData[];
   categoryId?: string | null;
-  authorId: string;
+  authorId: string | null;
+  bylineName?: string | null;
   createdById: string;
 };
 
@@ -38,7 +39,8 @@ export type UpdatePostData = {
   // Replaces the whole list, in this order.
   attachments?: AttachmentData[];
   categoryId?: string | null;
-  authorId?: string;
+  authorId?: string | null;
+  bylineName?: string | null;
   status?: PostStatus;
   publishedAt?: Date | null;
   publishedById?: string | null;

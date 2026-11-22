@@ -31,12 +31,20 @@ type Form = {
   cover: ImageValue;
   coverAlt: string;
   categoryId: string;
+  // An author's id, or one of the two choices below (news only).
   authorId: string;
+  // The typed name when authorId is BYLINE_TYPED.
+  bylineName: string;
   video: VideoValue;
   attachments: AttachmentValue[];
 };
 
 const EXCERPT_MAX = 400;
+
+// "Quem assina" for news, besides the registered authors: a name typed by the
+// admin (no author page behind it) or nobody at all.
+const BYLINE_TYPED = 'nome-livre';
+const BYLINE_NONE = 'sem-assinatura';
 
 function toVideo(post: PostWithAudit | null): VideoValue {
   // YouTube posts store only the video id; show a link the editor recognises.
@@ -59,7 +67,8 @@ function toForm(post: PostWithAudit | null, type: PostType): Form {
     cover: post?.cover ? imageValue(post.cover) : null,
     coverAlt: post?.coverAlt ?? '',
     categoryId: post?.categoryId ?? '',
-    authorId: post?.authorId ?? '',
+    authorId: post ? (post.authorId ?? (post.bylineName ? BYLINE_TYPED : BYLINE_NONE)) : '',
+    bylineName: post?.bylineName ?? '',
     video: toVideo(post),
     attachments: post?.attachments.map((item) => ({ media: item.media, title: item.title })) ?? [],
   };
@@ -104,7 +113,16 @@ function toInput(form: Form, scope: Scope, isNew: boolean): PostInput {
   // sending them would be refused.
   if (scope === 'admin') {
     if (isNew) input.type = form.type;
-    input.authorId = form.authorId;
+    if (form.type === 'news' && form.authorId === BYLINE_TYPED) {
+      input.authorId = null;
+      input.bylineName = blank(form.bylineName);
+    } else if (form.type === 'news' && form.authorId === BYLINE_NONE) {
+      input.authorId = null;
+      input.bylineName = null;
+    } else {
+      input.authorId = form.authorId;
+      input.bylineName = null;
+    }
     input.categoryId = form.type === 'news' ? blank(form.categoryId) : null;
   }
 
@@ -183,12 +201,15 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
         : slugPath;
   const dirty = JSON.stringify(input) !== savedSnapshot;
 
-  // Pick a byline for a new piece so the admin is not forced to: the
-  // "Redação" byline created by the seed, or the first active writer.
+  // Pick a byline for a new piece so the admin is not forced to: for news the
+  // "Redação" byline created by the seed, for a column the first columnist,
+  // otherwise the first active author (any author may sign a column).
   useEffect(() => {
     if (!isAdmin || form.authorId || !authors.data) return;
-    const eligible = authors.data.filter((a) => a.active && (form.type === 'column' ? a.type === 'columnist' : true));
-    const preferred = eligible.find((a) => a.slug === 'redacao') ?? eligible[0];
+    const eligible = authors.data.filter((a) => a.active);
+    const preferred =
+      (form.type === 'column' ? eligible.find((a) => a.type === 'columnist') : eligible.find((a) => a.slug === 'redacao')) ??
+      eligible[0];
     if (preferred) setForm((current) => ({ ...current, authorId: preferred.id }));
   }, [isAdmin, authors.data, form.authorId, form.type]);
 
@@ -207,7 +228,16 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
   }, [dirty]);
 
   function update<K extends keyof Form>(key: K, value: Form[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => {
+      const next = { ...current, [key]: value };
+      // A column is always signed by a registered author (a columnist or a
+      // writer): switching to it drops the "typed name" and "no byline"
+      // choices, so the picker below chooses an author again.
+      if (key === 'type' && value === 'column' && !authors.data?.some((a) => a.id === next.authorId)) {
+        next.authorId = '';
+      }
+      return next;
+    });
     // The API names the cover field coverId; the form keeps the whole image.
     const errorKey = key === 'cover' ? 'coverId' : (key as string);
     if (errors[errorKey]) setErrors(({ [errorKey]: _drop, ...rest }) => rest);
@@ -363,7 +393,7 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
 
   const activeCategories = categories.data?.filter((c) => c.active || c.id === form.categoryId) ?? [];
   const eligibleAuthors =
-    authors.data?.filter((a) => (a.active || a.id === form.authorId) && (form.type === 'column' ? a.type === 'columnist' : true)) ?? [];
+    authors.data?.filter((a) => a.active || a.id === form.authorId) ?? [];
 
   return (
     <div className="pb-24 lg:pb-0">
@@ -599,7 +629,7 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
                   value={form.authorId}
                   onChange={(event) => update('authorId', event.target.value)}
                   error={errors.authorId}
-                  hint={form.type === 'column' && eligibleAuthors.length === 0 ? 'Nenhum colunista cadastrado ainda.' : undefined}
+                  hint={form.type === 'column' && eligibleAuthors.length === 0 ? 'Nenhum autor cadastrado ainda.' : undefined}
                 >
                   <option value="">Escolha…</option>
                   {eligibleAuthors.map((author) => (
@@ -608,7 +638,25 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
                       {author.type === 'columnist' ? ' (colunista)' : ''}
                     </option>
                   ))}
+                  {form.type === 'news' && (
+                    <>
+                      <option value={BYLINE_TYPED}>Outro nome (digitar)…</option>
+                      <option value={BYLINE_NONE}>Sem assinatura</option>
+                    </>
+                  )}
                 </SelectField>
+
+                {form.type === 'news' && form.authorId === BYLINE_TYPED && (
+                  <TextField
+                    label="Nome que assina"
+                    value={form.bylineName}
+                    onChange={(event) => update('bylineName', event.target.value)}
+                    error={errors.bylineName}
+                    maxLength={120}
+                    placeholder="Ex.: Da Redação, com Agência Brasil"
+                    hint="Aparece como “Por …” na matéria, sem link para página de autor. Em branco, sai sem assinatura."
+                  />
+                )}
 
                 {!isNew && post?.status === 'published' && (
                   <div className="flex flex-col gap-2 border-t border-linha pt-4">

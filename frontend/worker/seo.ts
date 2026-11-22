@@ -215,6 +215,8 @@ type ArticleData = {
   cover: ImageView | null;
   category?: { name: string; slug: string } | null;
   author?: { name: string; slug: string } | null;
+  // A name the admin typed instead of a registered author (no author page).
+  bylineName?: string | null;
 };
 
 // "Fonte: G1" under a story taken from another site, as on the React page.
@@ -257,7 +259,8 @@ export async function articlePage(request: Request, env: SeoEnv, api: ApiFetch, 
   if (post.publishedAt) extraMeta.push(['property', 'article:published_time', post.publishedAt]);
   extraMeta.push(['property', 'article:modified_time', post.updatedAt]);
   if (post.category) extraMeta.push(['property', 'article:section', post.category.name]);
-  if (post.author) extraMeta.push(['property', 'article:author', post.author.name]);
+  const bylineName = post.author?.name ?? post.bylineName ?? null;
+  if (bylineName) extraMeta.push(['property', 'article:author', bylineName]);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -268,7 +271,13 @@ export async function articlePage(request: Request, env: SeoEnv, api: ApiFetch, 
     ...(cover ? { image: cover.structuredDataUrls?.length ? cover.structuredDataUrls : [cover.url] } : {}),
     ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
     dateModified: post.updatedAt,
-    ...(post.author ? { author: [{ '@type': 'Person', name: post.author.name, url: authorUrl }] } : {}),
+    // A typed byline has no page to point to; unsigned news is credited to
+    // the newsroom itself, which Google accepts as the author.
+    author: post.author
+      ? [{ '@type': 'Person', name: post.author.name, url: authorUrl }]
+      : post.bylineName
+        ? [{ '@type': 'Person', name: post.bylineName }]
+        : [{ '@type': 'Organization', name: SITE_NAME, url: origin }],
     publisher: publisherJsonLd(origin),
     ...(post.category ? { articleSection: post.category.name } : {}),
     inLanguage: LANGUAGE,
@@ -282,7 +291,11 @@ export async function articlePage(request: Request, env: SeoEnv, api: ApiFetch, 
       : '';
   const lead = post.subtitle || post.excerpt;
   const byline = [
-    post.author ? `Por <a href="/autor/${escapeHtml(post.author.slug)}">${escapeHtml(post.author.name)}</a>` : '',
+    post.author
+      ? `Por <a href="/autor/${escapeHtml(post.author.slug)}">${escapeHtml(post.author.name)}</a>`
+      : post.bylineName
+        ? `Por ${escapeHtml(post.bylineName)}`
+        : '',
     post.publishedAt ? `<time datetime="${escapeHtml(post.publishedAt)}">${escapeHtml(longDate(post.publishedAt))}</time>` : '',
   ]
     .filter(Boolean)
@@ -419,6 +432,66 @@ export async function authorPage(request: Request, env: SeoEnv, api: ApiFetch, s
       `<section class="mx-auto max-w-3xl px-4 py-10"><h1 class="titulo text-3xl">${escapeHtml(person.name)}</h1>` +
       (person.bio ? `<p class="mt-4">${escapeHtml(person.bio)}</p>` : '') +
       `${articleList(items)}</section>`,
+  });
+}
+
+// ── /colunistas ─────────────────────────────────────────────────────────────
+
+type ColumnistData = AuthorData & {
+  columnCount: number;
+  latestColumn: { title: string; slug: string } | null;
+};
+
+export async function columnistsPage(request: Request, env: SeoEnv, api: ApiFetch): Promise<Response> {
+  const columnists = await apiGet<{ authors: ColumnistData[] }>(api, '/api/columnists', PAGE_TIMEOUT_MS);
+  if (columnists.status !== 'ok') return env.ASSETS.fetch(request);
+
+  const origin = siteOrigin(env, request);
+  const canonical = `${origin}/colunistas`;
+  const description = `Os colunistas do ${SITE_NAME}: quem são e todas as colunas de cada um.`;
+  const people = columnists.data.authors;
+
+  const rows = people
+    .map((person) => {
+      const page = `/autor/${encodeURIComponent(person.slug)}`;
+      return (
+        `<li class="mt-6"><h2><a href="${page}">${escapeHtml(person.name)}</a></h2>` +
+        (person.columnTitle ? `<p>${escapeHtml(person.columnTitle)}</p>` : '') +
+        (person.bio ? `<p class="text-sm">${escapeHtml(person.bio)}</p>` : '') +
+        (person.latestColumn
+          ? `<p class="text-sm">Última coluna: <a href="${postPath('column', person.latestColumn.slug)}">${escapeHtml(person.latestColumn.title)}</a></p>`
+          : '') +
+        `</li>`
+      );
+    })
+    .join('');
+
+  return renderPage(request, env, {
+    title: 'Colunistas',
+    description,
+    canonical,
+    ogType: 'website',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'Colunistas',
+      description,
+      url: canonical,
+      inLanguage: LANGUAGE,
+      isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: `${origin}/` },
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: people.map((person, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          item: { '@type': 'Person', name: person.name, url: `${origin}/autor/${person.slug}` },
+        })),
+      },
+    },
+    rootHtml:
+      `<section class="mx-auto max-w-3xl px-4 py-10"><h1 class="titulo text-3xl">Colunistas</h1>` +
+      (rows ? `<ul>${rows}</ul>` : '') +
+      `</section>`,
   });
 }
 

@@ -41,12 +41,31 @@ function DateLine({ date, readingMinutes }: { date: string | null; readingMinute
   );
 }
 
-export function Byline({ author, date, compact, readingMinutes }: {
-  author?: AuthorSummary;
+// Who signs a post, as plain text: the registered author, the name the admin
+// typed, or nothing (unsigned news).
+export function bylineText(post: { author?: AuthorSummary | null; bylineName?: string | null }): string | null {
+  return post.author?.name ?? post.bylineName ?? null;
+}
+
+export function Byline({ author, name, date, compact, readingMinutes }: {
+  author?: AuthorSummary | null;
+  // A typed byline with no author page behind it.
+  name?: string | null;
   date: string | null;
   compact?: boolean;
   readingMinutes?: number;
 }) {
+  if (!author && name) {
+    return (
+      <div className="text-[0.9375rem] leading-snug">
+        <p>
+          Por <span className="font-semibold text-tinta">{name}</span>
+        </p>
+        <DateLine date={date} readingMinutes={readingMinutes} />
+      </div>
+    );
+  }
+
   if (!author) return <div className="text-sm"><DateLine date={date} readingMinutes={readingMinutes} /></div>;
 
   if (compact) {
@@ -311,7 +330,7 @@ export function LeadStory({ post }: { post: PostListItem }) {
         </h2>
         {post.excerpt && <p className="mt-3 max-w-2xl font-serif text-lg leading-relaxed text-tinta-suave sm:text-xl">{post.excerpt}</p>}
         <div className="mt-5">
-          <Byline author={post.author} date={post.publishedAt} />
+          <Byline author={post.author} name={post.bylineName} date={post.publishedAt} />
         </div>
       </div>
     </article>

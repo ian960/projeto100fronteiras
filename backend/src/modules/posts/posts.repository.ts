@@ -27,15 +27,20 @@ function view(media: IMedia | null): IMediaView | null {
   return media ? presentMedia(media) : null;
 }
 
-function toListItem<T extends { cover: IMedia | null; author: AuthorRow }>(row: T) {
-  return { ...row, cover: view(row.cover), author: toAuthorSummary(row.author) };
+// Unsigned news and news signed with a free-text name have no author row.
+function byline(author: AuthorRow | null) {
+  return author ? toAuthorSummary(author) : null;
+}
+
+function toListItem<T extends { cover: IMedia | null; author: AuthorRow | null }>(row: T) {
+  return { ...row, cover: view(row.cover), author: byline(row.author) };
 }
 
 function toDetail<
   T extends {
     cover: IMedia | null;
     video: IMedia | null;
-    author: AuthorRow;
+    author: AuthorRow | null;
     attachments: { title: string; media: IMedia }[];
   },
 >(row: T) {
@@ -43,7 +48,7 @@ function toDetail<
     ...row,
     cover: view(row.cover),
     video: view(row.video),
-    author: toAuthorSummary(row.author),
+    author: byline(row.author),
     attachments: row.attachments.map((item) => ({
       title: item.title,
       media: presentMedia(item.media),
@@ -73,6 +78,7 @@ export class PostsRepository implements IPostsRepository {
     featured: true,
     videoYoutubeId: true,
     videoId: true,
+    bylineName: true,
     publishedAt: true,
     createdAt: true,
     updatedAt: true,
@@ -342,6 +348,7 @@ export class PostsRepository implements IPostsRepository {
           videoId: data.videoId ?? null,
           categoryId: data.categoryId ?? null,
           authorId: data.authorId,
+          bylineName: data.bylineName ?? null,
           createdById: data.createdById,
           ...(data.attachments?.length
             ? { attachments: { create: attachmentRows(data.attachments) } }

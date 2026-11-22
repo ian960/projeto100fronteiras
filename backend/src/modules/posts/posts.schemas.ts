@@ -27,6 +27,9 @@ const attachmentsSchema = z
     message: 'The same file is attached twice.',
   });
 
+// A byline typed by the admin instead of a registered author. "" means none.
+const bylineNameSchema = z.string().trim().max(120).nullish().transform(emptyToNull);
+
 const baseBody = {
   title: z.string().trim().min(3).max(200),
   subtitle: z.string().trim().max(300).nullish(),
@@ -53,7 +56,10 @@ export const createPostSchema = z.object({
       ...baseBody,
       type: z.enum([PostType.NEWS, PostType.COLUMN]),
       categoryId: z.uuid().nullish(),
-      authorId: z.uuid(),
+      // News may be signed by a registered author, by a free-text name, or by
+      // nobody (both null). A column always needs an author (service check).
+      authorId: z.uuid().nullish(),
+      bylineName: bylineNameSchema,
     }),
 });
 
@@ -70,7 +76,8 @@ export const updatePostSchema = z.object({
       ...baseBody,
       title: baseBody.title.optional(),
       categoryId: z.uuid().nullish(),
-      authorId: z.uuid().optional(),
+      authorId: z.uuid().nullish(),
+      bylineName: bylineNameSchema,
     })
     .refine((data) => Object.keys(data).length > 0, {
       message: 'Provide at least one field to update.',
