@@ -22,6 +22,9 @@ function toPublic<T extends IAuthor & { photo: IMedia | null }>(row: T): Omit<T,
 // The seed's byline for unsigned newsroom pieces (prisma/seed.ts).
 const NEWSROOM_SLUG = 'redacao';
 
+// The admin's order, then the name for ties.
+const AUTHOR_ORDER: Array<{ sortOrder: 'asc' } | { name: 'asc' }> = [{ sortOrder: 'asc' }, { name: 'asc' }];
+
 export class AuthorsRepository implements IAuthorsRepository {
   private readonly publicSelect = {
     id: true,
@@ -34,6 +37,7 @@ export class AuthorsRepository implements IAuthorsRepository {
     type: true,
     userId: true,
     active: true,
+    sortOrder: true,
     createdAt: true,
     updatedAt: true,
   } as const;
@@ -50,7 +54,7 @@ export class AuthorsRepository implements IAuthorsRepository {
       const rows = await prisma.author.findMany({
         where: this.buildWhere(filters),
         select: this.publicSelect,
-        orderBy: { name: 'asc' },
+        orderBy: AUTHOR_ORDER,
       });
       return rows.map(toPublic);
     } catch (err) {
@@ -64,7 +68,7 @@ export class AuthorsRepository implements IAuthorsRepository {
       const rows = await prisma.author.findMany({
         where: this.buildWhere(filters),
         select: { ...this.publicSelect, _count: { select: { posts: true } } },
-        orderBy: { name: 'asc' },
+        orderBy: AUTHOR_ORDER,
       });
       return rows.map(toPublic);
     } catch (err) {
@@ -93,7 +97,7 @@ export class AuthorsRepository implements IAuthorsRepository {
             take: 1,
           },
         },
-        orderBy: { name: 'asc' },
+        orderBy: AUTHOR_ORDER,
       });
       return rows.map(({ _count, posts, ...row }) => ({
         ...toPublic(row),
@@ -138,8 +142,11 @@ export class AuthorsRepository implements IAuthorsRepository {
 
   async create(data: CreateAuthorData): Promise<IAuthorPublic> {
     try {
+      // A new author goes to the end of the admin's order.
+      const last = await prisma.author.aggregate({ _max: { sortOrder: true } });
       const row = await prisma.author.create({
         data: {
+          sortOrder: (last._max.sortOrder ?? -1) + 1,
           name: data.name,
           slug: data.slug,
           type: data.type,
@@ -154,6 +161,23 @@ export class AuthorsRepository implements IAuthorsRepository {
       logger.error('Failed to create author', err);
       throw err;
     }
+  }
+
+  // The admin's new order: ids[0] first. Authors left out keep their place
+  // value (the service sends every author).
+  async reorder(ids: string[]): Promise<void> {
+    try {
+      await prisma.$transaction(
+        ids.map((id, index) => prisma.author.update({ where: { id }, data: { sortOrder: index } })),
+      );
+    } catch (err) {
+      logger.error('Failed to reorder authors', err);
+      throw err;
+    }
+  }
+
+  async countByIds(ids: string[]): Promise<number> {
+    return prisma.author.count({ where: { id: { in: ids } } });
   }
 
   async update(id: string, data: UpdateAuthorData): Promise<IAuthorPublic> {

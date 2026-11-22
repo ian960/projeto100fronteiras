@@ -106,3 +106,44 @@ describe('ligar conta a autor (ADM)', () => {
     await client.put(`/api/admin/users/${user.id}/author`).send({ authorId: writer.id }).expect(403);
   });
 });
+
+describe('ordem dos colunistas (ADM)', () => {
+  it('a página segue a ordem que o ADM salvou', async () => {
+    const admin = await makeAdmin();
+    const { client } = await loginAs(admin.email);
+    const a = await makeWriter({ name: 'Ana' });
+    const b = await makeWriter({ name: 'Bruno' });
+    const c = await makeWriter({ name: 'Carla' });
+
+    const all = (await client.get('/api/admin/authors').expect(200)).body.data.authors.map((x: { id: string }) => x.id);
+    const rest = all.filter((id: string) => ![a.id, b.id, c.id].includes(id));
+
+    await client.put('/api/admin/authors/order').send({ ids: [c.id, a.id, b.id, ...rest] }).expect(200);
+
+    const res = await agent().get('/api/columnists').expect(200);
+    const ids = res.body.data.authors.map((x: { id: string }) => x.id).filter((id: string) => [a.id, b.id, c.id].includes(id));
+    expect(ids).toEqual([c.id, a.id, b.id]);
+  });
+
+  it('autor novo entra no fim da lista', async () => {
+    const admin = await makeAdmin();
+    const { client } = await loginAs(admin.email);
+    await makeWriter({ name: 'Zeca', sortOrder: 5 });
+
+    const created = await client.post('/api/admin/authors').send({ name: 'Aaron Novo' }).expect(201);
+    expect(created.body.data.author.sortOrder).toBe(6);
+  });
+
+  it('recusa id desconhecido, repetido, e quem não é ADM', async () => {
+    const admin = await makeAdmin();
+    const { client } = await loginAs(admin.email);
+    const a = await makeWriter();
+
+    await client.put('/api/admin/authors/order').send({ ids: [a.id, '01a20427-0000-7000-8000-000000000000'] }).expect(404);
+    await client.put('/api/admin/authors/order').send({ ids: [a.id, a.id] }).expect(422);
+
+    const { user } = await makeColumnist();
+    const { client: other } = await loginAs(user.email);
+    await other.put('/api/admin/authors/order').send({ ids: [a.id] }).expect(403);
+  });
+});

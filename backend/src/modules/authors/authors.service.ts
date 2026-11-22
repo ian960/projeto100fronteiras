@@ -65,6 +65,14 @@ export class AuthorsService {
     return authorsRepository.findColumnistCards();
   }
 
+  // Admin: the order of the authors on /colunistas, first to last.
+  async reorder(ids: string[]): Promise<void> {
+    if ((await authorsRepository.countByIds(ids)) !== ids.length) {
+      throw new NotFound('Author not found.');
+    }
+    await authorsRepository.reorder(ids);
+  }
+
   // Admin: everyone, with counts.
   listAll(): Promise<IAuthorWithPostCount[]> {
     return authorsRepository.findManyWithPostCount({});

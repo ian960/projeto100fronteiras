@@ -14,6 +14,17 @@ export const createAuthorSchema = z.object({
   }),
 });
 
+// The whole list in the new order, first to last.
+export const reorderAuthorsSchema = z.object({
+  body: z.object({
+    ids: z
+      .array(z.uuid())
+      .min(1)
+      .max(1000)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'Repeated author in the list.' }),
+  }),
+});
+
 export const updateAuthorSchema = z.object({
   params: z.object({ id: z.uuid() }),
   body: z

@@ -14,6 +14,7 @@ export interface IAuthor {
   userId: string | null;
 
   active: boolean;
+  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }

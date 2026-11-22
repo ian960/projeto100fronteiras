@@ -5,6 +5,7 @@ import { authorsService } from './authors.service';
 import {
   authorIdParamSchema,
   removeAuthorSchema,
+  reorderAuthorsSchema,
   authorSlugParamSchema,
   createAuthorSchema,
   updateAuthorSchema,
@@ -17,6 +18,12 @@ function requireUser(req: Request) {
 }
 
 export class AuthorsController {
+  reorder = async (req: Request, res: Response) => {
+    const parsed = reorderAuthorsSchema.parse({ body: req.body });
+    await authorsService.reorder(parsed.body.ids);
+    return ok(res, { ids: parsed.body.ids });
+  };
+
   listColumnists = async (_req: Request, res: Response) => {
     const authors = await authorsService.listColumnists();
     return ok(res, { authors });
