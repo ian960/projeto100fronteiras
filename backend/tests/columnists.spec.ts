@@ -23,34 +23,20 @@ describe('aba de colunistas', () => {
     expect(card.name).toBe('Ana Colunista');
   });
 
-  it('lista colunista sem coluna, mas não redator nem colunista desativado', async () => {
+  it('lista todos os autores ativos, redatores também, menos a Redação e os desativados', async () => {
     const { author: fresh } = await makeColumnist();
     const { author: inactive } = await makeColumnist({ active: false });
     const writer = await makeWriter();
+    const newsroom = await makeWriter({ slug: 'redacao', name: 'Redação' });
 
     const res = await agent().get('/api/columnists').expect(200);
     const ids = res.body.data.authors.map((item: { id: string }) => item.id);
     const card = res.body.data.authors.find((item: { id: string }) => item.id === fresh.id);
 
     expect(card).toMatchObject({ columnCount: 0, latestColumn: null });
+    expect(ids).toContain(writer.id);
     expect(ids).not.toContain(inactive.id);
-    expect(ids).not.toContain(writer.id);
-  });
-});
-
-describe('redator com coluna', () => {
-  it('aparece na aba de colunistas quando publica uma coluna', async () => {
-    const admin = await makeAdmin();
-    const writer = await makeWriter({ name: 'Redator Opinião' });
-
-    let res = await agent().get('/api/columnists').expect(200);
-    expect(res.body.data.authors.map((a: { id: string }) => a.id)).not.toContain(writer.id);
-
-    await makeColumn({ authorId: writer.id, createdById: admin.id }, { status: 'published', publishedAt: new Date() });
-
-    res = await agent().get('/api/columnists').expect(200);
-    const card = res.body.data.authors.find((a: { id: string }) => a.id === writer.id);
-    expect(card).toMatchObject({ columnCount: 1, type: 'writer' });
+    expect(ids).not.toContain(newsroom.id);
   });
 });
 
