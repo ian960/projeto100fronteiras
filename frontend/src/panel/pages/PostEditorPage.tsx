@@ -11,7 +11,8 @@ import type { InsertImage } from '../RichTextEditor';
 import { AttachmentsField, BodyImageDialog, ImageField, VideoField, imageValue } from '../mediaFields';
 import type { AttachmentValue, ImageValue, VideoValue } from '../mediaFields';
 import type { PostInput, Scope } from '../queries';
-import { useAdminAuthors, useAdminCategories, usePanelPost, usePostActions } from '../queries';
+import { useAdminAuthors, useAdminCategories, useImportOrigin, usePanelPost, usePostActions } from '../queries';
+import { importMedia, uploadErrorMessage } from '../media';
 import { ConfirmButton, StatusPill, TypePill, useToast } from '../widgets';
 
 type Failure = { message: string; fields: Record<string, string> };
@@ -693,6 +694,15 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
 
           <Box title="Capa">
             <div className="flex flex-col gap-4">
+              {isAdmin && post && !form.cover && !locked && (
+                <SourcePhoto
+                  postId={post.id}
+                  onPick={(cover) => {
+                    update('cover', cover);
+                    if (!form.coverAlt.trim()) update('coverAlt', form.title.trim().slice(0, 200));
+                  }}
+                />
+              )}
               <ImageField
                 label="Imagem de capa"
                 purpose="cover"
@@ -747,6 +757,46 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
           {actionButtons(true)}
         </div>
       )}
+    </div>
+  );
+}
+
+// A draft brought by the news import (Importar notícias) carries the photo of
+// the original story. It is copied to Cloudinary only when the admin picks it,
+// so drafts nobody publishes cost nothing. The site's security rules do not
+// let the panel show a picture from another site, hence a link instead.
+function SourcePhoto({ postId, onPick }: { postId: string; onPick: (cover: ImageValue) => void }) {
+  const { data: origin } = useImportOrigin(postId);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!origin?.imageUrl) return null;
+  const imageUrl = origin.imageUrl;
+
+  async function pick() {
+    setBusy(true);
+    setError(null);
+    try {
+      onPick(imageValue(await importMedia('cover', imageUrl)));
+    } catch (err) {
+      setError(uploadErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-md border border-linha bg-superficie px-3 py-3 text-sm">
+      <p>
+        Esta notícia veio de <strong>{origin.sourceName}</strong>, que tem uma foto.{' '}
+        <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-anil underline underline-offset-4">
+          Ver a foto
+        </a>
+      </p>
+      <p className="mt-1 text-tinta-suave">Ao usar, cite o fotógrafo no texto se a fonte informar (ex.: “Foto: Fulano/Agência Brasil”).</p>
+      {error && <p className="mt-1 text-alerta">{error}</p>}
+      <Button type="button" small variant="secundario" busy={busy} className="mt-2" onClick={pick}>
+        Usar como capa
+      </Button>
     </div>
   );
 }

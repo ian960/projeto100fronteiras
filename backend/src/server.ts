@@ -6,6 +6,7 @@ import { logger } from './shared/utils/logger';
 import { isMailConfigured } from './shared/mail/mailer';
 import { QUEUE_INTERVAL_MS, newsletterService } from './modules/newsletter/newsletter.service';
 import { pushService } from './modules/push/push.service';
+import { newsImportService } from './modules/newsImport/newsImport.service';
 
 const app = createApp();
 
@@ -43,6 +44,12 @@ setInterval(() => newsletterService.kick(), QUEUE_INTERVAL_MS).unref();
 // The same for a push notification interrupted by a restart.
 setTimeout(() => pushService.kick(), 30_000).unref();
 setInterval(() => pushService.kick(), QUEUE_INTERVAL_MS).unref();
+// The news import reads its feeds on the same kind of timer: the Worker keeps
+// this server awake, so no paid scheduler is needed. See newsImport.service.ts.
+if (env.NEWS_IMPORT_INTERVAL_MINUTES > 0) {
+  setTimeout(() => newsImportService.kick(), 90_000).unref();
+  setInterval(() => newsImportService.kick(), env.NEWS_IMPORT_INTERVAL_MINUTES * 60_000).unref();
+}
 
 // Render's proxy keeps connections to the API open and reuses them. If Node
 // closed an idle one first (its default is 5 s), a request sent on it at that

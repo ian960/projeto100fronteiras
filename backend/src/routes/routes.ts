@@ -23,6 +23,7 @@ import { bannersAdminRouter, bannersPublicRouter } from '../modules/banners/bann
 import { contactRouter } from '../modules/contact/contact.routes';
 import { newsletterAdminRouter, newsletterRouter } from '../modules/newsletter/newsletter.routes';
 import { pushAdminRouter, pushRouter } from '../modules/push/push.routes';
+import { newsImportAdminRouter } from '../modules/newsImport/newsImport.routes';
 
 export function buildRouter(): Router {
   const router = Router();
@@ -57,6 +58,8 @@ export function buildRouter(): Router {
   router.use('/admin/banners', bannersAdminRouter());
   router.use('/admin/newsletter', newsletterAdminRouter());
   router.use('/admin/push', pushAdminRouter());
+  // RSS feeds of other outlets, turned into drafts (Importar notícias).
+  router.use('/admin/news-import', newsImportAdminRouter());
 
   // ── columnist ───────────────────────────────────────────────────────────
   router.use('/columnist/posts', postsColumnistRouter());

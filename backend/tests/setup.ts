@@ -30,6 +30,7 @@ afterEach(async () => {
   await prisma.pushSubscription.deleteMany();
   await prisma.newsletterIssue.deleteMany();
   await prisma.newsletterSubscriber.deleteMany();
+  await prisma.newsSource.deleteMany();
   await prisma.post.deleteMany();
   await prisma.banner.deleteMany();
   await prisma.author.deleteMany();

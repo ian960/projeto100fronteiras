@@ -96,6 +96,10 @@ const schema = z
     // free plan sends 300 a day in total; the 50 left over are for password
     // links, confirmations and the contact form. On a paid plan, raise it.
     NEWSLETTER_DAILY_LIMIT: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(100_000).default(250)),
+    // How often the server reads the feeds of the news import (Importar
+    // notícias in the panel). 0 turns the automatic run off; the panel's
+    // "Buscar agora" still works.
+    NEWS_IMPORT_INTERVAL_MINUTES: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(1440).default(30)),
 
     // Push notifications (modules/push). The pair of VAPID keys is made once
     // with `npx web-push generate-vapid-keys`; without both, the "Ativar

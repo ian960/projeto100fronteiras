@@ -297,3 +297,32 @@ export type PushOverview = {
   sending: boolean;
   notifications: PushNotificationSummary[];
 };
+
+// ── News import (panel: Importar notícias) ───────────────────────────────────
+
+export type NewsSource = {
+  id: string;
+  name: string;
+  feedUrl: string;
+  fullText: boolean;
+  active: boolean;
+  categoryId: string | null;
+  category: { id: string; name: string } | null;
+  lastRunAt: string | null;
+  lastError: string | null;
+  lastImportedCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ImportedItem = {
+  id: string;
+  importedAt: string;
+  imageUrl: string | null;
+  source: { id: string; name: string };
+  post: { id: string; title: string; status: PostStatus; slug: string } | null;
+};
+
+export type ImportOrigin = { sourceName: string; fullText: boolean; imageUrl: string | null };
+
+export type ImportRunResult = { sourceId: string; name: string; imported: number; error: string | null };

@@ -1,10 +1,14 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { del, get, getPage, patch, post, put } from '../lib/api';
+import { ApiError, del, get, getPage, patch, post, put } from '../lib/api';
 import type {
   AuthorWithCount,
   BannerAdmin,
   BannerSlot,
   CategoryWithCount,
+  ImportedItem,
+  ImportOrigin,
+  ImportRunResult,
+  NewsSource,
   NewsletterOverview,
   NewsletterPostOption,
   PushOverview,
@@ -292,6 +296,66 @@ export function useBannerActions() {
       onSuccess,
     }),
     remove: useMutation({ mutationFn: (id: string) => del(`/admin/banners/${id}`), onSuccess }),
+  };
+}
+
+// ── News import (admin only) ─────────────────────────────────────────────────
+
+export function useNewsSources() {
+  return useQuery({
+    queryKey: ['panel', 'news-import', 'sources'],
+    queryFn: async () => (await get<{ sources: NewsSource[] }>('/admin/news-import/sources')).sources,
+  });
+}
+
+export function useImportedItems() {
+  return useQuery({
+    queryKey: ['panel', 'news-import', 'items'],
+    queryFn: async () => (await get<{ items: ImportedItem[] }>('/admin/news-import/items', { limit: 30 })).items,
+  });
+}
+
+// Where an imported draft came from, for the editor's "Foto da fonte". null
+// for a post written in the panel (the API answers 404).
+export function useImportOrigin(postId: string | undefined) {
+  return useQuery({
+    enabled: Boolean(postId),
+    queryKey: ['panel', 'news-import', 'origin', postId],
+    queryFn: async () => {
+      try {
+        return (await get<{ origin: ImportOrigin }>(`/admin/news-import/posts/${postId}`)).origin;
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) return null;
+        throw err;
+      }
+    },
+  });
+}
+
+export type NewsSourceInput = {
+  name?: string;
+  feedUrl?: string;
+  fullText?: boolean;
+  active?: boolean;
+  categoryId?: string;
+};
+
+export function useNewsImportActions() {
+  const invalidate = useInvalidateContent();
+  const onSuccess = () => invalidate();
+  const results = (data: { results: ImportRunResult[] }) => data.results;
+  return {
+    create: useMutation({ mutationFn: (input: NewsSourceInput) => post('/admin/news-import/sources', input), onSuccess }),
+    update: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: NewsSourceInput }) => patch(`/admin/news-import/sources/${id}`, input),
+      onSuccess,
+    }),
+    remove: useMutation({ mutationFn: (id: string) => del(`/admin/news-import/sources/${id}`), onSuccess }),
+    run: useMutation({
+      mutationFn: (id: string | null) =>
+        post<{ results: ImportRunResult[] }>(id ? `/admin/news-import/sources/${id}/run` : '/admin/news-import/run').then(results),
+      onSuccess,
+    }),
   };
 }
 
