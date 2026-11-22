@@ -69,7 +69,7 @@ export default function NewsImportPage() {
     <>
       <PanelHeader
         title="Importar notícias"
-        description="Robôs que trazem notícias de outros sites a cada 30 minutos. Cada notícia nova chega como rascunho em Matérias, com “Fonte:” e o link da original. Nada é publicado sozinho: abra o rascunho, escolha a capa e publique."
+        description="Robôs que trazem notícias de outros sites a cada 30 minutos. Cada notícia nova chega como rascunho em Matérias, com “Fonte:” e o link da original. A foto da fonte já vem como capa. Nada é publicado sozinho: abra o rascunho, confira e publique."
         actions={
           <>
             {data && data.length > 0 && (
