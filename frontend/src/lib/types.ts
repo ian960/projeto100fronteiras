@@ -325,4 +325,11 @@ export type ImportedItem = {
 
 export type ImportOrigin = { sourceName: string; fullText: boolean; imageUrl: string | null };
 
-export type ImportRunResult = { sourceId: string; name: string; imported: number; error: string | null };
+export type ImportRunResult = {
+  sourceId: string;
+  name: string;
+  imported: number;
+  error: string | null;
+  found: number;
+  newestAt: string | null;
+};

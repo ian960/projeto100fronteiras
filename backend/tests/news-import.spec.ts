@@ -142,7 +142,8 @@ describe('importar notícias', () => {
     const posts = await prisma.post.findMany({ orderBy: { createdAt: 'asc' } });
     expect(posts).toHaveLength(2);
     for (const post of posts) {
-      expect(post.status).toBe('draft');
+      // Waiting in Revisão, never published by the robot.
+      expect(post.status).toBe('pending');
       expect(post.type).toBe('news');
       expect(post.categoryId).toBe(category.id);
       expect(post.sourceName).toBe('Agência Brasil');
@@ -169,7 +170,7 @@ describe('importar notícias', () => {
 
     const items = await client.get('/api/admin/news-import/items').expect(200);
     expect(items.body.data.items).toHaveLength(2);
-    expect(items.body.data.items[0].post.status).toBe('draft');
+    expect(items.body.data.items[0].post.status).toBe('pending');
   });
 
   it('se a foto não puder ser copiada, o rascunho entra sem capa e o editor oferece a foto', async () => {
@@ -225,7 +226,8 @@ describe('importar notícias', () => {
       { guid: 'n2', title: 'Notícia dois', hoursAgo: 2 },
       { guid: 'n3', title: 'Notícia três', hoursAgo: 3 },
       { guid: 'n4', title: 'Notícia quatro', hoursAgo: 4 },
-      { guid: 'old', title: 'Notícia velha', hoursAgo: 72 },
+      { guid: 'old', title: 'Notícia velha', hoursAgo: 24 * 8 },
+      { guid: 'week', title: 'Notícia de anteontem', hoursAgo: 60 },
     ]);
     const source = await addSource(client, { name: 'Agência Brasil', feedUrl, fullText: true, categoryId: category.id });
 
@@ -233,9 +235,11 @@ describe('importar notícias', () => {
     const titles = (await prisma.post.findMany()).map((p) => p.title).sort();
     expect(titles).toEqual(['Notícia dois', 'Notícia três', 'Notícia um']);
 
-    // The fourth was marked as seen on the first run: it does not show up later.
+    // The rest was marked as seen on the first run: it does not show up later.
     const later = await client.post(`/api/admin/news-import/sources/${source.id}/run`).expect(200);
-    expect(later.body.data.results[0].imported).toBe(0);
+    // The answer says why: what the feed has and how recent it is.
+    expect(later.body.data.results[0]).toMatchObject({ imported: 0, found: 6 });
+    expect(new Date(later.body.data.results[0].newestAt).getTime()).toBeGreaterThan(Date.now() - 2 * HOUR);
   });
 
   it('a busca automática só lê as fontes ativas e anota o erro de cada fonte', async () => {

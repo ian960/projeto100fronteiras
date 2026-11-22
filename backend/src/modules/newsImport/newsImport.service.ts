@@ -1,9 +1,10 @@
 import { Conflict, NotFound, ValidationError } from '../../shared/errors/AppError';
 import { logger } from '../../shared/utils/logger';
-import { PostType, type Role } from '../../shared/types/enums';
+import { PostStatus, PostType, type Role } from '../../shared/types/enums';
 import { isMediaConfigured } from '../../config/cloudinary';
 import { categoriesRepository } from '../categories/categories.repository';
 import { mediaService } from '../media/media.service';
+import { postsRepository } from '../posts/posts.repository';
 import { postsService } from '../posts/posts.service';
 import type { SessionUser } from '../auth/auth.types';
 import { parseFeed, shorten, stripTags, type FeedItem } from './newsImport.feed';
@@ -21,7 +22,8 @@ import type { IImportOrigin, IImportedItem, INewsSource, ImportRunResult } from 
 // 2. Every NEWS_IMPORT_INTERVAL_MINUTES the server reads every active feed
 //    (server.ts; the Worker keeps this server awake, like the newsletter
 //    queue). The admin can also press "Buscar agora".
-// 3. Each new item becomes a DRAFT news post: "Fonte: <name>" with the link,
+// 3. Each new item becomes a news post waiting in Revisão (status pending,
+//    like a column a columnist sent): "Fonte: <name>" with the link,
 //    signed by the reporter the feed names (full text only). The source's
 //    photo, when the feed has one, is copied to Cloudinary and becomes the
 //    cover. Nothing is published by the robot: the admin reviews and
@@ -29,8 +31,10 @@ import type { IImportOrigin, IImportedItem, INewsSource, ImportRunResult } from 
 // 4. Every item seen is remembered, so nothing comes in twice, not even after
 //    the admin deletes the draft.
 
-// Older items are ignored: the import is for what is news today.
-const MAX_AGE_MS = 2 * 24 * 60 * 60 * 1000;
+// Older items are ignored: the import is for recent news. A week, not a day
+// or two: some feeds (Agência Senado on a weekend, Global Voices) go days
+// without a new story, and a shorter window left them importing nothing.
+const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 // At most this many drafts per source in one run, so a feed that suddenly
 // lists 100 items does not bury the panel.
 const MAX_PER_RUN = 10;
@@ -165,12 +169,17 @@ export class NewsImportService {
   private async importSource(source: INewsSource, now: Date): Promise<ImportRunResult> {
     let imported = 0;
     let error: string | null = null;
+    let found = 0;
+    let newestAt: Date | null = null;
 
     try {
       if (!source.categoryId) throw new Error('Choose a category for this source.');
       const actor = await this.importingActor();
       const xml = await this.fetcher(source.feedUrl);
-      const items = parseFeed(xml)
+      const all = parseFeed(xml);
+      found = all.length;
+      newestAt = all.reduce<Date | null>((max, item) => (item.publishedAt && (!max || item.publishedAt > max) ? item.publishedAt : max), null);
+      const items = all
         .filter((item) => !item.publishedAt || now.getTime() - item.publishedAt.getTime() <= MAX_AGE_MS)
         .sort((a, b) => (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0));
 
@@ -198,7 +207,7 @@ export class NewsImportService {
     }
 
     await newsImportRepository.recordRun(source.id, now, imported, error ? error.slice(0, 500) : null);
-    return { sourceId: source.id, name: source.name, imported, error };
+    return { sourceId: source.id, name: source.name, imported, error, found, newestAt };
   }
 
   private async createDraft(actor: SessionUser, source: INewsSource, item: FeedItem): Promise<string> {
@@ -219,6 +228,8 @@ export class NewsImportService {
       coverId,
       coverAlt: coverId ? title : null,
     });
+    // Straight to Revisão, next to the columns waiting for the admin.
+    await postsRepository.update(post.id, { status: PostStatus.PENDING });
     return post.id;
   }
 
