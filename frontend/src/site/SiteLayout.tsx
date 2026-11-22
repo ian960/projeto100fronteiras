@@ -266,7 +266,7 @@ function CategoryNav({ compact }: { compact: boolean }) {
               </NavLink>
             ))}
             <NavLink to="/colunistas" className={({ isActive }) => cx(linkClass({ isActive }), isActive ? 'border-mata text-mata' : 'hover:text-mata')}>
-              Opinião
+              Colunistas
             </NavLink>
           </div>
           <div className={arrowClass('end', overflow.end)}>

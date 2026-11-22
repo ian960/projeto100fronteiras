@@ -259,33 +259,27 @@ export function AuthorPage() {
     return <Alert>{errorMessage(error)}</Alert>;
   }
 
-  const isColumnist = author.type === 'columnist';
 
   return (
     <div className="mx-auto max-w-3xl">
       <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-center">
         <Avatar src={author.photoUrl} name={author.name} size={112} />
         <div>
-          <h1 className={`titulo text-[2.2rem] sm:text-5xl ${isColumnist ? 'text-mata' : 'text-anil'}`}>{author.name}</h1>
+          <h1 className={`titulo text-[2.2rem] sm:text-5xl text-mata`}>{author.name}</h1>
           {author.columnTitle && <p className="mt-1 font-medium text-mata">{author.columnTitle}</p>}
           {author.bio && <p className="mt-3 max-w-xl text-lg leading-relaxed text-tinta-suave">{author.bio}</p>}
         </div>
       </header>
 
-      {isColumnist && (
-        <p className="mb-6 text-sm">
-          <Link to="/colunistas" className="text-mata hover:underline underline-offset-4">
-            ← Todos os colunistas
-          </Link>
-        </p>
-      )}
+      <p className="mb-6 text-sm">
+        <Link to="/colunistas" className="text-mata hover:underline underline-offset-4">
+          ← Todos os colunistas
+        </Link>
+      </p>
 
-      <SectionHeading tone={isColumnist ? 'mata' : 'anil'}>{isColumnist ? 'Todas as colunas' : 'Matérias'}</SectionHeading>
-      <PagedPosts
-        filters={isColumnist ? { author: slug, type: 'column' } : { author: slug }}
-        empty={<EmptyState title="Nada publicado ainda" />}
-        showKicker={!isColumnist}
-      />
+      {/* Columns and news together; the label above each title says which. */}
+      <SectionHeading tone="mata">{`Textos de ${author.name}`}</SectionHeading>
+      <PagedPosts filters={{ author: slug }} empty={<EmptyState title="Nada publicado ainda" />} />
     </div>
   );
 }

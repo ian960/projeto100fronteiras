@@ -10,7 +10,7 @@ import type {
   UpdateAuthorData,
 } from './authors.repository.types';
 import { photoUrlOf } from './authors.select';
-import { AuthorType, PostStatus, PostType } from '../../shared/types/enums';
+import { PostStatus, PostType } from '../../shared/types/enums';
 import type { IAuthor, IAuthorPublic, IAuthorWithPostCount, IColumnistCard } from './authors.types';
 
 // The photo is loaded as a media row and leaves as photoUrl.
@@ -18,6 +18,9 @@ function toPublic<T extends IAuthor & { photo: IMedia | null }>(row: T): Omit<T,
   const { photo, ...author } = row;
   return { ...author, photoUrl: photoUrlOf(photo) };
 }
+
+// The seed's byline for unsigned newsroom pieces (prisma/seed.ts).
+const NEWSROOM_SLUG = 'redacao';
 
 export class AuthorsRepository implements IAuthorsRepository {
   private readonly publicSelect = {
@@ -70,14 +73,16 @@ export class AuthorsRepository implements IAuthorsRepository {
     }
   }
 
-  // The columnists tab: active columnists, and any other author (a writer who
-  // signs news) once they have a published column. Each with the count of
-  // published columns and the newest one.
+  // The columnists tab: every author, with the count of published columns
+  // and the newest one.
   async findColumnistCards(): Promise<IColumnistCard[]> {
     const published = { type: PostType.COLUMN, status: PostStatus.PUBLISHED } as const;
     try {
       const rows = await prisma.author.findMany({
-        where: { active: true, OR: [{ type: AuthorType.COLUMNIST }, { posts: { some: published } }] },
+        // Every active byline: writer and columnist are the same person for
+        // the reader (the type only says whether there is a login). Except the
+        // newsroom's own "Redação" byline from the seed, which is not a person.
+        where: { active: true, slug: { not: NEWSROOM_SLUG } },
         select: {
           ...this.publicSelect,
           _count: { select: { posts: { where: published } } },
