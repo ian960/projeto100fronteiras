@@ -16,29 +16,6 @@ import { ConfirmButton, Modal, PanelHeader, StatusPill, useToast } from '../widg
 // published on its own: the admin opens the draft, picks a cover and
 // publishes.
 
-// Sources whose license allows republishing the whole text, citing them.
-// The admin can add any other feed, but then only the summary and the link.
-const PRESETS: { name: string; feedUrl: string; fullText: boolean; terms: string }[] = [
-  {
-    name: 'Agência Brasil',
-    feedUrl: 'https://agenciabrasil.ebc.com.br/feed/ultimasnoticias/feed.xml',
-    fullText: true,
-    terms: 'Reprodução autorizada para fins jornalísticos, citando a fonte (e o repórter).',
-  },
-  {
-    name: 'Agência Senado',
-    feedUrl: 'https://www12.senado.leg.br/noticias/feed/todasnoticias/RSS',
-    fullText: true,
-    terms: 'Reprodução livre, sem alterar o sentido, citando a Agência Senado e o autor.',
-  },
-  {
-    name: 'gov.br',
-    feedUrl: 'https://www.gov.br/pt-br/noticias/ultimas-noticias/ultimas-noticias/RSS',
-    fullText: true,
-    terms: 'Licença Creative Commons BY-ND: pode copiar citando a fonte, mas sem modificar o texto.',
-  },
-];
-
 function fieldErrors(error: unknown): Record<string, string> {
   return error instanceof ApiError ? error.fields : {};
 }
@@ -102,7 +79,7 @@ export default function NewsImportPage() {
         <Alert>{errorMessage(error)}</Alert>
       ) : data.length === 0 ? (
         <EmptyState title="Nenhuma fonte ainda" action={<Button onClick={() => setEditing('new')}>Cadastrar a primeira</Button>}>
-          Comece pela Agência Brasil: em “Nova fonte”, escolha ela na lista de sugestões.
+          Em “Nova fonte”, informe o nome, o endereço do feed RSS e a categoria.
         </EmptyState>
       ) : (
         <ul className="divide-y divide-linha rounded-lg border border-linha bg-papel">
@@ -225,13 +202,6 @@ function SourceForm({ source, onDone }: { source: NewsSource | null; onDone: () 
     active: source?.active ?? true,
     categoryId: source?.categoryId ?? '',
   });
-  const preset = PRESETS.find((p) => p.feedUrl === form.feedUrl.trim());
-
-  function applyPreset(feedUrl: string) {
-    const chosen = PRESETS.find((p) => p.feedUrl === feedUrl);
-    if (chosen) setForm({ ...form, name: chosen.name, feedUrl: chosen.feedUrl, fullText: chosen.fullText });
-  }
-
   function submit(event: FormEvent) {
     event.preventDefault();
     const input = {
@@ -251,16 +221,6 @@ function SourceForm({ source, onDone }: { source: NewsSource | null; onDone: () 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       {shownError && <Alert>{shownError}</Alert>}
-      {!source && (
-        <SelectField label="Sugestões" optional value={preset?.feedUrl ?? ''} onChange={(e) => applyPreset(e.target.value)} hint="Fontes que permitem copiar o texto citando a fonte.">
-          <option value="">Escolha para preencher…</option>
-          {PRESETS.map((p) => (
-            <option key={p.feedUrl} value={p.feedUrl}>
-              {p.name}
-            </option>
-          ))}
-        </SelectField>
-      )}
       <TextField
         label="Nome da fonte"
         placeholder="Ex.: Agência Brasil"
@@ -295,11 +255,7 @@ function SourceForm({ source, onDone }: { source: NewsSource | null; onDone: () 
       </SelectField>
       <Checkbox
         label="Copiar o texto inteiro"
-        hint={
-          preset
-            ? preset.terms
-            : 'Só marque se o site da fonte diz que permite reproduzir as matérias. Desmarcado, o rascunho traz só o resumo e o link para a original.'
-        }
+        hint="Só marque se o site da fonte diz que permite reproduzir as matérias. Desmarcado, o rascunho traz só o resumo e o link para a original."
         checked={form.fullText}
         onChange={(fullText) => setForm({ ...form, fullText })}
       />
