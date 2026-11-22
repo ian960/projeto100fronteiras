@@ -15,7 +15,8 @@ import { logger } from '../shared/utils/logger';
 //
 //   /noticia/:slug, /coluna/:slug,   the page with title, description,
 //   /categoria/:slug, /autor/:slug,  preview card and text already inside,
-//   /privacidade, /termos, /contato, for Google and WhatsApp
+//   /colunistas, /privacidade,       for Google and WhatsApp
+//   /termos, /contato,
 //   /sitemap.xml, /sitemap-news.xml, (frontend/worker/routes.ts, the same
 //   /robots.txt                      code the Cloudflare Worker runs)
 //   a file in frontend/dist          the file, with the headers in _headers

@@ -9,6 +9,7 @@ import { formatRelative, postPath } from '../../lib/format';
 import { Kicker, ListLead, SectionHeading, StoryList } from '../parts';
 import type { PostFilters } from '../queries';
 import { useAuthor, useCategory, useColumnists, usePostsByIds, usePublishedPosts } from '../queries';
+import type { ColumnistCard } from '../../lib/types';
 import NotFoundPage from './NotFoundPage';
 
 // The page number lives in the URL (?pagina=2), so a page can be shared and
@@ -163,14 +164,15 @@ export function SearchPage() {
 // ── /colunistas ──────────────────────────────────────────────────────────────
 
 export function ColumnistsPage() {
-  useDocumentTitle('Opinião');
+  useDocumentTitle('Colunistas');
   const { data: columnists, isPending, error } = useColumnists();
   const latest = usePublishedPosts({ type: 'column', limit: 6 });
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader title="Opinião" tone="mata">
-        Textos assinados por quem escreve para o portal. As colunas expressam a opinião de seus autores.
+    <div className="mx-auto max-w-4xl">
+      <PageHeader title="Colunistas" tone="mata">
+        Quem escreve opinião no portal. Toque em um colunista para ler todas as colunas dele. As colunas expressam a
+        opinião de seus autores.
       </PageHeader>
 
       {isPending && <Loading />}
@@ -179,17 +181,10 @@ export function ColumnistsPage() {
       {columnists && columnists.length === 0 && <EmptyState title="Nenhum colunista ainda" />}
 
       {columnists && columnists.length > 0 && (
-        <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
+        <ul className="grid gap-6 sm:grid-cols-2">
           {columnists.map((author) => (
             <li key={author.id}>
-              <Link to={`/autor/${author.slug}`} className="group flex gap-4 border-b border-linha py-5">
-                <Avatar src={author.photoUrl} name={author.name} size={64} />
-                <div className="min-w-0">
-                  <p className="titulo text-xl group-hover:text-mata">{author.name}</p>
-                  {author.columnTitle && <p className="text-sm font-medium text-mata">{author.columnTitle}</p>}
-                  {author.bio && <p className="mt-1 line-clamp-2 text-sm text-tinta-suave">{author.bio}</p>}
-                </div>
-              </Link>
+              <ColumnistCardView author={author} />
             </li>
           ))}
         </ul>
@@ -202,6 +197,51 @@ export function ColumnistsPage() {
         </section>
       )}
     </div>
+  );
+}
+
+function columnCountLabel(count: number): string {
+  if (count === 0) return 'Nenhuma coluna publicada ainda';
+  return count === 1 ? '1 coluna publicada' : `${count} colunas publicadas`;
+}
+
+// One columnist: who they are, how much they wrote and the newest column.
+// The photo and name lead to all their columns; the newest column has a link
+// of its own.
+function ColumnistCardView({ author }: { author: ColumnistCard }) {
+  const page = `/autor/${author.slug}`;
+
+  return (
+    <article className="flex h-full flex-col rounded-lg border border-linha p-5">
+      <Link to={page} className="group flex items-center gap-4">
+        <Avatar src={author.photoUrl} name={author.name} size={80} />
+        <div className="min-w-0">
+          <h2 className="titulo text-2xl group-hover:text-mata">{author.name}</h2>
+          {author.columnTitle && <p className="text-sm font-medium text-mata">{author.columnTitle}</p>}
+        </div>
+      </Link>
+
+      {author.bio && <p className="mt-4 line-clamp-4 text-[0.9375rem] leading-relaxed text-tinta-suave">{author.bio}</p>}
+
+      <div className="mt-4 border-t border-linha pt-3 text-sm">
+        <p className="text-tinta-suave">{columnCountLabel(author.columnCount)}</p>
+        {author.latestColumn && (
+          <p className="mt-1">
+            <span className="text-tinta-suave">Última: </span>
+            <Link to={postPath({ type: 'column', slug: author.latestColumn.slug })} className="font-medium hover:text-mata hover:underline underline-offset-4">
+              {author.latestColumn.title}
+            </Link>
+            {author.latestColumn.publishedAt && (
+              <span className="text-tinta-suave"> · {formatRelative(author.latestColumn.publishedAt)}</span>
+            )}
+          </p>
+        )}
+      </div>
+
+      <Link to={page} className="mt-auto pt-4 text-sm font-semibold text-mata hover:underline underline-offset-4">
+        Ver todas as colunas →
+      </Link>
+    </article>
   );
 }
 
@@ -232,8 +272,20 @@ export function AuthorPage() {
         </div>
       </header>
 
-      <SectionHeading tone={isColumnist ? 'mata' : 'anil'}>{isColumnist ? 'Colunas' : 'Matérias'}</SectionHeading>
-      <PagedPosts filters={{ author: slug }} empty={<EmptyState title="Nada publicado ainda" />} />
+      {isColumnist && (
+        <p className="mb-6 text-sm">
+          <Link to="/colunistas" className="text-mata hover:underline underline-offset-4">
+            ← Todos os colunistas
+          </Link>
+        </p>
+      )}
+
+      <SectionHeading tone={isColumnist ? 'mata' : 'anil'}>{isColumnist ? 'Todas as colunas' : 'Matérias'}</SectionHeading>
+      <PagedPosts
+        filters={isColumnist ? { author: slug, type: 'column' } : { author: slug }}
+        empty={<EmptyState title="Nada publicado ainda" />}
+        showKicker={!isColumnist}
+      />
     </div>
   );
 }

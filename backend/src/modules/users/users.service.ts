@@ -116,6 +116,42 @@ export class UsersService {
     });
   }
 
+  // The admin decides which byline a login writes under: an author that
+  // already exists (a writer who signed news included), or none.
+  async linkAuthor(id: string, authorId: string | null): Promise<IUserWithAuthor> {
+    const user = await usersRepository.findByIdWithAuthor(id);
+
+    if (!user) throw new NotFound('User not found.');
+    this.ensureNotDeleted(user);
+
+    if (user.role === Role.ADMIN) {
+      throw new Conflict('The admin does not need an author profile to publish news.');
+    }
+
+    if (authorId === null) {
+      if (!user.author) return user;
+      const updated = await usersRepository.linkAuthor(id, null);
+      // Back to reader: the panel session goes now, not at the next login.
+      await authRepository.deleteSessionsOfUser(id);
+      return updated;
+    }
+
+    if (user.author?.id === authorId) return user;
+
+    const author = await authorsRepository.findById(authorId);
+    if (!author) throw new NotFound('Author not found.');
+
+    if (!author.active) {
+      throw new Conflict('This author is deactivated. Reactivate it first.');
+    }
+
+    if (author.userId && author.userId !== id) {
+      throw new Conflict('This author is already linked to another account.');
+    }
+
+    return usersRepository.linkAuthor(id, authorId);
+  }
+
   async update(actorId: string, id: string, input: UpdateUserInput): Promise<IUserPublic> {
     const target = await this.ensureExists(id);
     this.ensureNotDeleted(target);

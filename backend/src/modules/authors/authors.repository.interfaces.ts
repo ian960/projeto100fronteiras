@@ -1,4 +1,4 @@
-import type { IAuthorPublic, IAuthorWithPostCount } from './authors.types';
+import type { IAuthorPublic, IAuthorWithPostCount, IColumnistCard } from './authors.types';
 import type {
   CreateAuthorData,
   DeleteAuthorOptions,
@@ -9,6 +9,7 @@ import type {
 export interface IAuthorsRepository {
   findMany(filters: FindAuthorsFilters): Promise<IAuthorPublic[]>;
   findManyWithPostCount(filters: FindAuthorsFilters): Promise<IAuthorWithPostCount[]>;
+  findColumnistCards(): Promise<IColumnistCard[]>;
   findById(id: string): Promise<IAuthorPublic | null>;
   findBySlug(slug: string): Promise<IAuthorPublic | null>;
   findByUserId(userId: string): Promise<IAuthorPublic | null>;

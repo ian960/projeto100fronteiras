@@ -6,7 +6,7 @@ import { authRepository } from '../auth/auth.repository';
 import { mediaService } from '../media/media.service';
 import { usersRepository } from '../users/users.repository';
 import { authorsRepository } from './authors.repository';
-import type { IAuthorPublic, IAuthorWithPostCount } from './authors.types';
+import type { IAuthorPublic, IAuthorWithPostCount, IColumnistCard } from './authors.types';
 import type { CreateAuthorInput, UpdateAuthorInput, UpdateMyProfileInput } from './authors.service.types';
 
 export class AuthorsService {
@@ -61,8 +61,8 @@ export class AuthorsService {
   }
 
   // Public: the columnists tab.
-  listColumnists(): Promise<IAuthorPublic[]> {
-    return authorsRepository.findMany({ type: AuthorType.COLUMNIST, active: true });
+  listColumnists(): Promise<IColumnistCard[]> {
+    return authorsRepository.findColumnistCards();
   }
 
   // Admin: everyone, with counts.

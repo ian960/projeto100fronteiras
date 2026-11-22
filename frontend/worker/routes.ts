@@ -9,6 +9,7 @@ import {
   articlePage,
   authorPage,
   categoryPage,
+  columnistsPage,
   newsSitemap,
   robots,
   sitemap,
@@ -29,6 +30,8 @@ export async function seoResponse(request: Request, env: SeoEnv, api: ApiFetch):
 
   const staticPath = STATIC_PATHS.find((path) => url.pathname.replace(/\/$/, '') === path);
   if (staticPath) return staticPage(request, env, staticPath);
+
+  if (url.pathname.replace(/\/$/, '') === '/colunistas') return columnistsPage(request, env, api);
 
   const page = url.pathname.match(/^\/(noticia|coluna|categoria|autor)\/([a-z0-9-]+)\/?$/);
   if (page) {

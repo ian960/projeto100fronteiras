@@ -10,7 +10,8 @@ import type {
   UpdateAuthorData,
 } from './authors.repository.types';
 import { photoUrlOf } from './authors.select';
-import type { IAuthor, IAuthorPublic, IAuthorWithPostCount } from './authors.types';
+import { AuthorType, PostStatus, PostType } from '../../shared/types/enums';
+import type { IAuthor, IAuthorPublic, IAuthorWithPostCount, IColumnistCard } from './authors.types';
 
 // The photo is loaded as a media row and leaves as photoUrl.
 function toPublic<T extends IAuthor & { photo: IMedia | null }>(row: T): Omit<T, 'photo'> & IAuthorPublic {
@@ -65,6 +66,37 @@ export class AuthorsRepository implements IAuthorsRepository {
       return rows.map(toPublic);
     } catch (err) {
       logger.error('Failed to list authors with post count', err);
+      throw err;
+    }
+  }
+
+  // The columnists tab: active columnists, and any other author (a writer who
+  // signs news) once they have a published column. Each with the count of
+  // published columns and the newest one.
+  async findColumnistCards(): Promise<IColumnistCard[]> {
+    const published = { type: PostType.COLUMN, status: PostStatus.PUBLISHED } as const;
+    try {
+      const rows = await prisma.author.findMany({
+        where: { active: true, OR: [{ type: AuthorType.COLUMNIST }, { posts: { some: published } }] },
+        select: {
+          ...this.publicSelect,
+          _count: { select: { posts: { where: published } } },
+          posts: {
+            where: published,
+            select: { title: true, slug: true, publishedAt: true },
+            orderBy: { publishedAt: 'desc' },
+            take: 1,
+          },
+        },
+        orderBy: { name: 'asc' },
+      });
+      return rows.map(({ _count, posts, ...row }) => ({
+        ...toPublic(row),
+        columnCount: _count.posts,
+        latestColumn: posts[0] ?? null,
+      }));
+    } catch (err) {
+      logger.error('Failed to list columnist cards', err);
       throw err;
     }
   }
