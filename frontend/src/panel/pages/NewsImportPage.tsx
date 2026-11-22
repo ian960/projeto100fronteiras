@@ -21,6 +21,13 @@ function fieldErrors(error: unknown): Record<string, string> {
 }
 
 function runSummary(results: ImportRunResult[]): string {
+  // One source: say why nothing came, when that is the case.
+  const [only] = results;
+  if (results.length === 1 && only && !only.error && only.imported === 0) {
+    if (only.found === 0) return `${only.name}: o feed está vazio.`;
+    const newest = only.newestAt ? `, a mais recente de ${formatDateTime(only.newestAt)}` : '';
+    return `${only.name}: nada novo. O feed tem ${only.found} ${only.found === 1 ? 'notícia' : 'notícias'}${newest}, e todas já foram importadas ou têm mais de 7 dias.`;
+  }
   const imported = results.reduce((sum, r) => sum + r.imported, 0);
   const failed = results.filter((r) => r.error).length;
   const news = imported === 0 ? 'Nenhuma notícia nova' : imported === 1 ? '1 notícia nova' : `${imported} notícias novas`;
@@ -46,7 +53,7 @@ export default function NewsImportPage() {
     <>
       <PanelHeader
         title="Importar notícias"
-        description="Robôs que trazem notícias de outros sites a cada 30 minutos. Cada notícia nova chega como rascunho em Matérias, com “Fonte:” e o link da original. A foto da fonte já vem como capa. Nada é publicado sozinho: abra o rascunho, confira e publique."
+        description="Robôs que trazem notícias de outros sites a cada 30 minutos. Cada notícia nova chega em Revisão, com “Fonte:” e o link da original. A foto da fonte já vem como capa. Nada é publicado sozinho: abra a notícia, confira e publique."
         actions={
           <>
             {data && data.length > 0 && (
@@ -144,7 +151,7 @@ export default function NewsImportPage() {
                   label="Excluir"
                   confirmLabel="Confirmar"
                   busy={actions.remove.isPending && actions.remove.variables === source.id}
-                  onConfirm={() => actions.remove.mutate(source.id, { onSuccess: () => toast('Fonte excluída. Os rascunhos já importados continuam em Matérias.') })}
+                  onConfirm={() => actions.remove.mutate(source.id, { onSuccess: () => toast('Fonte excluída. As notícias já importadas continuam no painel.') })}
                 />
               </div>
             </li>

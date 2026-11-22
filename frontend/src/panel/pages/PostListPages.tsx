@@ -218,14 +218,14 @@ export function ReviewQueuePage() {
     <>
       <PanelHeader
         title="Revisão"
-        description="Colunas que os colunistas enviaram. Abra, leia, ajuste se precisar e publique."
+        description="Colunas que os colunistas enviaram e notícias trazidas pelos robôs de Importar notícias. Abra, leia, ajuste se precisar e publique."
       />
       {isPending ? (
         <Loading />
       ) : error ? (
         <Alert>{errorMessage(error)}</Alert>
       ) : data.items.length === 0 ? (
-        <EmptyState title="Nada esperando revisão">Quando um colunista enviar um texto, ele aparece aqui.</EmptyState>
+        <EmptyState title="Nada esperando revisão">Quando um colunista enviar um texto ou um robô trouxer uma notícia, ele aparece aqui.</EmptyState>
       ) : (
         <PostRows posts={data.items} scope="admin" />
       )}

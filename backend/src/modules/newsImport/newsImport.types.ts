@@ -34,4 +34,8 @@ export type ImportRunResult = {
   name: string;
   imported: number;
   error: string | null;
+  // What the feed had, to explain a "nada novo": how many stories, and the
+  // date of the newest one.
+  found: number;
+  newestAt: Date | null;
 };
