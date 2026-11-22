@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import { Link, NavLink, Navigate, Outlet, ScrollRestoration, useLocation } from 'react-router';
 import { Avatar, cx } from '../components/ui';
 import { pauseMeasuring, trackPage, useConsent } from '../lib/analytics';
@@ -144,8 +145,70 @@ function Masthead() {
 // The sections bar stays at the top while reading. Once the masthead has
 // scrolled away, the portal's name slides in at its left so the reader always
 // knows where they are and can get back home.
+function ScrollArrow({ direction }: { direction: 'prev' | 'next' }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {direction === 'prev' ? <path d="M12.5 4.5 7 10l5.5 5.5" /> : <path d="M7.5 4.5 13 10l-5.5 5.5" />}
+    </svg>
+  );
+}
+
+// Which sides of the sections row still hide links. Re-measured on scroll and
+// whenever the row changes size (window resized, categories loaded, the
+// portal's name sliding in), so the arrows only show while something is cut.
+function useHorizontalOverflow(ref: RefObject<HTMLDivElement | null>) {
+  const [overflow, setOverflow] = useState({ start: false, end: false });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      // 1px of slack: browsers round fractional widths differently.
+      const start = el.scrollLeft > 1;
+      const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      setOverflow((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
+    };
+    measure();
+    el.addEventListener('scroll', measure, { passive: true });
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    for (const child of Array.from(el.children)) observer.observe(child);
+    return () => {
+      el.removeEventListener('scroll', measure);
+      observer.disconnect();
+    };
+    // No dependency list on purpose: links come and go between renders
+    // (categories arriving), and each one has to be observed.
+  });
+
+  return overflow;
+}
+
 function CategoryNav({ compact }: { compact: boolean }) {
   const { data: categories } = useCategories();
+  const location = useLocation();
+  const rowRef = useRef<HTMLDivElement>(null);
+  const overflow = useHorizontalOverflow(rowRef);
+
+  // Opening a section that sits off-screen brings its link into view.
+  useEffect(() => {
+    const active = rowRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    active?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [location.pathname, categories]);
+
+  const scrollRow = (direction: 1 | -1) => {
+    const el = rowRef.current;
+    if (!el) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollBy({ left: direction * el.clientWidth * 0.7, behavior: reduce ? 'auto' : 'smooth' });
+  };
+
+  const arrowClass = (side: 'start' | 'end', visible: boolean) =>
+    cx(
+      'absolute inset-y-0 z-10 flex items-center transition-opacity duration-200',
+      side === 'start' ? 'left-0 bg-gradient-to-r from-papel from-60% to-transparent pr-6' : 'right-0 bg-gradient-to-l from-papel from-60% to-transparent pl-6',
+      visible ? 'opacity-100' : 'pointer-events-none opacity-0',
+    );
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cx(
@@ -175,22 +238,49 @@ function CategoryNav({ compact }: { compact: boolean }) {
           <span className="text-[1.15rem]">Portal100Fronteiras</span>
         </Link>
 
-        {/* Scrolls sideways on a phone instead of wrapping into a tall block. */}
-        <div className="flex min-w-0 flex-1 gap-6 overflow-x-auto [scrollbar-width:none]">
-          <NavLink to="/" end className={linkClass}>
-            Início
-          </NavLink>
-          <NavLink to="/noticias" className={linkClass}>
-            Últimas
-          </NavLink>
-          {categories?.map((category) => (
-            <NavLink key={category.id} to={`/categoria/${category.slug}`} className={linkClass}>
-              {category.name}
+        {/* Scrolls sideways instead of wrapping into a tall block; arrows at
+            either end show there is more and move the row on a click. */}
+        <div className="relative flex min-w-0 flex-1">
+          <div className={arrowClass('start', overflow.start)}>
+            <button
+              type="button"
+              onClick={() => scrollRow(-1)}
+              tabIndex={overflow.start ? 0 : -1}
+              aria-hidden={!overflow.start}
+              aria-label="Ver editorias anteriores"
+              className="flex size-8 items-center justify-center rounded-full border border-linha bg-papel text-tinta shadow-sm hover:text-anil"
+            >
+              <ScrollArrow direction="prev" />
+            </button>
+          </div>
+          <div ref={rowRef} className="flex min-w-0 flex-1 gap-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <NavLink to="/" end className={linkClass}>
+              Início
             </NavLink>
-          ))}
-          <NavLink to="/colunistas" className={({ isActive }) => cx(linkClass({ isActive }), isActive ? 'border-mata text-mata' : 'hover:text-mata')}>
-            Opinião
-          </NavLink>
+            <NavLink to="/noticias" className={linkClass}>
+              Últimas
+            </NavLink>
+            {categories?.map((category) => (
+              <NavLink key={category.id} to={`/categoria/${category.slug}`} className={linkClass}>
+                {category.name}
+              </NavLink>
+            ))}
+            <NavLink to="/colunistas" className={({ isActive }) => cx(linkClass({ isActive }), isActive ? 'border-mata text-mata' : 'hover:text-mata')}>
+              Opinião
+            </NavLink>
+          </div>
+          <div className={arrowClass('end', overflow.end)}>
+            <button
+              type="button"
+              onClick={() => scrollRow(1)}
+              tabIndex={overflow.end ? 0 : -1}
+              aria-hidden={!overflow.end}
+              aria-label="Ver mais editorias"
+              className="flex size-8 items-center justify-center rounded-full border border-linha bg-papel text-tinta shadow-sm hover:text-anil"
+            >
+              <ScrollArrow direction="next" />
+            </button>
+          </div>
         </div>
 
         <p className="ml-6 hidden shrink-0 items-center text-sm text-tinta-suave first-letter:uppercase lg:flex">{today.format(new Date())}</p>
