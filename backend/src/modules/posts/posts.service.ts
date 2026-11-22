@@ -280,8 +280,8 @@ export class PostsService {
 
       return postsRepository.findForPanel(
         {
-          type: PostType.COLUMN,
-          authorId: actor.authorId,
+          ownedBy: { authorId: actor.authorId, userId: actor.id },
+          ...(input.type ? { type: input.type } : {}),
           ...(input.status ? { status: input.status } : {}),
           ...(input.q ? { search: input.q } : {}),
         },
@@ -293,6 +293,7 @@ export class PostsService {
       {
         ...(input.type ? { type: input.type } : {}),
         ...(input.status ? { status: input.status } : {}),
+        ...(input.origin ? { origin: input.origin } : {}),
         ...(input.categoryId ? { categoryId: input.categoryId } : {}),
         ...(input.authorId ? { authorId: input.authorId } : {}),
         ...(input.q ? { search: input.q } : {}),
@@ -353,11 +354,18 @@ export class PostsService {
       throw new Forbidden('Your account has no author profile.');
     }
 
+    const type = input.type ?? PostType.COLUMN;
+    if (!policy.canCreateType(actor, type)) {
+      throw new Forbidden('You cannot create this type of post.');
+    }
+    // News needs a category; a column never has one (anything sent is
+    // ignored, as before news existed for columnists).
+    const categoryId = type === PostType.NEWS ? await this.assertCategoryForType(type, input.categoryId) : null;
     const media = await this.resolveMedia(actor, input, null);
     const slug = await this.buildUniqueSlug(input.slug ?? input.title);
 
     return postsRepository.create({
-      type: PostType.COLUMN,
+      type,
       status: PostStatus.DRAFT,
       title: input.title,
       slug,
@@ -367,7 +375,7 @@ export class PostsService {
       sourceName: input.sourceName ?? null,
       sourceUrl: input.sourceUrl ?? null,
       ...media,
-      categoryId: null,
+      categoryId,
       authorId: actor.authorId,
       createdById: actor.id,
     });
@@ -431,12 +439,14 @@ export class PostsService {
           input.bylineName !== undefined ? input.bylineName : input.authorId ? null : post.bylineName;
         Object.assign(data, await this.resolveByline(post.type, authorId, bylineName));
       }
-    } else if (
-      input.categoryId !== undefined ||
-      input.authorId !== undefined ||
-      input.bylineName !== undefined
-    ) {
+    } else if (input.authorId !== undefined || input.bylineName !== undefined) {
       throw new Forbidden('You cannot change the category or the byline.');
+    } else if (input.categoryId !== undefined) {
+      // A columnist picks the category of their own news; a column has none.
+      if (post.type !== PostType.NEWS) {
+        throw new Forbidden('You cannot change the category or the byline.');
+      }
+      data.categoryId = await this.assertCategoryForType(post.type, input.categoryId);
     }
 
     return postsRepository.update(id, data);

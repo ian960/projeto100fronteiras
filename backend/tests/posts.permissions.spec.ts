@@ -5,6 +5,7 @@ import {
   makeCategory,
   makeColumn,
   makeColumnist,
+  makeMedia,
   makeNews,
   makeUser,
   makeWriter,
@@ -124,7 +125,7 @@ describe('o que o colunista enxerga', () => {
     expect(response.body.data.items).toHaveLength(0);
   });
 
-  it('ao criar, força o tipo coluna e a assinatura do próprio colunista', async () => {
+  it('ao criar, a assinatura é sempre a do próprio colunista; sem tipo, é coluna', async () => {
     const { user, author } = await makeColumnist();
     const other = await makeWriter();
     const category = await makeCategory();
@@ -136,8 +137,8 @@ describe('o que o colunista enxerga', () => {
       .send({
         title: 'My opinion piece',
         content: '<p>Text.</p>',
-        // All three are ignored: the server decides them.
-        type: 'news',
+        // Ignored: the byline comes from the session, and a column has no
+        // category.
         authorId: other.id,
         categoryId: category.id,
       })
@@ -149,6 +150,83 @@ describe('o que o colunista enxerga', () => {
     expect(post.authorId).toBe(author.id);
     expect(post.categoryId).toBeNull();
     expect(post.status).toBe('draft');
+  });
+});
+
+describe('notícias de colunista', () => {
+  async function newsFromColumnist() {
+    const columnist = await makeColumnist();
+    const category = await makeCategory();
+    const { client } = await loginAs(columnist.user.email);
+    const response = await client
+      .post('/api/columnist/posts')
+      .send({ type: 'news', title: 'Buraco na avenida', content: '<p>Texto.</p>', categoryId: category.id })
+      .expect(201);
+    return { ...columnist, category, client, post: response.body.data.post };
+  }
+
+  it('o colunista escreve uma notícia, assinada por ele, na categoria escolhida', async () => {
+    const { author, category, post } = await newsFromColumnist();
+    expect(post).toMatchObject({ type: 'news', status: 'draft', authorId: author.id, categoryId: category.id });
+  });
+
+  it('notícia de colunista precisa de categoria', async () => {
+    const { user } = await makeColumnist();
+    const { client } = await loginAs(user.email);
+    const response = await client.post('/api/columnist/posts').send({ type: 'news', title: 'Sem categoria' }).expect(422);
+    expect(response.body.error.fields).toHaveProperty('categoryId');
+  });
+
+  it('envia para revisão, mas só o admin publica', async () => {
+    const { client, post, user } = await newsFromColumnist();
+    const cover = await makeMedia(user.id);
+    await client.patch(`/api/columnist/posts/${post.id}`).send({ coverId: cover.id }).expect(200);
+
+    const submitted = await client.post(`/api/columnist/posts/${post.id}/submit`).expect(200);
+    expect(submitted.body.data.post.status).toBe('pending');
+    await client.post(`/api/admin/posts/${post.id}/publish`).expect(403);
+
+    const admin = await makeAdmin();
+    const asAdmin = (await loginAs(admin.email)).client;
+    // In Revisão, under "Notícias" (written in the panel), not "Notícias automáticas".
+    const manual = await asAdmin.get('/api/admin/posts?status=pending&type=news&origin=manual').expect(200);
+    expect(manual.body.data.items.map((p: { id: string }) => p.id)).toEqual([post.id]);
+    const imported = await asAdmin.get('/api/admin/posts?status=pending&type=news&origin=imported').expect(200);
+    expect(imported.body.data.items).toHaveLength(0);
+
+    const published = await asAdmin.post(`/api/admin/posts/${post.id}/publish`).expect(200);
+    expect(published.body.data.post.status).toBe('published');
+  });
+
+  it('o colunista troca a categoria da própria notícia, mas não a assinatura', async () => {
+    const { client, post } = await newsFromColumnist();
+    const other = await makeCategory();
+    const writer = await makeWriter();
+    const moved = await client.patch(`/api/columnist/posts/${post.id}`).send({ categoryId: other.id }).expect(200);
+    expect(moved.body.data.post.categoryId).toBe(other.id);
+    await client.patch(`/api/columnist/posts/${post.id}`).send({ authorId: writer.id }).expect(403);
+  });
+
+  it('notícia que o admin escreveu com o nome do colunista continua sendo só do admin', async () => {
+    const { user, author } = await makeColumnist();
+    const admin = await makeAdmin();
+    const category = await makeCategory();
+    const news = await makeNews({ authorId: author.id, createdById: admin.id, categoryId: category.id });
+
+    const { client } = await loginAs(user.email);
+    const list = await client.get('/api/columnist/posts').expect(200);
+    expect(list.body.data.items).toHaveLength(0);
+    await client.get(`/api/columnist/posts/${news.id}`).expect(403);
+    await client.patch(`/api/columnist/posts/${news.id}`).send({ title: 'Mudei' }).expect(403);
+  });
+
+  it('a lista do colunista mostra as colunas e as notícias dele', async () => {
+    const { client, author, user } = await newsFromColumnist();
+    await makeColumn({ authorId: author.id, createdById: user.id });
+    const all = await client.get('/api/columnist/posts').expect(200);
+    expect(all.body.data.items.map((p: { type: string }) => p.type).sort()).toEqual(['column', 'news']);
+    const onlyNews = await client.get('/api/columnist/posts?type=news').expect(200);
+    expect(onlyNews.body.data.items).toHaveLength(1);
   });
 });
 

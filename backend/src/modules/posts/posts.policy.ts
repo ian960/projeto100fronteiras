@@ -15,14 +15,15 @@ export function isAdmin(user: SessionUser): boolean {
   return user.role === Role.ADMIN;
 }
 
-// A columnist owns a post when it is a column and their byline signs it.
+// A columnist owns a column their byline signs, and a news story they wrote
+// themselves (signed by them and created from their account). News the admin
+// wrote and signed with a columnist's name stays the admin's.
 export function ownsPost(user: SessionUser, post: IPost): boolean {
-  return (
-    user.role === Role.COLUMNIST &&
-    post.type === PostType.COLUMN &&
-    user.authorId !== null &&
-    post.authorId === user.authorId
-  );
+  if (user.role !== Role.COLUMNIST || user.authorId === null || post.authorId !== user.authorId) {
+    return false;
+  }
+  if (post.type === PostType.COLUMN) return true;
+  return post.createdById === user.id;
 }
 
 export function canViewInPanel(user: SessionUser, post: IPost): boolean {
@@ -62,8 +63,9 @@ export function canSubmitForReview(user: SessionUser, post: IPost): boolean {
   return post.status === PostStatus.DRAFT;
 }
 
-// Writing news is the admin's job; a columnist only ever writes columns.
+// A columnist writes columns and news, both signed by them and both going
+// through Revisão: only the admin publishes.
 export function canCreateType(user: SessionUser, type: PostType): boolean {
   if (isAdmin(user)) return true;
-  return user.role === Role.COLUMNIST && type === PostType.COLUMN;
+  return user.role === Role.COLUMNIST && (type === PostType.COLUMN || type === PostType.NEWS);
 }

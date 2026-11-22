@@ -64,7 +64,7 @@ function PostRows({ posts, scope }: { posts: PostListItem[]; scope: Scope }) {
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {post.featured && <span className="rounded-full bg-sol/20 px-2.5 text-xs font-semibold leading-6 text-aviso">Destaque</span>}
-            {scope === 'admin' && <TypePill type={post.type} />}
+            <TypePill type={post.type} />
             <StatusPill status={post.status} />
             {post.commentCount !== undefined && <CommentCount post={post} />}
             {post.status === 'published' && (
@@ -210,14 +210,22 @@ export function AdminPostsPage() {
 
 // ── Admin: review queue ──────────────────────────────────────────────────────
 
-// Two parts, as two tabs: the columns the columnists sent, and the news the
-// robots of Importar notícias brought. Imported news is the only news that
-// waits here (the admin's own news goes straight from draft to published).
-const reviewParts: { value: '' | 'noticias'; type: PostType; label: string; empty: string }[] = [
-  { value: '', type: 'column', label: 'Colunas', empty: 'Quando um colunista enviar um texto, ele aparece aqui.' },
+// Three parts, as tabs: news written in the panel (by columnists), columns,
+// and the news the robots of Importar notícias brought.
+type ReviewPart = { value: string; type: PostType; origin?: 'manual' | 'imported'; label: string; empty: string };
+const reviewParts: ReviewPart[] = [
   {
-    value: 'noticias',
+    value: '',
     type: 'news',
+    origin: 'manual',
+    label: 'Notícias',
+    empty: 'Quando um colunista enviar uma notícia, ela aparece aqui.',
+  },
+  { value: 'colunas', type: 'column', label: 'Colunas', empty: 'Quando um colunista enviar uma coluna, ela aparece aqui.' },
+  {
+    value: 'automaticas',
+    type: 'news',
+    origin: 'imported',
     label: 'Notícias automáticas',
     empty: 'As notícias que os robôs de Importar notícias trazem aparecem aqui.',
   },
@@ -227,16 +235,23 @@ export function ReviewQueuePage() {
   useDocumentTitle('Revisão');
   const { get, set, page } = useListParams();
   const part = reviewParts.find((p) => p.value === get('parte')) ?? reviewParts[0]!;
-  const { data, isPending, error } = usePanelPosts('admin', { status: 'pending', type: part.type, page, limit: 30 });
+  const { data, isPending, error } = usePanelPosts('admin', {
+    status: 'pending',
+    type: part.type,
+    ...(part.origin ? { origin: part.origin } : {}),
+    page,
+    limit: 30,
+  });
+  const news = usePostCount('admin', { status: 'pending', type: 'news', origin: 'manual' });
   const columns = usePostCount('admin', { status: 'pending', type: 'column' });
-  const news = usePostCount('admin', { status: 'pending', type: 'news' });
-  const counts: Record<string, number | undefined> = { '': columns.data, noticias: news.data };
+  const imported = usePostCount('admin', { status: 'pending', type: 'news', origin: 'imported' });
+  const counts: Record<string, number | undefined> = { '': news.data, colunas: columns.data, automaticas: imported.data };
 
   return (
     <>
       <PanelHeader
         title="Revisão"
-        description="Colunas que os colunistas enviaram e notícias trazidas pelos robôs de Importar notícias. Abra, leia, ajuste se precisar e publique."
+        description="Notícias e colunas que os colunistas enviaram, e notícias trazidas pelos robôs de Importar notícias. Abra, leia, ajuste se precisar e publique."
       />
       <div role="tablist" aria-label="Parte" className="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-papel p-1 [scrollbar-width:none]">
         {reviewParts.map((tab) => (
@@ -275,7 +290,7 @@ export function ReviewQueuePage() {
 // ── Columnist: own columns ───────────────────────────────────────────────────
 
 export function MyColumnsPage() {
-  useDocumentTitle('Minhas colunas');
+  useDocumentTitle('Meus textos');
   const { get, set, page } = useListParams();
   const status = get('situacao') as '' | PostStatus;
   const { data, isPending, error } = usePanelPosts('columnist', { status: status || undefined, page });
@@ -283,9 +298,16 @@ export function MyColumnsPage() {
   return (
     <>
       <PanelHeader
-        title="Minhas colunas"
-        description="Escreva, salve quantas vezes quiser e envie para revisão quando estiver pronto. Depois de publicada, só o administrador altera."
-        actions={<ButtonLink to="/painel/colunas/nova">Nova coluna</ButtonLink>}
+        title="Meus textos"
+        description="Suas colunas e notícias. Escreva, salve quantas vezes quiser e envie para revisão quando estiver pronto. Depois de publicado, só o administrador altera."
+        actions={
+          <>
+            <ButtonLink to="/painel/colunas/nova?tipo=noticia" variant="secundario">
+              Nova notícia
+            </ButtonLink>
+            <ButtonLink to="/painel/colunas/nova">Nova coluna</ButtonLink>
+          </>
+        }
       />
       <div className="mb-4">
         <Tabs value={status} onChange={(value) => set({ situacao: value })} />
@@ -295,7 +317,7 @@ export function MyColumnsPage() {
       ) : error ? (
         <Alert>{errorMessage(error)}</Alert>
       ) : data.items.length === 0 ? (
-        <EmptyState title="Nenhuma coluna aqui" action={<ButtonLink to="/painel/colunas/nova">Escrever a primeira</ButtonLink>} />
+        <EmptyState title="Nenhum texto aqui" action={<ButtonLink to="/painel/colunas/nova">Escrever uma coluna</ButtonLink>} />
       ) : (
         <div className="flex flex-col gap-4">
           <PostRows posts={data.items} scope="columnist" />
@@ -344,7 +366,12 @@ export function DashboardPage() {
               </ButtonLink>
             </>
           ) : (
-            <ButtonLink to="/painel/colunas/nova">Nova coluna</ButtonLink>
+            <>
+              <ButtonLink to="/painel/colunas/nova?tipo=noticia" variant="secundario">
+                Nova notícia
+              </ButtonLink>
+              <ButtonLink to="/painel/colunas/nova">Nova coluna</ButtonLink>
+            </>
           )
         }
       />

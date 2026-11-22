@@ -253,6 +253,14 @@ export class PostsRepository implements IPostsRepository {
         ...(filters.status ? { status: filters.status } : {}),
         ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
         ...(filters.authorId ? { authorId: filters.authorId } : {}),
+        ...(filters.origin === 'imported' ? { importedFrom: { isNot: null } } : {}),
+        ...(filters.origin === 'manual' ? { importedFrom: { is: null } } : {}),
+        ...(filters.ownedBy
+          ? {
+              authorId: filters.ownedBy.authorId,
+              OR: [{ type: 'column' }, { createdById: filters.ownedBy.userId }],
+            }
+          : {}),
         ...(filters.search
           ? { title: { contains: filters.search, mode: 'insensitive' } }
           : {}),
