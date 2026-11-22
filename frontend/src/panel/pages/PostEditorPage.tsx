@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router';
+import { Link, useBlocker, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { Alert, Button, Loading, SelectField, TextArea, TextField, cx } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
 import { formatDateTime, isSlugOf, postPath, slugify } from '../../lib/format';
@@ -14,6 +14,7 @@ import type { PostInput, Scope } from '../queries';
 import { useAdminAuthors, useAdminCategories, useImportOrigin, usePanelPost, usePostActions } from '../queries';
 import { importMedia, uploadErrorMessage } from '../media';
 import { ConfirmButton, StatusPill, TypePill, useToast } from '../widgets';
+import { useCategories } from '../../site/queries';
 
 type Failure = { message: string; fields: Record<string, string> };
 
@@ -110,8 +111,13 @@ function toInput(form: Form, scope: Scope, isNew: boolean): PostInput {
   // from the headline.
   if (form.slugTouched) input.slug = form.slug.trim() || form.title.trim();
 
-  // The columnist's endpoint decides type, byline and category on the server;
-  // sending them would be refused.
+  // The columnist's endpoint decides the byline on the server (sending one
+  // would be refused). The columnist chooses the type of a new text, and the
+  // category of their news.
+  if (scope === 'columnist') {
+    if (isNew) input.type = form.type;
+    if (form.type === 'news') input.categoryId = blank(form.categoryId);
+  }
   if (scope === 'admin') {
     if (isNew) input.type = form.type;
     if (form.type === 'news' && form.authorId === BYLINE_TYPED) {
@@ -156,10 +162,16 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
   const navigate = useNavigate();
   const toast = useToast();
   const actions = usePostActions(scope);
-  const categories = useAdminCategories(isAdmin);
+  // The admin sees every category, hidden ones too; a columnist, the ones on
+  // the site.
+  const adminCategories = useAdminCategories(isAdmin);
+  const siteCategories = useCategories();
+  const categories = isAdmin ? adminCategories : siteCategories;
   const authors = useAdminAuthors(isAdmin);
 
-  const defaultType: PostType = isAdmin ? 'news' : 'column';
+  // "Nova notícia" in Meus textos opens /painel/colunas/nova?tipo=noticia.
+  const [searchParams] = useSearchParams();
+  const defaultType: PostType = isAdmin || searchParams.get('tipo') === 'noticia' ? 'news' : 'column';
   const [form, setForm] = useState<Form>(() => toForm(post, defaultType));
   const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(toInput(toForm(post, defaultType), scope, isNew)));
   // A new piece is saved first and then published. If publishing fails, the
@@ -420,7 +432,7 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link to={listPath} className="text-sm font-medium text-tinta-suave hover:text-tinta hover:underline underline-offset-4">
-          {isAdmin ? 'Matérias' : 'Minhas colunas'}
+          {isAdmin ? 'Matérias' : 'Meus textos'}
         </Link>
         <span className="text-tinta-suave" aria-hidden="true">/</span>
         <h1 className="text-xl font-semibold">{isNew ? `Nova ${noun}` : `Editar ${noun}`}</h1>
@@ -446,7 +458,7 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
 
       {locked && (
         <div className="mb-5">
-          <Alert tone="info">Esta coluna já foi publicada. A partir de agora, só o administrador pode alterá-la. Se encontrou um erro, avise a redação.</Alert>
+          <Alert tone="info">Esta {noun} já foi publicada. A partir de agora, só o administrador pode alterá-la. Se encontrou um erro, avise a redação.</Alert>
         </div>
       )}
 
@@ -593,7 +605,7 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
             </Box>
           </div>
 
-          {isAdmin && (
+          {(isAdmin || isNew || form.type === 'news') && (
             <Box title="Publicação">
               <div className="flex flex-col gap-4">
                 {isNew ? (
@@ -625,6 +637,9 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
                   </SelectField>
                 )}
 
+                {!isAdmin && <p className="text-sm text-tinta-suave">Assinada por você. Só o administrador publica: quando terminar, envie para revisão.</p>}
+
+                {isAdmin && (
                 <SelectField
                   label="Quem assina"
                   value={form.authorId}
@@ -646,8 +661,9 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
                     </>
                   )}
                 </SelectField>
+                )}
 
-                {form.type === 'news' && form.authorId === BYLINE_TYPED && (
+                {isAdmin && form.type === 'news' && form.authorId === BYLINE_TYPED && (
                   <TextField
                     label="Nome que assina"
                     value={form.bylineName}
@@ -659,7 +675,7 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
                   />
                 )}
 
-                {!isNew && post?.status === 'published' && (
+                {isAdmin && !isNew && post?.status === 'published' && (
                   <div className="flex flex-col gap-2 border-t border-linha pt-4">
                     {post.featured ? (
                       <Button variant="secundario" small busy={busy === 'feature'} disabled={Boolean(busy)} onClick={() => simple('feature', () => actions.unfeature.mutateAsync(post.id), 'Saiu do carrossel da home')}>

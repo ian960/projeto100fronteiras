@@ -31,6 +31,8 @@ export type CreatePostInput = PostMediaInput & {
 };
 
 export type CreateMyColumnInput = PostMediaInput & {
+  type?: PostType;
+  categoryId?: string | null;
   title: string;
   subtitle?: string | null;
   slug?: string;
@@ -65,6 +67,7 @@ export type ListPublishedInput = {
 export type ListPanelInput = {
   type?: PostType;
   status?: PostStatus;
+  origin?: 'manual' | 'imported';
   categoryId?: string;
   authorId?: string;
   q?: string;

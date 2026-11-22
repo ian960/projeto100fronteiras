@@ -34,6 +34,8 @@ const postsBase = (scope: Scope) => (scope === 'admin' ? '/admin/posts' : '/colu
 export type PanelPostFilters = {
   type?: PostType;
   status?: PostStatus;
+  // Admin only: news written in the panel or brought by Importar notícias.
+  origin?: 'manual' | 'imported';
   q?: string;
   page?: number;
   limit?: number;

@@ -29,7 +29,7 @@ function Sidebar({ me }: { me: User }) {
       ]
     : [
         { to: '/painel', label: 'Início', end: true },
-        { to: '/painel/colunas', label: 'Minhas colunas' },
+        { to: '/painel/colunas', label: 'Meus textos' },
         { to: '/painel/perfil', label: 'Meu perfil' },
       ];
 
@@ -138,11 +138,11 @@ export function RequireRole({ role, children }: { role: Role; children: ReactNod
       <div className="rounded-lg border border-linha bg-papel p-8">
         <h1 className="text-xl font-semibold">{forAdmin ? 'Esta área é do administrador' : 'Esta área é dos colunistas'}</h1>
         <p className="mt-2 text-tinta-suave">
-          {forAdmin ? 'Sua conta escreve colunas. Elas ficam em Minhas colunas.' : 'As colunas de todos os autores ficam em Matérias.'}
+          {forAdmin ? 'Sua conta escreve colunas e notícias. Elas ficam em Meus textos.' : 'Os textos de todos os autores ficam em Matérias.'}
         </p>
         <div className="mt-5">
           <ButtonLink to={forAdmin ? '/painel/colunas' : '/painel/materias'} variant="secundario">
-            {forAdmin ? 'Ir para Minhas colunas' : 'Ir para Matérias'}
+            {forAdmin ? 'Ir para Meus textos' : 'Ir para Matérias'}
           </ButtonLink>
         </div>
       </div>

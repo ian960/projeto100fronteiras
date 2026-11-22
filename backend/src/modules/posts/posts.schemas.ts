@@ -63,10 +63,15 @@ export const createPostSchema = z.object({
     }),
 });
 
-// A columnist creating their own column. No type, no authorId, no categoryId:
-// all three are decided by the server.
+// A columnist creating their own column or news story. No authorId: the
+// byline is always theirs, from the session. A column has no category; news
+// needs one. Without a type, it is a column (the panel before news existed).
 export const createMyColumnSchema = z.object({
-  body: z.object(baseBody),
+  body: z.object({
+    ...baseBody,
+    type: z.enum([PostType.NEWS, PostType.COLUMN]).default(PostType.COLUMN),
+    categoryId: z.uuid().nullish(),
+  }),
 });
 
 export const updatePostSchema = z.object({
@@ -114,6 +119,8 @@ export const listPanelSchema = z.object({
   query: z.object({
     type: z.enum([PostType.NEWS, PostType.COLUMN]).optional(),
     status: z.enum([PostStatus.DRAFT, PostStatus.PENDING, PostStatus.PUBLISHED]).optional(),
+    // Admin only: news written in the panel or brought by Importar notícias.
+    origin: z.enum(['manual', 'imported']).optional(),
     categoryId: z.uuid().optional(),
     authorId: z.uuid().optional(),
     q: z.string().trim().min(2).max(120).optional(),
