@@ -18,6 +18,7 @@ function Sidebar({ me }: { me: User }) {
         { to: '/painel', label: 'Início', end: true },
         { to: '/painel/materias', label: 'Matérias' },
         { to: '/painel/revisao', label: 'Revisão', badge: pending.data },
+        { to: '/painel/importar', label: 'Importar notícias' },
         { to: '/painel/categorias', label: 'Categorias' },
         { to: '/painel/autores', label: 'Autores' },
         { to: '/painel/usuarios', label: 'Usuários' },

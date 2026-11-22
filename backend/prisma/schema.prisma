@@ -161,7 +161,8 @@ model Category {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  posts Post[]
+  posts       Post[]
+  newsSources NewsSource[]
 
   @@map("categories")
 }
@@ -239,6 +240,9 @@ model Post {
 
   comments Comment[]
   pushNotifications PushNotification[]
+
+  // Set when the post was brought in by the news import (see NewsSource).
+  importedFrom ImportedItem?
 
   // Home feed and columnists tab.
   @@index([type, status, publishedAt(sort: Desc)])
@@ -587,4 +591,66 @@ model PushNotification {
   @@index([createdAt(sort: Desc)])
   @@index([status])
   @@map("push_notifications")
+}
+
+// ---------------------------------------------------------------------------
+// News import — RSS feeds of other outlets, turned into drafts
+//
+// Every few minutes the server reads each active source's feed
+// (modules/newsImport). Each new item becomes a DRAFT news post with
+// "Fonte: <name>" and the link; the admin reviews, adds a cover and publishes.
+// Nothing is ever published on its own.
+//
+// fullText decides how much is copied. Only sources whose license allows
+// republishing (Agência Brasil, Agência Senado, gov.br…) may have the whole
+// text; for any other the draft holds the summary and a link to the original.
+// ---------------------------------------------------------------------------
+
+model NewsSource {
+  id       String  @id @default(uuid(7))
+  name     String // shown as "Fonte: <name>" under the story
+  feedUrl  String  @unique @map("feed_url")
+  fullText Boolean @default(false) @map("full_text")
+  active   Boolean @default(true)
+
+  // Category the drafts go into. Null only after that category was deleted:
+  // the source then waits until the admin picks another.
+  categoryId String?   @map("category_id")
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // The last time the feed was read, and how it went.
+  lastRunAt         DateTime? @map("last_run_at")
+  lastError         String?   @map("last_error")
+  lastImportedCount Int       @default(0) @map("last_imported_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items ImportedItem[]
+
+  @@map("news_sources")
+}
+
+// One row per feed item already seen, so nothing is imported twice, not even
+// after the admin deletes the draft (postId becomes null, the row stays).
+model ImportedItem {
+  id       String     @id @default(uuid(7))
+  sourceId String     @map("source_id")
+  source   NewsSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  // The item's <guid>, or its link when the feed has none.
+  guid String
+
+  postId String? @unique @map("post_id")
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  // The item's photo on the source's site. Not copied to Cloudinary until the
+  // admin chooses it as the cover in the editor.
+  imageUrl String? @map("image_url")
+
+  importedAt DateTime @default(now()) @map("imported_at")
+
+  @@unique([sourceId, guid])
+  @@index([importedAt(sort: Desc)])
+  @@map("imported_items")
 }

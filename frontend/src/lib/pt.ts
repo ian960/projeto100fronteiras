@@ -37,6 +37,18 @@ const exact: Record<string, string> = {
   // not found
   'Post not found.': 'Matéria não encontrada.',
   'Category not found.': 'Categoria não encontrada.',
+
+  // news import (Importar notícias)
+  'This feed is already registered.': 'Este feed já está cadastrado.',
+  'Source not found.': 'Fonte não encontrada.',
+  'This post was not imported.': 'Esta matéria não veio da importação.',
+  'Choose a category for this source.': 'Escolha uma categoria para esta fonte.',
+  'There is no active admin to sign the drafts.': 'Não há nenhum administrador ativo para assinar os rascunhos.',
+  'This address does not return an RSS or Atom feed.': 'Este endereço não é um feed RSS. Confira o link do RSS no site da fonte.',
+  'The feed is too large.': 'O feed é grande demais.',
+  'Use the address of the RSS feed, starting with http:// or https://.': 'Use o endereço do feed RSS, começando com https://',
+  'fetch failed': 'Não foi possível acessar o feed (o site não respondeu).',
+  'The operation was aborted due to timeout': 'O site da fonte demorou demais para responder.',
   'Author not found.': 'Autor não encontrado.',
   'User not found.': 'Usuário não encontrado.',
 
@@ -176,6 +188,7 @@ const patterns: [RegExp, (...groups: string[]) => string][] = [
   [/^Choose a file of type: (\w+)\.$/, (kind) => `Escolha um arquivo do tipo ${KIND_PT[kind] ?? kind}.`],
   [/^This file is still in use \((\d+)\)\. Remove it from the posts first\.$/, () => 'Este arquivo ainda está em uso. Tire-o das matérias antes de apagar.'],
   [/^Route .+ does not exist\.$/, () => 'Endereço da API não encontrado.'],
+  [/^The feed answered HTTP (\d+)\.$/, (code) => `O site da fonte respondeu com erro (HTTP ${code}). Confira o endereço do feed.`],
   [/^The limit of (\d+) notifications in 24 hours has been reached\.$/, (n) => `O limite de ${n} notificações em 24 horas já foi atingido. Tente mais tarde.`],
 
   // Zod's own messages, from field validation.

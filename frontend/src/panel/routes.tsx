@@ -6,6 +6,7 @@ import ProfilePage from './pages/ProfilePage';
 import BannersPage from './pages/BannersPage';
 import NewsletterPage from './pages/NewsletterPage';
 import NotificationsPage from './pages/NotificationsPage';
+import NewsImportPage from './pages/NewsImportPage';
 
 // One entry per panel route, with the role it needs. Kept in one module so
 // the whole panel downloads as a single chunk the first time it is opened.
@@ -59,6 +60,12 @@ export const Newsletter = () => (
 export const Notifications = () => (
   <RequireRole role="admin">
     <NotificationsPage />
+  </RequireRole>
+);
+
+export const NewsImport = () => (
+  <RequireRole role="admin">
+    <NewsImportPage />
   </RequireRole>
 );
 
