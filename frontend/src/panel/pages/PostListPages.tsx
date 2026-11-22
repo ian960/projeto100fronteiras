@@ -210,9 +210,27 @@ export function AdminPostsPage() {
 
 // ── Admin: review queue ──────────────────────────────────────────────────────
 
+// Two parts, as two tabs: the columns the columnists sent, and the news the
+// robots of Importar notícias brought. Imported news is the only news that
+// waits here (the admin's own news goes straight from draft to published).
+const reviewParts: { value: '' | 'noticias'; type: PostType; label: string; empty: string }[] = [
+  { value: '', type: 'column', label: 'Colunas', empty: 'Quando um colunista enviar um texto, ele aparece aqui.' },
+  {
+    value: 'noticias',
+    type: 'news',
+    label: 'Notícias automáticas',
+    empty: 'As notícias que os robôs de Importar notícias trazem aparecem aqui.',
+  },
+];
+
 export function ReviewQueuePage() {
   useDocumentTitle('Revisão');
-  const { data, isPending, error } = usePanelPosts('admin', { status: 'pending', limit: 50 });
+  const { get, set, page } = useListParams();
+  const part = reviewParts.find((p) => p.value === get('parte')) ?? reviewParts[0]!;
+  const { data, isPending, error } = usePanelPosts('admin', { status: 'pending', type: part.type, page, limit: 30 });
+  const columns = usePostCount('admin', { status: 'pending', type: 'column' });
+  const news = usePostCount('admin', { status: 'pending', type: 'news' });
+  const counts: Record<string, number | undefined> = { '': columns.data, noticias: news.data };
 
   return (
     <>
@@ -220,14 +238,35 @@ export function ReviewQueuePage() {
         title="Revisão"
         description="Colunas que os colunistas enviaram e notícias trazidas pelos robôs de Importar notícias. Abra, leia, ajuste se precisar e publique."
       />
+      <div role="tablist" aria-label="Parte" className="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-papel p-1 [scrollbar-width:none]">
+        {reviewParts.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            role="tab"
+            aria-selected={part.value === tab.value}
+            onClick={() => set({ parte: tab.value || undefined })}
+            className={cx(
+              'h-8 shrink-0 rounded-md px-3 text-sm font-medium',
+              part.value === tab.value ? 'bg-anil text-white' : 'text-tinta-suave hover:text-tinta',
+            )}
+          >
+            {tab.label}
+            {counts[tab.value] ? ` (${counts[tab.value]})` : ''}
+          </button>
+        ))}
+      </div>
       {isPending ? (
         <Loading />
       ) : error ? (
         <Alert>{errorMessage(error)}</Alert>
       ) : data.items.length === 0 ? (
-        <EmptyState title="Nada esperando revisão">Quando um colunista enviar um texto ou um robô trouxer uma notícia, ele aparece aqui.</EmptyState>
+        <EmptyState title="Nada esperando revisão">{part.empty}</EmptyState>
       ) : (
-        <PostRows posts={data.items} scope="admin" />
+        <div className="flex flex-col gap-4">
+          <PostRows posts={data.items} scope="admin" />
+          <Pagination page={data.page} totalPages={data.totalPages} onChange={(next) => set({ pagina: String(next) })} />
+        </div>
       )}
     </>
   );
