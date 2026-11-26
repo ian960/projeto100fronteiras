@@ -19,6 +19,7 @@ export function newsImportAdminRouter(): Router {
   router.post('/sources/:id/run', newsImportController.runSource);
   router.post('/run', newsImportController.runAll);
   router.get('/items', newsImportController.recentItems);
+  router.post('/pending/delete', newsImportController.deletePending);
   router.get('/posts/:postId', newsImportController.originOfPost);
 
   return router;

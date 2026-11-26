@@ -87,6 +87,15 @@ export class NewsImportRepository {
     await prisma.importedItem.delete({ where: { id: itemId } });
   }
 
+  // Deletes every imported news still waiting in Revisão. The imported_items
+  // rows stay (postId becomes null), so the same news is not imported again.
+  async deletePendingImported(): Promise<number> {
+    const result = await prisma.post.deleteMany({
+      where: { status: 'pending', importedFrom: { isNot: null } },
+    });
+    return result.count;
+  }
+
   listRecentItems(limit: number): Promise<IImportedItem[]> {
     return prisma.importedItem.findMany({
       where: { postId: { not: null } },

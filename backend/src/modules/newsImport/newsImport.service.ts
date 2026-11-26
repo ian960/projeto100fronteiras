@@ -127,6 +127,10 @@ export class NewsImportService {
     return newsImportRepository.listRecentItems(limit);
   }
 
+  deletePendingImported(): Promise<number> {
+    return newsImportRepository.deletePendingImported();
+  }
+
   originOfPost(postId: string): Promise<IImportOrigin | null> {
     return newsImportRepository.findOriginOfPost(postId);
   }

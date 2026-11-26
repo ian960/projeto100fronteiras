@@ -45,6 +45,11 @@ export class NewsImportController {
     return ok(res, { items });
   };
 
+  deletePending = async (_req: Request, res: Response) => {
+    const deleted = await newsImportService.deletePendingImported();
+    return ok(res, { deleted });
+  };
+
   originOfPost = async (req: Request, res: Response) => {
     const parsed = postIdSchema.parse({ params: req.params });
     const origin = await newsImportService.originOfPost(parsed.params.postId);
