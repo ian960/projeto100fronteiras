@@ -360,6 +360,11 @@ export function useNewsImportActions() {
         post<{ results: ImportRunResult[] }>(id ? `/admin/news-import/sources/${id}/run` : '/admin/news-import/run').then(results),
       onSuccess,
     }),
+    // Revisão → "Notícias automáticas" → "Excluir todas".
+    removePending: useMutation({
+      mutationFn: () => post<{ deleted: number }>('/admin/news-import/pending/delete').then((data) => data.deleted),
+      onSuccess,
+    }),
   };
 }
 

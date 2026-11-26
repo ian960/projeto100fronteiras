@@ -4,7 +4,7 @@ import { prisma } from '../src/config/prisma';
 import { fetchFeedOverHttp, newsImportService } from '../src/modules/newsImport/newsImport.service';
 import { parseFeed, shorten, stripTags } from '../src/modules/newsImport/newsImport.feed';
 import { agent, loginAs } from './helpers/agent';
-import { makeAdmin, makeCategory, makeColumnist } from './factories';
+import { makeAdmin, makeCategory, makeColumnist, makeNews } from './factories';
 import { pngFile } from './helpers/upload';
 
 // Stands in for the agency's photo server: /fotos/<guid>.png is a photo,
@@ -284,5 +284,37 @@ describe('importar notícias', () => {
     await prisma.category.delete({ where: { id: other.id } });
     const run = await client.post(`/api/admin/news-import/sources/${second.id}/run`).expect(200);
     expect(run.body.data.results[0].error).toContain('category');
+  });
+
+  it('excluir todas apaga só as automáticas em revisão, e elas não voltam', async () => {
+    const { client, category } = await setup();
+    const feedUrl = 'https://agenciabrasil.ebc.com.br/feed.xml';
+    feeds[feedUrl] = agenciaFeed([
+      { guid: 'x1', title: 'Primeira', hoursAgo: 1 },
+      { guid: 'x2', title: 'Segunda', hoursAgo: 2 },
+      { guid: 'x3', title: 'Terceira', hoursAgo: 3 },
+    ]);
+    const source = await addSource(client, { name: 'Agência Brasil', feedUrl, fullText: true, categoryId: category.id });
+    await client.post(`/api/admin/news-import/sources/${source.id}/run`).expect(200);
+    const imported = await prisma.post.findMany({ select: { id: true } });
+    expect(imported).toHaveLength(3);
+    // One imported news was already published: it stays.
+    await prisma.post.update({ where: { id: imported[0]!.id }, data: { status: 'published', publishedAt: new Date() } });
+
+    // A columnist's news waiting in Revisão stays too.
+    const { user, author } = await makeColumnist();
+    const manual = await makeNews({ authorId: author.id, createdById: user.id, categoryId: category.id }, { status: 'pending' });
+
+    const { client: columnistClient } = await loginAs(user.email);
+    await columnistClient.post('/api/admin/news-import/pending/delete').expect(403);
+
+    const response = await client.post('/api/admin/news-import/pending/delete').expect(200);
+    expect(response.body.data.deleted).toBe(2);
+    const left = await prisma.post.findMany({ select: { id: true } });
+    expect(left.map((p) => p.id).sort()).toEqual([imported[0]!.id, manual.id].sort());
+
+    const again = await client.post(`/api/admin/news-import/sources/${source.id}/run`).expect(200);
+    expect(again.body.data.results[0].imported).toBe(0);
+    expect((await client.post('/api/admin/news-import/pending/delete').expect(200)).body.data.deleted).toBe(0);
   });
 });

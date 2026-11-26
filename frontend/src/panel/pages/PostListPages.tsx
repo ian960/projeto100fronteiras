@@ -7,8 +7,8 @@ import { formatDateTime, postPath } from '../../lib/format';
 import { useDocumentTitle, useHealth, useMe } from '../../lib/hooks';
 import type { PostListItem, PostStatus, PostType } from '../../lib/types';
 import type { Scope } from '../queries';
-import { usePanelPosts, usePostCount } from '../queries';
-import { PanelHeader, StatusPill, TypePill } from '../widgets';
+import { useNewsImportActions, usePanelPosts, usePostCount } from '../queries';
+import { ConfirmButton, PanelHeader, StatusPill, TypePill, useToast } from '../widgets';
 
 // ── Shared list ──────────────────────────────────────────────────────────────
 
@@ -249,6 +249,18 @@ export function ReviewQueuePage() {
   const columns = usePostCount('admin', { status: 'pending', type: 'column' });
   const imported = usePostCount('admin', { status: 'pending', type: 'news', origin: 'imported' });
   const counts: Record<string, number | undefined> = { '': news.data, colunas: columns.data, automaticas: imported.data };
+  const { removePending } = useNewsImportActions();
+  const toast = useToast();
+  const importedCount = imported.data ?? 0;
+
+  const removeAllImported = () =>
+    removePending.mutate(undefined, {
+      onSuccess: (deleted) => {
+        toast(deleted === 1 ? '1 notícia automática excluída' : `${deleted} notícias automáticas excluídas`);
+        set({ pagina: undefined });
+      },
+      onError: (err) => toast(errorMessage(err), 'erro'),
+    });
 
   return (
     <>
@@ -274,6 +286,19 @@ export function ReviewQueuePage() {
           </button>
         ))}
       </div>
+      {part.value === 'automaticas' && importedCount > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-linha p-3">
+          <p className="text-sm text-tinta-suave">
+            Não vai aproveitar? Apague todas de uma vez. Elas não voltam na próxima busca.
+          </p>
+          <ConfirmButton
+            label="Excluir todas"
+            confirmLabel={importedCount === 1 ? 'Excluir 1 notícia' : `Excluir ${importedCount} notícias`}
+            busy={removePending.isPending}
+            onConfirm={removeAllImported}
+          />
+        </div>
+      ) : null}
       {isPending ? (
         <Loading />
       ) : error ? (
