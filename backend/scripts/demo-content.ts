@@ -261,7 +261,7 @@ async function create() {
       photoId,
       columnTitle: columnist.columnTitle,
     });
-    authors.set(columnist.name, promoted.user.author.id);
+    authors.set(columnist.name, promoted.user.authors[0].id);
   }
   console.log(`Writers and columnists: ${[...authors.keys()].join(', ')}`);
 

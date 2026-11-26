@@ -115,7 +115,7 @@ export class NewsImportRepository {
     return prisma.user.findFirst({
       where: { role: 'admin', active: true },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, name: true, role: true, author: { select: { id: true } } },
+      select: { id: true, name: true, role: true, authors: { select: { id: true } } },
     });
   }
 }

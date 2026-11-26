@@ -251,7 +251,7 @@ export class NewsImportService {
   private async importingActor(): Promise<SessionUser> {
     const admin = await newsImportRepository.findImportingAdmin();
     if (!admin) throw new Error('There is no active admin to sign the drafts.');
-    return { id: admin.id, name: admin.name, role: admin.role as Role, authorId: admin.author?.id ?? null };
+    return { id: admin.id, name: admin.name, role: admin.role as Role, authorIds: admin.authors.map((a) => a.id) };
   }
 
   private async loadSource(id: string): Promise<INewsSource> {

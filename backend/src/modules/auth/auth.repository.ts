@@ -9,7 +9,8 @@ export class AuthRepository implements IAuthRepository {
     name: true,
     role: true,
     active: true,
-    author: { select: { id: true } },
+    // Same order everywhere: the admin's order of authors.
+    authors: { select: { id: true }, orderBy: { sortOrder: 'asc' } },
     // Only to know whether there is one (authenticate: "Criar senha").
     passwordHash: true,
   } as const;

@@ -130,16 +130,6 @@ export class AuthorsRepository implements IAuthorsRepository {
     }
   }
 
-  async findByUserId(userId: string): Promise<IAuthorPublic | null> {
-    try {
-      const row = await prisma.author.findUnique({ where: { userId }, select: this.publicSelect });
-      return row ? toPublic(row) : null;
-    } catch (err) {
-      logger.error('Failed to find author by user id', err);
-      throw err;
-    }
-  }
-
   async create(data: CreateAuthorData): Promise<IAuthorPublic> {
     try {
       // A new author goes to the end of the admin's order.
@@ -217,6 +207,16 @@ export class AuthorsRepository implements IAuthorsRepository {
       });
     } catch (err) {
       logger.error('Failed to delete author with posts', err);
+      throw err;
+    }
+  }
+
+  // How many bylines a login writes under.
+  async countOfUser(userId: string): Promise<number> {
+    try {
+      return await prisma.author.count({ where: { userId } });
+    } catch (err) {
+      logger.error('Failed to count authors of user', err);
       throw err;
     }
   }

@@ -33,6 +33,8 @@ export type CreatePostInput = PostMediaInput & {
 export type CreateMyColumnInput = PostMediaInput & {
   type?: PostType;
   categoryId?: string | null;
+  // One of the login's own authors; null or left out: the first one.
+  authorId?: string | null;
   title: string;
   subtitle?: string | null;
   slug?: string;

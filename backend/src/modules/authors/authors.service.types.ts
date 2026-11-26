@@ -19,6 +19,7 @@ export type UpdateAuthorInput = {
 };
 
 export type UpdateMyProfileInput = {
+  authorId?: string;
   name?: string;
   bio?: string | null;
   photoId?: string | null;

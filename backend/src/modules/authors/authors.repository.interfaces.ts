@@ -12,11 +12,11 @@ export interface IAuthorsRepository {
   findColumnistCards(): Promise<IColumnistCard[]>;
   findById(id: string): Promise<IAuthorPublic | null>;
   findBySlug(slug: string): Promise<IAuthorPublic | null>;
-  findByUserId(userId: string): Promise<IAuthorPublic | null>;
   create(data: CreateAuthorData): Promise<IAuthorPublic>;
   update(id: string, data: UpdateAuthorData): Promise<IAuthorPublic>;
   delete(id: string): Promise<void>;
   deleteWithPosts(id: string, options: DeleteAuthorOptions): Promise<void>;
+  countOfUser(userId: string): Promise<number>;
   countPosts(authorId: string): Promise<number>;
   reorder(ids: string[]): Promise<void>;
   countByIds(ids: string[]): Promise<number>;

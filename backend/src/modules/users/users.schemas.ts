@@ -33,11 +33,15 @@ export const promoteUserSchema = z.object({
   }),
 });
 
-// The admin ties a login to a byline that already exists (or unties it, null).
-export const linkAuthorSchema = z.object({
+// The admin sets the whole list of bylines a login writes under (authors
+// that already exist). An empty list unties them all: back to reader.
+export const setAuthorsSchema = z.object({
   params: z.object({ id: z.uuid() }),
   body: z.object({
-    authorId: z.uuid().nullable(),
+    authorIds: z
+      .array(z.uuid())
+      .max(10)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'Each author only once.' }),
   }),
 });
 

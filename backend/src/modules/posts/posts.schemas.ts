@@ -63,14 +63,17 @@ export const createPostSchema = z.object({
     }),
 });
 
-// A columnist creating their own column or news story. No authorId: the
-// byline is always theirs, from the session. A column has no category; news
-// needs one. Without a type, it is a column (the panel before news existed).
+// A columnist creating their own column or news story. The byline is always
+// one of theirs: authorId picks which, when the admin tied several authors to
+// the login (the service refuses any other); left out, it is the first one.
+// A column has no category; news needs one. Without a type, it is a column
+// (the panel before news existed).
 export const createMyColumnSchema = z.object({
   body: z.object({
     ...baseBody,
     type: z.enum([PostType.NEWS, PostType.COLUMN]).default(PostType.COLUMN),
     categoryId: z.uuid().nullish(),
+    authorId: z.uuid().nullish(),
   }),
 });
 

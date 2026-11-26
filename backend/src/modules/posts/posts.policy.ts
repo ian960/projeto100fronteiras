@@ -15,11 +15,16 @@ export function isAdmin(user: SessionUser): boolean {
   return user.role === Role.ADMIN;
 }
 
-// A columnist owns a column their byline signs, and a news story they wrote
-// themselves (signed by them and created from their account). News the admin
-// wrote and signed with a columnist's name stays the admin's.
+// Whether this byline is one of the login's (it may hold several).
+export function hasAuthor(user: SessionUser, authorId: string | null): boolean {
+  return authorId !== null && user.authorIds.includes(authorId);
+}
+
+// A columnist owns a column one of their bylines signs, and a news story they
+// wrote themselves (signed by them and created from their account). News the
+// admin wrote and signed with a columnist's name stays the admin's.
 export function ownsPost(user: SessionUser, post: IPost): boolean {
-  if (user.role !== Role.COLUMNIST || user.authorId === null || post.authorId !== user.authorId) {
+  if (user.role !== Role.COLUMNIST || !hasAuthor(user, post.authorId)) {
     return false;
   }
   if (post.type === PostType.COLUMN) return true;

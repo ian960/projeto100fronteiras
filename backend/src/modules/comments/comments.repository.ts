@@ -20,7 +20,10 @@ const viewSelect = {
       role: true,
       avatar: { select: mediaSelect },
       // A columnist without an account photo still has their byline photo.
-      author: { select: { id: true, photo: { select: mediaSelect } } },
+      authors: {
+        select: { id: true, photo: { select: mediaSelect } },
+        orderBy: { sortOrder: 'asc' },
+      },
     },
   },
 } as const;

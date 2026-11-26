@@ -68,8 +68,11 @@ export const updateMyProfileSchema = z.object({
       bio: z.string().trim().max(600).nullish(),
       photoId: z.uuid().nullish(), // an image uploaded through /api/media
       columnTitle: z.string().trim().max(120).nullish(),
+      // Which of the login's authors, when the admin tied several to it.
+      // Left out: the first one.
+      authorId: z.uuid().optional(),
     })
-    .refine((data) => Object.keys(data).length > 0, {
+    .refine((data) => Object.keys(data).some((key) => key !== 'authorId'), {
       message: 'Provide at least one field to update.',
     }),
 });

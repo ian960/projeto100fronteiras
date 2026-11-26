@@ -4,7 +4,7 @@ import { Alert, Button, Loading, TextArea, TextField } from '../../components/ui
 import { ApiError, errorMessage } from '../../lib/api';
 import { isSlugOf, roleLabel, slugify } from '../../lib/format';
 import { useDocumentTitle, useMe, useUpdateMe } from '../../lib/hooks';
-import type { User } from '../../lib/types';
+import type { AuthorSummary } from '../../lib/types';
 import { useAuthor } from '../../site/queries';
 import { useAccountActions } from '../queries';
 import { ImageField } from '../mediaFields';
@@ -20,7 +20,13 @@ export default function ProfilePage() {
     <>
       <PanelHeader title={me.role === 'columnist' ? 'Meu perfil' : 'Minha conta'} />
       <div className="grid gap-8 xl:grid-cols-2">
-        {me.role === 'columnist' && me.author && <Byline me={me} />}
+        {me.role === 'columnist' && me.authors.length > 0 && (
+          <div className="flex flex-col gap-8">
+            {me.authors.map((author) => (
+              <Byline key={author.id} author={author} several={me.authors.length > 1} />
+            ))}
+          </div>
+        )}
         <div className="flex flex-col gap-8">
           <section className="rounded-lg border border-linha bg-papel p-5">
             <h2 className="mb-3 font-semibold">Conta</h2>
@@ -41,19 +47,20 @@ export default function ProfilePage() {
 
 // The session carries only a summary of the byline (no bio), so the full
 // profile is read from the public author endpoint before the form opens.
-function Byline({ me }: { me: User }) {
-  const { data, isPending } = useAuthor(me.author?.slug);
+// An account may write under several authors (the admin decides which): one
+// form for each.
+function Byline({ author, several }: { author: AuthorSummary; several: boolean }) {
+  const { data, isPending } = useAuthor(author.slug);
   if (isPending) return <Loading />;
   // Keyed by id, not updatedAt: saving changes updatedAt, and a remount right
   // after saving would swallow the confirmation.
-  return <BylineForm key={data?.id ?? 'sem-perfil'} me={me} initialBio={data?.bio ?? ''} />;
+  return <BylineForm key={data?.id ?? 'sem-perfil'} author={author} several={several} initialBio={data?.bio ?? ''} />;
 }
 
 // What readers see under every column: name, column title, photo and bio.
-function BylineForm({ me, initialBio }: { me: User; initialBio: string }) {
+function BylineForm({ author, several, initialBio }: { author: AuthorSummary; several: boolean; initialBio: string }) {
   const { updateProfile } = useAccountActions();
   const toast = useToast();
-  const author = me.author!;
   const errors = updateProfile.error instanceof ApiError ? updateProfile.error.fields : {};
   const [form, setForm] = useState({
     name: author.name,
@@ -66,13 +73,14 @@ function BylineForm({ me, initialBio }: { me: User; initialBio: string }) {
   const nextSlug = isSlugOf(author.slug, author.name) ? slugify(form.name) : author.slug;
   const pageHint =
     nextSlug && nextSlug !== author.slug
-      ? `Sua página vai mudar de /autor/${author.slug} para /autor/${nextSlug}. Links antigos param de funcionar.`
-      : `Sua página: /autor/${author.slug}`;
+      ? `${several ? 'A página' : 'Sua página'} vai mudar de /autor/${author.slug} para /autor/${nextSlug}. Links antigos param de funcionar.`
+      : `${several ? 'Página' : 'Sua página'}: /autor/${author.slug}`;
 
   function submit(event: FormEvent) {
     event.preventDefault();
     updateProfile.mutate(
       {
+        authorId: author.id,
         name: form.name.trim(),
         columnTitle: form.columnTitle.trim() || null,
         photoId: form.photo?.id ?? null,
@@ -84,8 +92,12 @@ function BylineForm({ me, initialBio }: { me: User; initialBio: string }) {
 
   return (
     <section className="rounded-lg border border-linha bg-papel p-5">
-      <h2 className="font-semibold">Como você aparece no site</h2>
-      <p className="mb-4 mt-1 text-sm text-tinta-suave">Nome, coluna, foto e mini-bio aparecem no fim de cada coluna e na sua página.</p>
+      <h2 className="font-semibold">{several ? `Como ${author.name} aparece no site` : 'Como você aparece no site'}</h2>
+      <p className="mb-4 mt-1 text-sm text-tinta-suave">
+        {several
+          ? 'Nome, coluna, foto e mini-bio aparecem no fim de cada texto assinado com este nome e na página dele.'
+          : 'Nome, coluna, foto e mini-bio aparecem no fim de cada coluna e na sua página.'}
+      </p>
       <form onSubmit={submit} className="flex flex-col gap-4">
         {updateProfile.error && Object.keys(errors).length === 0 && <Alert>{errorMessage(updateProfile.error)}</Alert>}
         <TextField label="Nome na assinatura" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name} hint={pageHint} />

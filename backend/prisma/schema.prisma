@@ -100,9 +100,11 @@ model User {
   // SetNull: if the admin ever deletes the file, the account just loses its photo.
   avatar   Media?  @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
 
-  // Created when the admin promotes a reader to columnist.
-  // Readers and the admin have none.
-  author Author?
+  // The bylines this login writes under. Created when the admin promotes a
+  // reader to columnist, or tied by the admin to authors that already exist.
+  // Usually one; more when a columnist also publishes for someone else (a
+  // friend who does not write in the panel). Readers and the admin have none.
+  authors Author[]
 
   createdPosts   Post[]  @relation("PostCreatedBy")
   comments       Comment[] @relation("CommentAuthor")
@@ -132,10 +134,11 @@ model Author {
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
-  // Null for writers, set for columnists.
+  // Null for writers, set for columnists. One login may hold several authors
+  // (the admin decides which), but an author belongs to one login at most.
   // SetNull: deleting the login keeps the profile and the published posts —
   // the author page stays online, they just lose access.
-  userId String? @unique @map("user_id")
+  userId String? @map("user_id")
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Shown next to the byline and on the author page.
@@ -145,6 +148,7 @@ model Author {
   posts Post[]
 
   @@index([type, active])
+  @@index([userId])
   @@map("authors")
 }
 

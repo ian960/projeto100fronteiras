@@ -8,7 +8,7 @@ import type { CommentBadge, ICommentList, ICommentPost, ICommentThread, IComment
 
 function badgeOf(user: NonNullable<CommentViewRow['user']>, post: ICommentPost): CommentBadge | null {
   if (user.role === Role.ADMIN) return 'admin';
-  if (user.author && user.author.id === post.authorId) return 'author';
+  if (user.authors.some((a) => a.id === post.authorId)) return 'author';
   if (user.role === Role.COLUMNIST) return 'columnist';
   return null;
 }
@@ -27,7 +27,9 @@ function present(row: CommentViewRow, post: ICommentPost): ICommentView {
         ? {
             id: row.user.id,
             name: row.user.name,
-            avatarUrl: photoUrlOf(row.user.avatar) ?? photoUrlOf(row.user.author?.photo),
+            avatarUrl: photoUrlOf(row.user.avatar) ??
+              // The byline that signs this post, if it is theirs; else their first.
+              photoUrlOf((row.user.authors.find((a) => a.id === post.authorId) ?? row.user.authors[0])?.photo),
             badge: badgeOf(row.user, post),
           }
         : null,

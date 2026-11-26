@@ -147,17 +147,23 @@ export class AuthorsService {
     });
   }
 
-  // A columnist editing their own byline, bio, photo and column title.
+  // A columnist editing their own byline, bio, photo and column title. With
+  // several authors tied to the login, authorId says which one (any of them:
+  // the admin decided they write for all of them).
   async updateMyProfile(actor: SessionUser, input: UpdateMyProfileInput): Promise<IAuthorPublic> {
-    if (!actor.authorId) {
+    const authorId = input.authorId ?? actor.authorIds[0];
+    if (!authorId) {
       throw new Forbidden('Your account has no author profile.');
     }
+    if (!actor.authorIds.includes(authorId)) {
+      throw new Forbidden('This author is not linked to your account.');
+    }
 
-    const author = await this.ensureExists(actor.authorId);
+    const author = await this.ensureExists(authorId);
     await this.assertPhoto(actor, input.photoId, author.photoId);
     const slug = await this.followName(author, input.name);
 
-    return authorsRepository.update(actor.authorId, {
+    return authorsRepository.update(authorId, {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(slug !== undefined ? { slug } : {}),
       ...(input.bio !== undefined ? { bio: input.bio } : {}),
@@ -202,9 +208,11 @@ export class AuthorsService {
     }
 
     // A columnist login without a byline could enter the panel and write
-    // nothing. It goes back to reader and is logged out.
+    // nothing. It goes back to reader and is logged out, unless other authors
+    // are still tied to it: then it just keeps writing as those.
     const linkedUser = author.userId ? await usersRepository.findById(author.userId) : null;
-    const demoteUserId = linkedUser?.role === Role.COLUMNIST ? linkedUser.id : undefined;
+    const lastByline = linkedUser ? (await authorsRepository.countOfUser(linkedUser.id)) <= 1 : false;
+    const demoteUserId = linkedUser?.role === Role.COLUMNIST && lastByline ? linkedUser.id : undefined;
 
     await authorsRepository.deleteWithPosts(id, {
       ...(options.transferTo ? { transferTo: options.transferTo } : {}),

@@ -42,7 +42,7 @@ export class AuthService {
       role: Role.READER,
     });
 
-    return { id: user.id, name: user.name, role: user.role, authorId: null };
+    return { id: user.id, name: user.name, role: user.role, authorIds: [] };
   }
 
   async login(input: LoginInput): Promise<SessionUser> {
@@ -71,7 +71,7 @@ export class AuthService {
       id: user.id,
       name: user.name,
       role: user.role,
-      authorId: user.author?.id ?? null,
+      authorIds: user.authors.map((a) => a.id),
     };
   }
 
@@ -102,7 +102,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         role: user.role,
-        authorId: user.author?.id ?? null,
+        authorIds: user.authors.map((a) => a.id),
         hasPassword: user.passwordHash !== null,
       };
     }
@@ -118,7 +118,7 @@ export class AuthService {
       role: Role.READER,
     });
 
-    return { id: created.id, name: created.name, role: created.role, authorId: null, hasPassword: false };
+    return { id: created.id, name: created.name, role: created.role, authorIds: [], hasPassword: false };
   }
 
   // Deleting the account asks for the password again. An account with no

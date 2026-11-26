@@ -167,6 +167,18 @@ export class PostsService {
     return categoryId;
   }
 
+  // Which of the login's own authors signs a columnist's text. Left out: the
+  // first one (the admin's order). Anything else: refused.
+  private ownAuthorOf(actor: SessionUser, authorId: string | null | undefined, message?: string): string {
+    const first = actor.authorIds[0];
+    if (!first) throw new Forbidden('Your account has no author profile.');
+    if (!authorId) return first;
+    if (!policy.hasAuthor(actor, authorId)) {
+      throw new Forbidden(message ?? 'You can only sign with the authors linked to your account.');
+    }
+    return authorId;
+  }
+
   private async assertAuthorExists(authorId: string): Promise<void> {
     const author = await authorsRepository.findById(authorId);
     if (!author) throw new NotFound('Author not found.');
@@ -274,13 +286,13 @@ export class PostsService {
     // authorId from the query string is ignored for them, so there is no way
     // to page through someone else's drafts.
     if (!policy.isAdmin(actor)) {
-      if (!actor.authorId) {
+      if (actor.authorIds.length === 0) {
         throw new Forbidden('Your account has no author profile.');
       }
 
       return postsRepository.findForPanel(
         {
-          ownedBy: { authorId: actor.authorId, userId: actor.id },
+          ownedBy: { authorIds: actor.authorIds, userId: actor.id },
           ...(input.type ? { type: input.type } : {}),
           ...(input.status ? { status: input.status } : {}),
           ...(input.q ? { search: input.q } : {}),
@@ -346,13 +358,12 @@ export class PostsService {
     });
   }
 
-  // Columnist path: type, byline and category are decided by the server, not
-  // read from the request. That is what makes it impossible to smuggle in
-  // `type: news` or someone else's authorId.
+  // Columnist path: the byline is checked against the session, not trusted
+  // from the request. That is what makes it impossible to smuggle in someone
+  // else's authorId: only the authors the admin tied to this login are
+  // accepted.
   async createMyColumn(actor: SessionUser, input: CreateMyColumnInput): Promise<IPostDetail> {
-    if (!actor.authorId) {
-      throw new Forbidden('Your account has no author profile.');
-    }
+    const authorId = this.ownAuthorOf(actor, input.authorId);
 
     const type = input.type ?? PostType.COLUMN;
     if (!policy.canCreateType(actor, type)) {
@@ -376,7 +387,7 @@ export class PostsService {
       sourceUrl: input.sourceUrl ?? null,
       ...media,
       categoryId,
-      authorId: actor.authorId,
+      authorId,
       createdById: actor.id,
     });
   }
@@ -439,9 +450,20 @@ export class PostsService {
           input.bylineName !== undefined ? input.bylineName : input.authorId ? null : post.bylineName;
         Object.assign(data, await this.resolveByline(post.type, authorId, bylineName));
       }
-    } else if (input.authorId !== undefined || input.bylineName !== undefined) {
+    } else if (input.bylineName !== undefined) {
       throw new Forbidden('You cannot change the category or the byline.');
-    } else if (input.categoryId !== undefined) {
+    } else {
+      // A columnist with several authors may move their own text from one of
+      // them to another (published texts never reach here: canEdit).
+      if (input.authorId === null) {
+        throw new Forbidden('You cannot change the category or the byline.');
+      }
+      if (input.authorId !== undefined && input.authorId !== post.authorId) {
+        data.authorId = this.ownAuthorOf(actor, input.authorId, 'You cannot change the category or the byline.');
+      }
+    }
+
+    if (!policy.isAdmin(actor) && input.categoryId !== undefined) {
       // A columnist picks the category of their own news; a column has none.
       if (post.type !== PostType.NEWS) {
         throw new Forbidden('You cannot change the category or the byline.');

@@ -68,7 +68,8 @@ export class UsersService {
   }
 
   // Turning a reader into a columnist. Creates the byline and flips the role
-  // in a single transaction — see the repository for why that matters.
+  // in a single transaction — see the repository for why that matters. On a
+  // login that already writes as someone, the new byline joins the others.
   async promoteToColumnist(
     actor: SessionUser,
     id: string,
@@ -78,10 +79,6 @@ export class UsersService {
 
     if (!user) throw new NotFound('User not found.');
     this.ensureNotDeleted(user);
-
-    if (user.author) {
-      throw new Conflict('This user already has an author profile.');
-    }
 
     if (user.role === Role.ADMIN) {
       throw new Conflict('The admin does not need an author profile to publish news.');
@@ -116,9 +113,12 @@ export class UsersService {
     });
   }
 
-  // The admin decides which byline a login writes under: an author that
-  // already exists (a writer who signed news included), or none.
-  async linkAuthor(id: string, authorId: string | null): Promise<IUserWithAuthor> {
+  // The admin decides which bylines a login writes under: authors that
+  // already exist (a writer who signed news included), usually one, more when
+  // a columnist also publishes for someone else. An empty list: none.
+  // Only the admin ever changes this list; the columnist only picks, post by
+  // post, which of these bylines signs it.
+  async setAuthors(id: string, authorIds: string[]): Promise<IUserWithAuthor> {
     const user = await usersRepository.findByIdWithAuthor(id);
 
     if (!user) throw new NotFound('User not found.');
@@ -128,28 +128,34 @@ export class UsersService {
       throw new Conflict('The admin does not need an author profile to publish news.');
     }
 
-    if (authorId === null) {
-      if (!user.author) return user;
-      const updated = await usersRepository.linkAuthor(id, null);
+    const current = user.authors.map((a) => a.id);
+    const unchanged = current.length === authorIds.length && authorIds.every((a) => current.includes(a));
+    if (unchanged) return user;
+
+    if (authorIds.length === 0) {
+      const updated = await usersRepository.setAuthors(id, []);
       // Back to reader: the panel session goes now, not at the next login.
       await authRepository.deleteSessionsOfUser(id);
       return updated;
     }
 
-    if (user.author?.id === authorId) return user;
+    for (const authorId of authorIds) {
+      // Already this login's: keeps it as it is, even if deactivated since.
+      if (current.includes(authorId)) continue;
 
-    const author = await authorsRepository.findById(authorId);
-    if (!author) throw new NotFound('Author not found.');
+      const author = await authorsRepository.findById(authorId);
+      if (!author) throw new NotFound('Author not found.');
 
-    if (!author.active) {
-      throw new Conflict('This author is deactivated. Reactivate it first.');
+      if (!author.active) {
+        throw new Conflict(`The author "${author.name}" is deactivated. Reactivate it first.`);
+      }
+
+      if (author.userId && author.userId !== id) {
+        throw new Conflict(`The author "${author.name}" is already linked to another account.`);
+      }
     }
 
-    if (author.userId && author.userId !== id) {
-      throw new Conflict('This author is already linked to another account.');
-    }
-
-    return usersRepository.linkAuthor(id, authorId);
+    return usersRepository.setAuthors(id, authorIds);
   }
 
   async update(actorId: string, id: string, input: UpdateUserInput): Promise<IUserPublic> {

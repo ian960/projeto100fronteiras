@@ -159,7 +159,7 @@ describe('promoção a colunista', () => {
       .expect(200);
 
     expect(response.body.data.user.role).toBe('columnist');
-    expect(response.body.data.user.author.slug).toBe('joana-silva');
+    expect(response.body.data.user.authors[0].slug).toBe('joana-silva');
 
     // The promoted user can now reach the columnist panel.
     const { client: promoted } = await loginAs(reader.email);

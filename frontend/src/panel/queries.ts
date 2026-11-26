@@ -234,9 +234,10 @@ export function useUserActions() {
         patch(`/admin/users/${id}`, input),
       onSuccess,
     }),
-    // Ties the login to an author that already exists, or unties it (null).
-    linkAuthor: useMutation({
-      mutationFn: ({ id, authorId }: { id: string; authorId: string | null }) => put(`/admin/users/${id}/author`, { authorId }),
+    // The whole list of authors the login writes under (authors that already
+    // exist). Empty: unties them all and the account goes back to reader.
+    setAuthors: useMutation({
+      mutationFn: ({ id, authorIds }: { id: string; authorIds: string[] }) => put(`/admin/users/${id}/authors`, { authorIds }),
       onSuccess,
     }),
     resetPassword: useMutation({
@@ -259,7 +260,8 @@ export function useAccountActions() {
       mutationFn: (input: { currentPassword: string; newPassword: string }) => post('/auth/change-password', input),
     }),
     updateProfile: useMutation({
-      mutationFn: (input: AuthorInput) => patch('/columnist/profile', input),
+      // authorId: which of the account's authors (it may hold several).
+      mutationFn: (input: AuthorInput & { authorId: string }) => patch('/columnist/profile', input),
       onSuccess: () => Promise.all([
         client.invalidateQueries({ queryKey: ['me'] }),
         client.invalidateQueries({ queryKey: ['site'] }),
