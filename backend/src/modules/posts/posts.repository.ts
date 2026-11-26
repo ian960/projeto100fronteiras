@@ -257,7 +257,7 @@ export class PostsRepository implements IPostsRepository {
         ...(filters.origin === 'manual' ? { importedFrom: { is: null } } : {}),
         ...(filters.ownedBy
           ? {
-              authorId: filters.ownedBy.authorId,
+              authorId: { in: filters.ownedBy.authorIds },
               OR: [{ type: 'column' }, { createdById: filters.ownedBy.userId }],
             }
           : {}),

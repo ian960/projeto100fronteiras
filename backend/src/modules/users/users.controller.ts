@@ -4,7 +4,7 @@ import { Unauthenticated } from '../../shared/errors/AppError';
 import { usersService } from './users.service';
 import {
   listUsersSchema,
-  linkAuthorSchema,
+  setAuthorsSchema,
   promoteUserSchema,
   resetPasswordSchema,
   updateUserSchema,
@@ -36,9 +36,9 @@ export class UsersController {
     return ok(res, { user });
   };
 
-  linkAuthor = async (req: Request, res: Response) => {
-    const parsed = linkAuthorSchema.parse({ params: req.params, body: req.body });
-    const user = await usersService.linkAuthor(parsed.params.id, parsed.body.authorId);
+  setAuthors = async (req: Request, res: Response) => {
+    const parsed = setAuthorsSchema.parse({ params: req.params, body: req.body });
+    const user = await usersService.setAuthors(parsed.params.id, parsed.body.authorIds);
     return ok(res, { user });
   };
 

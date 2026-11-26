@@ -19,8 +19,10 @@ export interface IUser {
 // will not compile if it hands back an object that still carries the hash.
 export type IUserPublic = Omit<IUser, 'passwordHash'>;
 
+// The bylines the login writes under, in the admin's order of authors.
+// Usually one; empty for readers and the admin.
 export type IUserWithAuthor = IUserPublic & {
-  author?: IAuthorSummary | null;
+  authors: IAuthorSummary[];
 };
 
 // What the owner of the account sees about themselves (GET/PATCH /auth/me):

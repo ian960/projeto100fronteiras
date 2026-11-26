@@ -3,13 +3,15 @@ import type { Role } from '../../shared/types/enums';
 // What lives in req.user. Kept deliberately small: it is built on every
 // authenticated request.
 //
-// authorId is here because every ownership check on a column needs it. Without
-// it, each permission decision would cost an extra query.
+// authorIds is here because every ownership check on a column needs it.
+// Without it, each permission decision would cost an extra query. Usually one
+// author; several when the admin tied more bylines to the login (a columnist
+// who also publishes for a friend). Empty for readers and the admin.
 export type SessionUser = {
   id: string;
   name: string;
   role: Role;
-  authorId: string | null;
+  authorIds: string[];
 };
 
 // Row shape used by authenticate(). Includes the author relation.
@@ -18,7 +20,7 @@ export type IAuthSessionRow = {
   name: string;
   role: Role;
   active: boolean;
-  author: { id: string } | null;
+  authors: { id: string }[];
   passwordHash: string | null;
 };
 
@@ -39,5 +41,5 @@ export type IAuthCredentialsRow = {
   googleId: string | null;
   role: Role;
   active: boolean;
-  author: { id: string } | null;
+  authors: { id: string }[];
 };

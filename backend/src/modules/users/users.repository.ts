@@ -29,7 +29,10 @@ export class UsersRepository implements IUsersRepository {
     updatedAt: true,
   } as const;
 
-  private readonly withAuthor = { ...this.publicSelect, author: { select: authorSummarySelect } };
+  private readonly withAuthor = {
+    ...this.publicSelect,
+    authors: { select: authorSummarySelect, orderBy: { sortOrder: 'asc' } },
+  } as const;
 
   // The account's own profile, for its owner only.
   private readonly meSelect = {
@@ -44,7 +47,7 @@ export class UsersRepository implements IUsersRepository {
 
   private toMe<
     T extends {
-      author: Parameters<typeof toAuthorSummary>[0] | null;
+      authors: Parameters<typeof toAuthorSummary>[0][];
       avatar: IMedia | null;
       passwordHash: string | null;
       googleId: string | null;
@@ -59,11 +62,11 @@ export class UsersRepository implements IUsersRepository {
     };
   }
 
-  // The byline comes with its photo as a media row and leaves with photoUrl.
-  private toWithAuthor<T extends { author: Parameters<typeof toAuthorSummary>[0] | null }>(
+  // Each byline comes with its photo as a media row and leaves with photoUrl.
+  private toWithAuthor<T extends { authors: Parameters<typeof toAuthorSummary>[0][] }>(
     row: T,
-  ): Omit<T, 'author'> & Pick<IUserWithAuthor, 'author'> {
-    return { ...row, author: row.author ? toAuthorSummary(row.author) : null };
+  ): Omit<T, 'authors'> & Pick<IUserWithAuthor, 'authors'> {
+    return { ...row, authors: row.authors.map(toAuthorSummary) };
   }
 
   async findMany(
@@ -291,20 +294,26 @@ export class UsersRepository implements IUsersRepository {
     }
   }
 
-  // One transaction: the login lets go of its old byline (which stays, with
-  // its posts) and takes the new one, or none. With a byline the login is a
-  // columnist and the byline counts as one; without, the login is a reader,
-  // because a columnist with no byline cannot write anything.
-  async linkAuthor(userId: string, authorId: string | null): Promise<IUserWithAuthor> {
+  // One transaction: the login lets go of the bylines not in the list (they
+  // stay, with their posts) and takes the ones in it. With at least one byline
+  // the login is a columnist and each byline counts as one; with none, the
+  // login is a reader, because a columnist with no byline cannot write.
+  async setAuthors(userId: string, authorIds: string[]): Promise<IUserWithAuthor> {
     try {
       return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        await tx.author.updateMany({ where: { userId }, data: { userId: null } });
+        await tx.author.updateMany({
+          where: { userId, id: { notIn: authorIds } },
+          data: { userId: null },
+        });
 
-        if (authorId) {
-          await tx.author.update({ where: { id: authorId }, data: { userId, type: 'columnist' } });
+        if (authorIds.length > 0) {
+          await tx.author.updateMany({ where: { id: { in: authorIds } }, data: { userId, type: 'columnist' } });
         }
 
-        await tx.user.update({ where: { id: userId }, data: { role: authorId ? 'columnist' : 'reader' } });
+        await tx.user.update({
+          where: { id: userId },
+          data: { role: authorIds.length > 0 ? 'columnist' : 'reader' },
+        });
 
         const row = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: this.withAuthor });
         return this.toWithAuthor(row);

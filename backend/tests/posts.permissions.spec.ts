@@ -132,14 +132,18 @@ describe('o que o colunista enxerga', () => {
 
     const { client } = await loginAs(user.email);
 
+    // Someone else's byline is refused: only the authors tied to the login.
+    await client
+      .post('/api/columnist/posts')
+      .send({ title: 'My opinion piece', content: '<p>Text.</p>', authorId: other.id })
+      .expect(403);
+
     const response = await client
       .post('/api/columnist/posts')
       .send({
         title: 'My opinion piece',
         content: '<p>Text.</p>',
-        // Ignored: the byline comes from the session, and a column has no
-        // category.
-        authorId: other.id,
+        // Ignored: a column has no category.
         categoryId: category.id,
       })
       .expect(201);

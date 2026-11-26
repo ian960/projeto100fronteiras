@@ -51,9 +51,9 @@ describe('ligar conta a autor (ADM)', () => {
     const reader = await makeUser();
     const writer = await makeWriter();
 
-    const res = await client.put(`/api/admin/users/${reader.id}/author`).send({ authorId: writer.id }).expect(200);
+    const res = await client.put(`/api/admin/users/${reader.id}/authors`).send({ authorIds: [writer.id] }).expect(200);
     expect(res.body.data.user.role).toBe('columnist');
-    expect(res.body.data.user.author.id).toBe(writer.id);
+    expect(res.body.data.user.authors.map((a: { id: string }) => a.id)).toEqual([writer.id]);
 
     const author = await prisma.author.findUniqueOrThrow({ where: { id: writer.id } });
     expect(author).toMatchObject({ userId: reader.id, type: 'columnist' });
@@ -70,7 +70,7 @@ describe('ligar conta a autor (ADM)', () => {
     await makeColumn({ authorId: old.id, createdById: user.id }, { status: 'published', publishedAt: new Date() });
     const writer = await makeWriter();
 
-    await client.put(`/api/admin/users/${user.id}/author`).send({ authorId: writer.id }).expect(200);
+    await client.put(`/api/admin/users/${user.id}/authors`).send({ authorIds: [writer.id] }).expect(200);
 
     const before = await prisma.author.findUniqueOrThrow({ where: { id: old.id }, include: { _count: { select: { posts: true } } } });
     expect(before.userId).toBeNull();
@@ -81,9 +81,9 @@ describe('ligar conta a autor (ADM)', () => {
     const client = await admin();
     const { user, author } = await makeColumnist();
 
-    const res = await client.put(`/api/admin/users/${user.id}/author`).send({ authorId: null }).expect(200);
+    const res = await client.put(`/api/admin/users/${user.id}/authors`).send({ authorIds: [] }).expect(200);
     expect(res.body.data.user.role).toBe('reader');
-    expect(res.body.data.user.author).toBeNull();
+    expect(res.body.data.user.authors).toEqual([]);
     expect(await prisma.author.findUnique({ where: { id: author.id } })).not.toBeNull();
   });
 
@@ -94,16 +94,16 @@ describe('ligar conta a autor (ADM)', () => {
     const reader = await makeUser();
     const other = await makeAdmin();
 
-    await client.put(`/api/admin/users/${reader.id}/author`).send({ authorId: taken.id }).expect(409);
-    await client.put(`/api/admin/users/${reader.id}/author`).send({ authorId: inactive.id }).expect(409);
-    await client.put(`/api/admin/users/${other.id}/author`).send({ authorId: (await makeWriter()).id }).expect(409);
+    await client.put(`/api/admin/users/${reader.id}/authors`).send({ authorIds: [taken.id] }).expect(409);
+    await client.put(`/api/admin/users/${reader.id}/authors`).send({ authorIds: [inactive.id] }).expect(409);
+    await client.put(`/api/admin/users/${other.id}/authors`).send({ authorIds: [(await makeWriter()).id] }).expect(409);
   });
 
   it('só o ADM pode ligar', async () => {
     const { user } = await makeColumnist();
     const writer = await makeWriter();
     const { client } = await loginAs(user.email);
-    await client.put(`/api/admin/users/${user.id}/author`).send({ authorId: writer.id }).expect(403);
+    await client.put(`/api/admin/users/${user.id}/authors`).send({ authorIds: [writer.id] }).expect(403);
   });
 });
 

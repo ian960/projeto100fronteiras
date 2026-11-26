@@ -62,7 +62,7 @@ export type FindForPanelFilters = {
   origin?: 'manual' | 'imported';
   // A columnist's own texts: columns signed by them, and news signed by them
   // that they wrote themselves (see posts.policy ownsPost).
-  ownedBy?: { authorId: string; userId: string };
+  ownedBy?: { authorIds: string[]; userId: string };
   categoryId?: string;
   authorId?: string;
   search?: string;

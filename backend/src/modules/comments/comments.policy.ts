@@ -8,9 +8,10 @@ export function isOwner(user: SessionUser, comment: ICommentRow): boolean {
   return comment.userId !== null && comment.userId === user.id;
 }
 
-// The person whose byline signs the post moderates its comments.
+// The person whose byline signs the post moderates its comments (any of the
+// bylines tied to their login).
 export function isPostAuthor(user: SessionUser, post: ICommentPost): boolean {
-  return user.authorId !== null && user.authorId === post.authorId;
+  return post.authorId !== null && user.authorIds.includes(post.authorId);
 }
 
 // Only the one who wrote it changes the words.

@@ -4,7 +4,7 @@ import { Link, useBlocker, useLocation, useNavigate, useParams, useSearchParams 
 import { Alert, Button, Loading, SelectField, TextArea, TextField, cx } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
 import { formatDateTime, isSlugOf, postPath, slugify } from '../../lib/format';
-import { useDocumentTitle } from '../../lib/hooks';
+import { useDocumentTitle, useMe } from '../../lib/hooks';
 import type { PostDetail, PostType, PostWithAudit } from '../../lib/types';
 import { RichTextEditor } from '../RichTextEditor';
 import type { InsertImage } from '../RichTextEditor';
@@ -111,12 +111,14 @@ function toInput(form: Form, scope: Scope, isNew: boolean): PostInput {
   // from the headline.
   if (form.slugTouched) input.slug = form.slug.trim() || form.title.trim();
 
-  // The columnist's endpoint decides the byline on the server (sending one
-  // would be refused). The columnist chooses the type of a new text, and the
-  // category of their news.
+  // The columnist chooses the type of a new text, and the category of their
+  // news. The byline can only be one of the authors the admin tied to their
+  // account (the server checks): sent when there is a choice to make, left
+  // out otherwise (the server then uses their only one).
   if (scope === 'columnist') {
     if (isNew) input.type = form.type;
     if (form.type === 'news') input.categoryId = blank(form.categoryId);
+    if (form.authorId) input.authorId = form.authorId;
   }
   if (scope === 'admin') {
     if (isNew) input.type = form.type;
@@ -172,8 +174,17 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
   // "Nova notícia" in Meus textos opens /painel/colunas/nova?tipo=noticia.
   const [searchParams] = useSearchParams();
   const defaultType: PostType = isAdmin || searchParams.get('tipo') === 'noticia' ? 'news' : 'column';
-  const [form, setForm] = useState<Form>(() => toForm(post, defaultType));
-  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(toInput(toForm(post, defaultType), scope, isNew)));
+  // A columnist may write under several authors (the admin decides which):
+  // they pick one per text, "Publicar como". A new text starts with the first.
+  const { data: me } = useMe();
+  const ownAuthors = !isAdmin ? (me?.authors ?? []) : [];
+  const [initialForm] = useState<Form>(() => {
+    const initial = toForm(post, defaultType);
+    if (!isAdmin && isNew && ownAuthors.length > 1) initial.authorId = ownAuthors[0]!.id;
+    return initial;
+  });
+  const [form, setForm] = useState<Form>(initialForm);
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(toInput(initialForm, scope, isNew)));
   // A new piece is saved first and then published. If publishing fails, the
   // editor moves to the saved piece's URL and remounts; the reason travels in
   // the navigation state so it is still on screen after the move.
@@ -637,7 +648,28 @@ function Editor({ scope, post }: { scope: Scope; post: PostWithAudit | null }) {
                   </SelectField>
                 )}
 
-                {!isAdmin && <p className="text-sm text-tinta-suave">Assinada por você. Só o administrador publica: quando terminar, envie para revisão.</p>}
+                {!isAdmin && ownAuthors.length > 1 && (
+                  <SelectField
+                    label="Publicar como"
+                    value={form.authorId}
+                    onChange={(event) => update('authorId', event.target.value)}
+                    error={errors.authorId}
+                    disabled={locked}
+                    hint="O texto aparece com este nome e na página dele no site."
+                  >
+                    {ownAuthors.map((author) => (
+                      <option key={author.id} value={author.id}>
+                        {author.name}
+                      </option>
+                    ))}
+                  </SelectField>
+                )}
+
+                {!isAdmin && (
+                  <p className="text-sm text-tinta-suave">
+                    {ownAuthors.length > 1 ? 'Só' : 'Assinada por você. Só'} o administrador publica: quando terminar, envie para revisão.
+                  </p>
+                )}
 
                 {isAdmin && (
                 <SelectField

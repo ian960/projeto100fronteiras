@@ -48,6 +48,9 @@ function CommentCount({ post }: { post: PostListItem }) {
 
 function PostRows({ posts, scope }: { posts: PostListItem[]; scope: Scope }) {
   const base = scope === 'admin' ? '/painel/materias' : '/painel/colunas';
+  const { data: me } = useMe();
+  // A columnist with several authors sees which of them signs each text.
+  const showByline = scope === 'admin' || (me?.authors.length ?? 0) > 1;
   return (
     <ul className="divide-y divide-linha rounded-lg border border-linha bg-papel">
       {posts.map((post) => (
@@ -57,7 +60,7 @@ function PostRows({ posts, scope }: { posts: PostListItem[]; scope: Scope }) {
               {post.title}
             </Link>
             <p className="mt-0.5 text-sm text-tinta-suave">
-              {scope === 'admin' ? `${post.author?.name ?? post.bylineName ?? 'Sem assinatura'}, ` : ''}
+              {showByline ? `${post.author?.name ?? post.bylineName ?? 'Sem assinatura'}, ` : ''}
               {post.category ? `${post.category.name}, ` : ''}
               atualizada em {formatDateTime(post.updatedAt)}
             </p>
@@ -356,7 +359,7 @@ export function DashboardPage() {
     <>
       <PanelHeader
         title={`Olá, ${me?.name.split(' ')[0] ?? ''}`}
-        description={isAdmin ? 'O que está acontecendo no portal.' : me?.author?.columnTitle ? `Sua coluna: ${me.author.columnTitle}` : undefined}
+        description={isAdmin ? 'O que está acontecendo no portal.' : me?.authors.length === 1 && me.authors[0]?.columnTitle ? `Sua coluna: ${me.authors[0].columnTitle}` : undefined}
         actions={
           isAdmin ? (
             <>

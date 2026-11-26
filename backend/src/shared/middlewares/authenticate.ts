@@ -37,7 +37,7 @@ function buildAuthenticate(requirePassword: boolean): RequestHandler {
     id: user.id,
     name: user.name,
     role: user.role,
-    authorId: user.author?.id ?? null,
+    authorIds: user.authors.map((a) => a.id),
   };
 
   return next();

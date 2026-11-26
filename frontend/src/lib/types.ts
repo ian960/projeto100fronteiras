@@ -80,7 +80,9 @@ export type User = {
   active: boolean;
   createdAt: string;
   updatedAt: string;
-  author?: AuthorSummary | null;
+  // The bylines this login writes under, in the admin's order. Usually one;
+  // more when the admin tied a friend's author to it too. Empty for readers.
+  authors: AuthorSummary[];
   // Only on your own account (GET /auth/me): "Minha conta".
   bio?: string | null;
   avatarId?: string | null;

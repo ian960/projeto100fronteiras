@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router';
-import { Alert, Avatar, Button, Checkbox, EmptyState, Loading, Pagination, SelectField, TextArea, TextField, cx } from '../../components/ui';
+import { Alert, Avatar, Button, Checkbox, EmptyState, Loading, Pagination, TextArea, TextField, cx } from '../../components/ui';
 import { ApiError, errorMessage } from '../../lib/api';
 import { countPosts, formatDateTime, isSlugOf, roleLabel, slugify } from '../../lib/format';
 import { useDocumentTitle, useMe } from '../../lib/hooks';
@@ -617,13 +617,13 @@ export function UsersPage() {
                     </p>
                     <p className="truncate text-sm text-tinta-suave">
                       {user.email}, {roleLabel[user.role]}
-                      {user.author ? `, assina como ${user.author.name}` : ''}, desde {formatDateTime(user.createdAt).slice(0, 10)}
+                      {user.authors.length > 0 ? `, assina como ${joinNames(user.authors.map((a) => a.name))}` : ''}, desde {formatDateTime(user.createdAt).slice(0, 10)}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {user.role !== 'admin' && (
-                      <Button small variant={user.author ? 'secundario' : undefined} onClick={() => setPromoting(user)}>
-                        {user.author ? 'Trocar autor' : 'Promover a colunista'}
+                      <Button small variant={user.authors.length > 0 ? 'secundario' : undefined} onClick={() => setPromoting(user)}>
+                        {user.authors.length > 0 ? 'Autores da conta' : 'Promover a colunista'}
                       </Button>
                     )}
                     {!isSelf && (
@@ -643,7 +643,7 @@ export function UsersPage() {
                           className="h-8 rounded-md border border-linha bg-papel px-2 text-sm"
                         >
                           <option value="reader">Leitor</option>
-                          <option value="columnist" disabled={!user.author}>
+                          <option value="columnist" disabled={user.authors.length === 0}>
                             Colunista
                           </option>
                           <option value="admin">Administrador</option>
@@ -685,7 +685,7 @@ export function UsersPage() {
         </div>
       )}
 
-      <Modal open={promoting !== null} onClose={() => setPromoting(null)} title={promoting?.author ? 'Autor da conta' : 'Promover a colunista'}>
+      <Modal open={promoting !== null} onClose={() => setPromoting(null)} title={promoting && promoting.authors.length > 0 ? 'Autores da conta' : 'Promover a colunista'}>
         {promoting && <AuthorLinkDialog key={promoting.id} user={promoting} onDone={() => setPromoting(null)} />}
       </Modal>
       <Modal open={resetting !== null} onClose={() => setResetting(null)} title="Redefinir senha">
@@ -695,117 +695,127 @@ export function UsersPage() {
   );
 }
 
-// Which byline a login writes under. The admin picks an author that already
-// exists (a writer who signs news included) or creates a new one; a login
-// that already has one can switch to another or let go of it.
+// "Ana, Beto e Carla".
+function joinNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}`;
+}
+
+// Which bylines a login writes under. Only the admin decides: authors that
+// already exist (a writer who signs news included), or a new one created here.
+// Usually one; more when a columnist also publishes for someone else (a friend
+// who does not log in). The columnist then picks, text by text, which of them
+// signs it.
 function AuthorLinkDialog({ user, onDone }: { user: User; onDone: () => void }) {
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
 
   return (
     <div className="flex flex-col gap-4">
-      {!user.author && (
-        <div role="tablist" aria-label="Como ligar" className="flex gap-1 rounded-lg bg-superficie p-1">
-          {(
-            [
-              ['existing', 'Autor que já existe'],
-              ['new', 'Criar autor novo'],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={mode === value}
-              onClick={() => setMode(value)}
-              className={cx('h-8 flex-1 rounded-md px-3 text-sm font-medium', mode === value ? 'bg-anil text-white' : 'text-tinta-suave hover:text-tinta')}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-      {mode === 'existing' || user.author ? <LinkAuthorForm user={user} onDone={onDone} /> : <PromoteForm user={user} onDone={onDone} />}
+      <div role="tablist" aria-label="Como ligar" className="flex gap-1 rounded-lg bg-superficie p-1">
+        {(
+          [
+            ['existing', user.authors.length > 0 ? 'Escolher autores' : 'Autor que já existe'],
+            ['new', 'Criar autor novo'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={mode === value}
+            onClick={() => setMode(value)}
+            className={cx('h-8 flex-1 rounded-md px-3 text-sm font-medium', mode === value ? 'bg-anil text-white' : 'text-tinta-suave hover:text-tinta')}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === 'existing' ? <LinkAuthorsForm user={user} onDone={onDone} /> : <PromoteForm user={user} onDone={onDone} />}
     </div>
   );
 }
 
-function LinkAuthorForm({ user, onDone }: { user: User; onDone: () => void }) {
-  const { linkAuthor } = useUserActions();
+function LinkAuthorsForm({ user, onDone }: { user: User; onDone: () => void }) {
+  const { setAuthors } = useUserActions();
   const authors = useAdminAuthors();
   const toast = useToast();
-  const [authorId, setAuthorId] = useState(user.author?.id ?? '');
+  const current = user.authors.map((a) => a.id);
+  const [selected, setSelected] = useState<string[]>(current);
 
-  // Free: not tied to any login, or tied to this one.
-  const options = authors.data?.filter((a) => a.active && (!a.userId || a.userId === user.id)) ?? [];
+  // Free (active and not tied to any login) or already this login's.
+  const options = authors.data?.filter((a) => a.userId === user.id || (a.active && !a.userId)) ?? [];
+  // In the admin's order of authors, whatever order they were ticked in.
+  const chosen = options.filter((a) => selected.includes(a.id));
+  const unchanged = chosen.length === current.length && chosen.every((a) => current.includes(a.id));
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!authorId) return;
-    linkAuthor.mutate(
-      { id: user.id, authorId },
+  function toggle(id: string, on: boolean) {
+    setSelected((list) => (on ? [...list, id] : list.filter((item) => item !== id)));
+  }
+
+  function save(authorIds: string[]) {
+    setAuthors.mutate(
+      { id: user.id, authorIds },
       {
         onSuccess: () => {
-          const name = options.find((a) => a.id === authorId)?.name ?? '';
-          toast(`${user.name} agora escreve como ${name}`);
+          toast(
+            authorIds.length === 0
+              ? `${user.name} voltou a ser leitor`
+              : `${user.name} agora escreve como ${joinNames(options.filter((a) => authorIds.includes(a.id)).map((a) => a.name))}`,
+          );
           onDone();
         },
       },
     );
   }
 
-  function unlink() {
-    linkAuthor.mutate(
-      { id: user.id, authorId: null },
-      {
-        onSuccess: () => {
-          toast(`${user.name} voltou a ser leitor`);
-          onDone();
-        },
-      },
-    );
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (chosen.length === 0) return;
+    save(chosen.map((a) => a.id));
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <p className="text-[0.9375rem] text-tinta-suave">
-        {user.name} vai entrar na área da redação e escrever colunas com a assinatura escolhida. Se for um redator, ele passa
-        a contar como colunista. Cada texto passa pela sua revisão antes de ir ao ar.
+        {user.name} entra na área da redação e escreve com as assinaturas marcadas. Com mais de uma, escolhe em cada texto
+        qual delas assina (por exemplo, a própria e a de um amigo). Cada texto passa pela sua revisão antes de ir ao ar.
       </p>
-      {linkAuthor.error && <Alert>{bannerFor(linkAuthor.error)}</Alert>}
+      {setAuthors.error && <Alert>{bannerFor(setAuthors.error)}</Alert>}
       {authors.isPending ? (
         <Loading />
+      ) : options.length === 0 ? (
+        <p className="text-sm text-tinta-suave">Nenhum autor livre. Crie um autor novo.</p>
       ) : (
-        <SelectField
-          label="Assina como"
-          value={authorId}
-          onChange={(event) => setAuthorId(event.target.value)}
-          hint={options.length === 0 ? 'Nenhum autor livre. Crie um autor novo.' : 'Só aparecem autores ativos que não estão ligados a outra conta.'}
-        >
-          <option value="">Escolha…</option>
+        <fieldset className="flex flex-col gap-2.5">
+          <legend className="mb-2 text-sm font-semibold">Assina como</legend>
           {options.map((author) => (
-            <option key={author.id} value={author.id}>
-              {author.name}
-              {author.type === 'columnist' ? ' (colunista)' : ' (redator)'}
-            </option>
+            <Checkbox
+              key={author.id}
+              label={`${author.name}${author.type === 'columnist' ? ' (colunista)' : ' (redator)'}`}
+              hint={author.active ? undefined : 'Desativado: continua ligado, mas não aparece no site.'}
+              checked={selected.includes(author.id)}
+              onChange={(on) => toggle(author.id, on)}
+            />
           ))}
-        </SelectField>
+          <p className="text-sm text-tinta-suave">Só aparecem autores ativos que não estão ligados a outra conta. Redatores marcados passam a contar como colunistas.</p>
+        </fieldset>
       )}
       <div className="flex flex-wrap justify-end gap-2 pt-2">
-        {user.author && (
-          <Button type="button" variant="perigo" busy={linkAuthor.isPending && linkAuthor.variables?.authorId === null} onClick={unlink}>
-            Desligar do autor
+        {user.authors.length > 0 && (
+          <Button type="button" variant="perigo" busy={setAuthors.isPending && setAuthors.variables?.authorIds.length === 0} onClick={() => save([])}>
+            Desligar de todos
           </Button>
         )}
         <Button type="button" variant="secundario" onClick={onDone}>
           Cancelar
         </Button>
-        <Button type="submit" busy={linkAuthor.isPending && linkAuthor.variables?.authorId !== null} disabled={!authorId || authorId === user.author?.id}>
+        <Button type="submit" busy={setAuthors.isPending && (setAuthors.variables?.authorIds.length ?? 0) > 0} disabled={chosen.length === 0 || unchanged}>
           Salvar
         </Button>
       </div>
-      {user.author && (
+      {user.authors.length > 0 && (
         <p className="text-sm text-tinta-suave">
-          Desligar não apaga o autor nem as colunas: a conta só volta a ser de leitor.
+          Desmarcar ou desligar não apaga o autor nem os textos dele: só deixa de escrever por esta conta. Sem nenhum autor, a conta volta a ser de leitor.
         </p>
       )}
     </form>
@@ -816,7 +826,7 @@ function PromoteForm({ user, onDone }: { user: User; onDone: () => void }) {
   const { promote } = useUserActions();
   const toast = useToast();
   const errors = fieldErrors(promote.error);
-  const [form, setForm] = useState({ name: user.name, columnTitle: '', bio: '', photo: null as ImageValue });
+  const [form, setForm] = useState({ name: user.authors.length > 0 ? '' : user.name, columnTitle: '', bio: '', photo: null as ImageValue });
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -832,7 +842,7 @@ function PromoteForm({ user, onDone }: { user: User; onDone: () => void }) {
       },
       {
         onSuccess: () => {
-          toast(`${user.name} agora é colunista`);
+          toast(user.authors.length > 0 ? `${user.name} agora também escreve como ${form.name.trim()}` : `${user.name} agora é colunista`);
           onDone();
         },
       },
@@ -842,7 +852,9 @@ function PromoteForm({ user, onDone }: { user: User; onDone: () => void }) {
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <p className="text-[0.9375rem] text-tinta-suave">
-        {user.name} vai poder entrar na área da redação e escrever colunas. Cada texto passa pela sua revisão antes de ir ao ar.
+        {user.authors.length > 0
+          ? `Cria mais uma assinatura para ${user.name} (por exemplo, a de um amigo que não entra no painel). As que já existem continuam.`
+          : `${user.name} vai poder entrar na área da redação e escrever colunas. Cada texto passa pela sua revisão antes de ir ao ar.`}
       </p>
       {promote.error && Object.keys(errors).length === 0 && <Alert>{bannerFor(promote.error)}</Alert>}
       <TextField label="Nome na assinatura" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name} />
@@ -854,7 +866,7 @@ function PromoteForm({ user, onDone }: { user: User; onDone: () => void }) {
           Cancelar
         </Button>
         <Button type="submit" busy={promote.isPending}>
-          Promover
+          {user.authors.length > 0 ? 'Criar e ligar' : 'Promover'}
         </Button>
       </div>
     </form>
